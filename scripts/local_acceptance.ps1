@@ -15,6 +15,7 @@ param(
   [string] $UERoot = "",
   [Parameter(Mandatory=$true)] [string] $ProjectUProject,
   [string] $OutputDir = "",
+  [string[]] $PluginSource = @(),   # optional: plugin folder(s) to copy into <project>/Plugins before build
   [switch] $SkipBuild,
   [switch] $SkipGenerate,
   [switch] $SkipViz,
@@ -69,6 +70,26 @@ $ueOk = ($cmdExe -and (Test-Path $cmdExe))
 if (-not $ueOk) { Add-Step 'discover_ue' 'failed' '' @("UnrealEditor-Cmd.exe not found. Pass -UERoot explicitly (EngineAssociation='$engineAssoc').") @() }
 else { Add-Step 'discover_ue' 'success' '' @() @() }
 
+# Editor MUST be closed: it locks plugin DLLs (build) and clobbers generated assets on save (generate).
+$editorRunning = [bool](Get-Process -Name UnrealEditor -ErrorAction SilentlyContinue)
+if ($editorRunning -and -not ($SkipBuild -and $SkipGenerate)) {
+  Add-Step 'editor_closed_check' 'failed' '' @('Unreal Editor is running. Close it before build/generate (DLL locks + asset clobber).') @()
+} else {
+  Add-Step 'editor_closed_check' 'success' '' @() @()
+}
+
+# --- sync plugin source(s) into the project (keeps the project copy == repo source of truth) ---
+if ($PluginSource.Count -gt 0 -and -not $SkipBuild -and -not $editorRunning) {
+  foreach ($src in $PluginSource) {
+    if (Test-Path $src) {
+      $leaf = Split-Path $src -Leaf
+      robocopy $src (Join-Path $ProjectDir "Plugins\$leaf") /E /NFL /NDL /NJH /NJS /NP | Out-Null
+      Write-Host "Synced plugin -> Plugins\$leaf"
+    } else { Write-Warning "PluginSource not found: $src" }
+  }
+  Add-Step 'sync_plugin' 'success' '' @() @()
+}
+
 # --- ensure code project (Blueprint-only projects need a minimal C++ module to compile plugins) ---
 if (-not $SkipBuild -and $ueOk) {
   $ecpLog = Join-Path $OutputDir 'ensure_code_project_log.txt'
@@ -81,6 +102,7 @@ $buildExit = 0
 $buildLog = Join-Path $OutputDir 'build_log.txt'
 if ($SkipBuild) { Add-Step 'build' 'skipped' $buildLog @() @() }
 elseif (-not $ueOk) { Add-Step 'build' 'failed' $buildLog @('UE not found') @(); $buildExit = 1 }
+elseif ($editorRunning) { Add-Step 'build' 'failed' $buildLog @('Unreal Editor running; close it first.') @(); $buildExit = 1 }
 else {
   & (Join-Path $PSScriptRoot 'build_plugin.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject *> $buildLog
   $buildExit = $LASTEXITCODE

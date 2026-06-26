@@ -12,7 +12,8 @@
 [CmdletBinding()]
 param(
   [Alias('UE_ROOT')]          [string]$UERoot = $env:UE_ROOT,
-  [Alias('PROJECT_UPROJECT')] [string]$ProjectUProject = $env:PROJECT_UPROJECT
+  [Alias('PROJECT_UPROJECT')] [string]$ProjectUProject = $env:PROJECT_UPROJECT,
+  [switch]$NoClean   # skip wiping /Game/BPParserTest before regenerating
 )
 $ErrorActionPreference = 'Stop'
 function Fail($msg){ Write-Error $msg; exit 1 }
@@ -23,6 +24,19 @@ if (-not (Test-Path $ProjectUProject))             { Fail "Project not found: $P
 
 $Cmd = Join-Path $UERoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
 if (-not (Test-Path $Cmd)) { Fail "UnrealEditor-Cmd.exe not found: $Cmd" }
+
+# CRITICAL: an open editor holds the assets and will clobber generated files on its next save.
+$ed = Get-Process -Name UnrealEditor -ErrorAction SilentlyContinue
+if ($ed) { Fail "Unreal Editor is running (PID $($ed.Id -join ',')). CLOSE it before generating - an open editor overwrites generated assets on save." }
+
+# Clean slate so re-runs are deterministic (no stale/orphaned assets survive).
+if (-not $NoClean) {
+  $content = Join-Path (Split-Path $ProjectUProject -Parent) 'Content\BPParserTest'
+  if (Test-Path $content) {
+    Remove-Item "$content\*" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Cleaned existing /Game/BPParserTest content." -ForegroundColor DarkGray
+  }
+}
 
 Write-Host "Running BPParserTestGen commandlet ..." -ForegroundColor Cyan
 & $Cmd "$ProjectUProject" -run=BPParserTestGen -stdout -unattended -nopause

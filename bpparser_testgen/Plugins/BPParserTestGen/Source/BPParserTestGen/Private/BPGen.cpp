@@ -779,6 +779,30 @@ bool FBPGen::SetPinDefaultObject(UEdGraphNode* Node, const FString& PinName, UOb
 	return true;
 }
 
+UEdGraphPin* FBPGen::FindPinByPrefix(UEdGraphNode* Node, const FString& Prefix, EEdGraphPinDirection Dir)
+{
+	if (!Node) { return nullptr; }
+	const FString Under = Prefix + TEXT("_");
+	for (UEdGraphPin* P : Node->Pins)
+	{
+		if (!P || P->Direction != Dir) { continue; }
+		const FString N = P->PinName.ToString();
+		if (N.Equals(Prefix, ESearchCase::IgnoreCase) || N.StartsWith(Under, ESearchCase::IgnoreCase))
+		{
+			return P;
+		}
+	}
+	return nullptr;
+}
+
+bool FBPGen::SetStructPinDefault(UEdGraphNode* Node, const FString& FieldPrefix, const FString& Value)
+{
+	UEdGraphPin* Pin = FindPinByPrefix(Node, FieldPrefix, EGPD_Input);
+	if (!Pin) { return false; }
+	K2()->TrySetDefaultValue(*Pin, Value);
+	return true;
+}
+
 // ============================================================================
 // Pin-type factory
 // ============================================================================

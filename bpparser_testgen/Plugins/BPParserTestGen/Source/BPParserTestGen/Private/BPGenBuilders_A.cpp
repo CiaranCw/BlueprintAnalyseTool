@@ -189,8 +189,8 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP02_StructEnumContainers()
 		UK2Node_MakeStruct* Make = FBPGen::SpawnMakeStruct(G, DataStruct, 0, 80);
 		if (Make)
 		{
-			FBPGen::SetPinDefault(Make, TEXT("ID"), TEXT("1"));
-			FBPGen::SetPinDefault(Make, TEXT("Score"), TEXT("10.0"));
+			FBPGen::SetStructPinDefault(Make, TEXT("ID"), TEXT("1"));
+			FBPGen::SetStructPinDefault(Make, TEXT("Score"), TEXT("10.0"));
 			// DisplayName pin intentionally left at default (unconnected text default).
 			UK2Node_VariableSet* SetData = FBPGen::SpawnVarSet(G, "DataItem", 320, 0);
 			if (SetData)

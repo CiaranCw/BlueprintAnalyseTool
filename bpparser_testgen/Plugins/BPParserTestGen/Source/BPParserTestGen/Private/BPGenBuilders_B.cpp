@@ -234,7 +234,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP08_ComplexGameplay()
 	if (DataStruct)
 	{
 		UK2Node_MakeStruct* Make = FBPGen::SpawnMakeStruct(G, DataStruct, -60, 60);
-		if (Make) FBPGen::SetPinDefault(Make, TEXT("ID"), TEXT("100"));
+		if (Make) FBPGen::SetStructPinDefault(Make, TEXT("ID"), TEXT("100"));
 		UK2Node_VariableGet* GetList = FBPGen::SpawnVarGet(G, "DataList", -60, 260);
 		UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 140, 60);
 		if (ArrAdd)
@@ -448,7 +448,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP10_RoundTripMaster()
 	if (DataStruct)
 	{
 		UK2Node_MakeStruct* Make = FBPGen::SpawnMakeStruct(G, DataStruct, 240, 320);
-		if (Make) FBPGen::SetPinDefault(Make, TEXT("ID"), TEXT("999"));
+		if (Make) FBPGen::SetStructPinDefault(Make, TEXT("ID"), TEXT("999"));
 	}
 	if (StateEnum)
 	{

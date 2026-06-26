@@ -129,6 +129,10 @@ public:
 	static bool ConnectExec(UEdGraphNode* From, UEdGraphNode* To);
 	static bool SetPinDefault(UEdGraphNode* Node, const FString& PinName, const FString& Value);
 	static bool SetPinDefaultObject(UEdGraphNode* Node, const FString& PinName, UObject* Obj);
+	/** Find an input pin whose name equals Prefix or starts with "Prefix_" (Make/Break struct pins are "Field_<idx>_<GUID>"). */
+	static UEdGraphPin* FindPinByPrefix(UEdGraphNode* Node, const FString& Prefix, EEdGraphPinDirection Dir);
+	/** SetPinDefault for Make/Break-struct field pins (matches the friendly-name prefix). */
+	static bool SetStructPinDefault(UEdGraphNode* Node, const FString& FieldPrefix, const FString& Value);
 
 	// ---- Pin-type factory -----------------------------------------------
 	static FEdGraphPinType PinExec();
