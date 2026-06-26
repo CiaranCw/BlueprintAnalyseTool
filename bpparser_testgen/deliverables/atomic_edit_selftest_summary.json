@@ -1,0 +1,97 @@
+﻿{
+    "schema_version":  "1.0",
+    "source":  "/Game/BPParserTest/BP_01_PrimitivePins_Basic",
+    "total":  8,
+    "passed":  8,
+    "failed":  0,
+    "cases":  [
+                  {
+                      "idx":  1,
+                      "name":  "insert_node_between",
+                      "mode":  "apply-and-verify",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=1 removed=0 +edges=2 -edges=1",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100023Z"
+                  },
+                  {
+                      "idx":  2,
+                      "name":  "set_pin_default_value",
+                      "mode":  "apply-and-verify",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=0 removed=0 +edges=0 -edges=0",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100035Z"
+                  },
+                  {
+                      "idx":  3,
+                      "name":  "add_variable",
+                      "mode":  "apply-and-verify",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=0 removed=0 +edges=0 -edges=0",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100047Z"
+                  },
+                  {
+                      "idx":  4,
+                      "name":  "remove_node_preserve_exec",
+                      "mode":  "apply-and-verify",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=0 removed=1 +edges=0 -edges=2",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100059Z"
+                  },
+                  {
+                      "idx":  5,
+                      "name":  "add_reroute_on_edge",
+                      "mode":  "apply-and-verify",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=1 removed=0 +edges=2 -edges=1",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100111Z"
+                  },
+                  {
+                      "idx":  6,
+                      "name":  "destructive_refusal",
+                      "mode":  "apply-and-verify",
+                      "expected":  "partial",
+                      "actual":  "partial",
+                      "exit":  10,
+                      "pass":  true,
+                      "diff":  "added=0 removed=0 +edges=0 -edges=0",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100123Z"
+                  },
+                  {
+                      "idx":  7,
+                      "name":  "plan_only_preview_destructive",
+                      "mode":  "plan-only",
+                      "expected":  "success",
+                      "actual":  "success",
+                      "exit":  0,
+                      "pass":  true,
+                      "diff":  "added=0 removed=0 +edges=0 -edges=0",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100134Z"
+                  },
+                  {
+                      "idx":  8,
+                      "name":  "rollback_on_failure",
+                      "mode":  "apply-and-verify",
+                      "expected":  "rolled_back",
+                      "actual":  "rolled_back",
+                      "exit":  40,
+                      "pass":  true,
+                      "diff":  "added=0 removed=0 +edges=0 -edges=0",
+                      "report_dir":  "E:\\BPTestProject\\BPTest\\Saved\\BPParserAgentReports\\_Game_BPParserTest_BP_01_PrimitivePins_Basic\\edits\\20260626T100146Z"
+                  }
+              ]
+}

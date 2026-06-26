@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "timestamp_utc": "2026-06-26T10:10:00Z",
+  "engine_version": "5.4",
+  "issue": {
+    "asset": "(capability)",
+    "graph": "",
+    "node": "",
+    "pin": "",
+    "symptom": "Audit per blueprint_atomic_edit_validation_prompt.md: the project had IR dump + generation primitives but NO plan-based, verifiable, reversible atomic-edit capability and no agent-callable edit contract.",
+    "ue_message": ""
+  },
+  "classification": ["capability_gap", "agent_callable_contract_missing"],
+  "root_cause": {
+    "direct": "No edit-request schema, no edit commandlet, no backup/rollback, no diff/edit_result, no edit contract.",
+    "generator_layer": "FBPGen had spawn/connect primitives but no remove/insert/splice/selector layer.",
+    "parser_layer": "n/a",
+    "ir_layer": "IR dumper existed (reused for baseline/modified/diff).",
+    "version_compatibility": "Targets UE 5.4; uses centralized helpers to ease 5.x drift."
+  },
+  "affected_patterns": [
+    { "pattern": "Ghost Event stubs cause ambiguous selectors", "affected_nodes": ["K2Node_Event (BeginPlay/Tick/ActorBeginOverlap placeholders)"], "risk": "medium" }
+  ],
+  "fix": {
+    "strategy": "Add FBPATEdit engine + UBPATEditCommandlet (-run=BPATEdit): load -> baseline IR -> (optional WorkOnCopy duplicate) -> plan + precondition gate -> backup -> ordered atomic ops -> compile -> save-on-success/rollback-on-failure -> modified IR -> diff -> machine-readable artifacts. Add edit_blueprint.ps1 wrapper + atomic_edit_selftest.ps1 (8 cases) + agent_edit_contract.md. Node matcher gained exec_out_connected/exec_in_connected/exact node_title to disambiguate ghost events.",
+    "modified_files": [
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Public/BPATEdit.h",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPATEdit.cpp",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Public/BPATEditCommandlet.h",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPATEditCommandlet.cpp",
+      "scripts/edit_blueprint.ps1",
+      "scripts/atomic_edit_selftest.ps1",
+      "docs/agent_edit_contract.md",
+      "docs/issue_patterns.md",
+      "bpparser_testgen/deliverables/edit_requests/example_insert_sequence.json",
+      "bpparser_testgen/deliverables/atomic_edit_selftest_summary.json"
+    ],
+    "new_files": ["bpparser_testgen/deliverables/fix_reports/fix_report_20260626T1010Z_atomic_edit_capability.json"],
+    "deleted_files": [],
+    "generalized_components": [
+      "FBPATEdit pipeline (plan/backup/apply/verify/diff/rollback)",
+      "node selector matcher (class/title/title_contains/function_name/node_id/match_index/exec_*_connected)",
+      "atomic ops: set_pin_default_value, connect_pins, disconnect_pins, add_node, insert_node_between, remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default",
+      "edit_blueprint.ps1 + atomic_edit_selftest.ps1"
+    ],
+    "hardcoded_workarounds": []
+  },
+  "validation": {
+    "build_rerun": "success",
+    "generate_rerun": "skipped",
+    "json_validation": "success",
+    "selftest": { "passed": 8, "total": 8, "cases": [
+      "insert_node_between=success(+1 node,+2/-1 edges)",
+      "set_pin_default_value=success",
+      "add_variable=success",
+      "remove_node_preserve_exec=success(-1 node,-2 edges)",
+      "add_reroute_on_edge=success(+1 knot,+2/-1 edges)",
+      "destructive_refusal=partial",
+      "plan_only_preview_destructive=success",
+      "rollback_on_failure=rolled_back"
+    ] },
+    "ue_manual_check_required": [
+      "After any apply, reopen the edited asset in UE to confirm visually.",
+      "Confirm /Game/BPParserBackups snapshots and /Game/BPParserScratch copies are acceptable as scratch."
+    ]
+  },
+  "next_user_action": [
+    "Optionally extend MakeNode for more node classes and add delegate/wildcard edit ops.",
+    "Run scripts/atomic_edit_selftest.ps1 to re-verify in any UE 5.4 project."
+  ]
+}

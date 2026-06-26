@@ -163,6 +163,34 @@ which on multi-exec nodes is a case/loop-body pin, not the continuation. Also: a
 
 ---
 
+## P12: Ghost Event stubs make node selectors ambiguous
+
+### Typical symptom
+- A selector like `{node_class:K2Node_Event, node_title_contains:"BeginPlay"}` matches TWO nodes;
+  an atomic edit refuses with "ambiguous selector (2 matches)".
+
+### Affected node families
+- `K2Node_Event` on Actor (and similar) EventGraphs: UE auto-adds disabled placeholder/ghost event
+  stubs (`BeginPlay`, `Tick`, `ActorBeginOverlap`) alongside the real, wired event of the same title.
+
+### Root cause
+- The placeholder and the real event share `node_class` and `node_title`, so class+title selectors
+  are not unique. The real one is distinguished only by having its exec pin actually connected.
+
+### Generalized fix
+- The node matcher supports `exec_out_connected` / `exec_in_connected` (and exact `node_title`,
+  `match_index`) selector criteria. `{... "exec_out_connected": true}` selects the live event.
+  Documented in `docs/agent_edit_contract.md`. Files: `BPATEdit.cpp` (`NodeMatches`).
+
+### Validation
+- `atomic_edit_selftest.ps1` cases `insert_node_between` / `add_reroute_on_edge` resolve the wired
+  BeginPlay and pass; ambiguity guard still refuses when criteria are insufficient.
+
+### Regression assets
+- `scripts/atomic_edit_selftest.ps1` (BP_01 copies).
+
+---
+
 ## P11: Macro graph created with empty body / duplicate exec pin name ("Exec 2")
 
 ### Typical symptom
