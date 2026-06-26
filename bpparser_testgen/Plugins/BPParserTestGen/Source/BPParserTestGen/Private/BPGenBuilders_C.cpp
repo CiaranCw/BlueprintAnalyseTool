@@ -187,7 +187,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP11_SupplementalCoverage()
 		UK2Node_VariableGet* GetArr2 = FBPGen::SpawnVarGet(G, "SupArray", 360, 900);
 		if (GetArr2) FBPGen::Connect(OutPin(GetArr2, "SupArray"), InPin(ForEachBreak, TEXT("Array")));
 		UK2Node_CallFunction* P = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 700, 800);
-		if (P && OutPin(ForEachBreak, TEXT("Loop Body"))) { FBPGen::SetPinDefault(P, TEXT("InString"), TEXT("elem")); FBPGen::Connect(OutPin(ForEachBreak, TEXT("Loop Body")), FBPGen::FindExecIn(P)); }
+		if (P) { FBPGen::SetPinDefault(P, TEXT("InString"), TEXT("elem")); FBPGen::ConnectExecFrom(ForEachBreak, TEXT("Loop Body"), P); }
 	}
 	else R.Notes.Add(TEXT("ForEachLoopWithBreak macro not found."));
 

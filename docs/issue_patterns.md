@@ -112,6 +112,57 @@ UserDefinedStruct member pins are named `Field_<index>_<GUID>`, so `FindPin("ID"
 
 ---
 
+## P7: Exec chaining mis-wired through multi-exec-output nodes
+
+### Typical symptom
+- Switch case `Idle` wrongly drives the next node; ForEach `Loop Body` drives the post-loop node;
+  `Completed`/intended branch left unconnected.
+
+### Affected node families
+- Any node with multiple exec OUTPUTs: Switch (Int/String/Enum), ForEach/loop macros, Branch,
+  FlipFlop, Gate, Sequence, DoOnce.
+
+### Root cause
+A linear "Tail" cursor + `ConnectExec(From,To)` picked `FindExecOut(From)` = the FIRST exec output,
+which on multi-exec nodes is a case/loop-body pin, not the continuation. Also: an exec OUTPUT is
+1:1 in UE, so a single node cannot fan to two paths — a Sequence is required.
+
+### Generalized fix
+- `ConnectExec` now prefers the "then" pin and REFUSES (warns) when a node has multiple exec
+  outputs and no "then" (so mis-wiring fails loudly). New `ConnectExecFrom(From,"<pin>",To)` for
+  named multi-exec outputs. Fan-out uses an explicit Sequence. Files: `BPGen.cpp`, builders BP_02/04/11.
+
+### Validation
+- `export_ir` + read exec edges by (node_title.pin_name -> node_title); assert continuation pins
+  (Completed/Then1) drive the next node, not case/body pins.
+
+### Regression assets
+- BP_02 (Switch + ForEach), BP_04 (all StandardMacros), BP_11 (ForEachLoopWithBreak).
+
+---
+
+## P8: Switch-on-Enum case pin uses internal name; macro pins differ by spacing
+
+### Typical symptom
+- Connecting a switch case by display name ("Moving") silently fails; ForEach "Loop Body" not connected.
+
+### Root cause
+- SwitchEnum case pins are named by the enum's INTERNAL name (`NewEnumerator1`), while the editor
+  shows the display name ("Moving"). StandardMacros body pin is `LoopBody` (no space), not "Loop Body".
+
+### Generalized fix
+- `ConnectEnumCase(switch, enum, displayName, to)` resolves display name -> enum index -> case pin
+  (with Nth-exec-output fallback). `ConnectExecFrom` matches pin names space/case-insensitively.
+  Files: `BPGen.cpp`, builders.
+
+### Validation
+- `export_ir`; confirm `Switch.NewEnumerator1 -> Print` and `ForEach.LoopBody -> Print` edges exist.
+
+### Regression assets
+- BP_02 (enum case), BP_04 / BP_11 (macro body pins).
+
+---
+
 ## P6: MinimalAPI node methods not linkable cross-module
 
 ### Typical symptom

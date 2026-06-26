@@ -762,7 +762,77 @@ bool FBPGen::ConnectByName(UEdGraphNode* From, const FString& FromPin, UEdGraphN
 
 bool FBPGen::ConnectExec(UEdGraphNode* From, UEdGraphNode* To)
 {
-	return Connect(FindExecOut(From), FindExecIn(To));
+	if (!From || !To) { return false; }
+	// Prefer the standard single continuation pin "then" so we never mis-pick a case /
+	// loop-body / branch pin on multi-exec-output nodes (Switch/ForEach/Branch/...).
+	UEdGraphPin* Out = FindPin(From, TEXT("then"), EGPD_Output);
+	if (!Out)
+	{
+		const TArray<UEdGraphPin*> Outs = GetExecOutPins(From);
+		if (Outs.Num() == 1) { Out = Outs[0]; }
+		else if (Outs.Num() > 1)
+		{
+			UE_LOG(LogBPParserTestGen, Warning,
+				TEXT("ConnectExec: '%s' has %d exec outputs and no 'then'; refusing to guess. Use ConnectExecFrom(<named pin>)."),
+				*From->GetClass()->GetName(), Outs.Num());
+			return false;
+		}
+	}
+	return Connect(Out, FindExecIn(To));
+}
+
+bool FBPGen::ConnectExecFrom(UEdGraphNode* From, const FString& FromExecPinName, UEdGraphNode* To)
+{
+	if (!From || !To) { return false; }
+	UEdGraphPin* Out = FindPin(From, FromExecPinName, EGPD_Output);
+	if (!Out)
+	{
+		// space/case-insensitive fallback (e.g. macro pin "Loop Body" vs internal "LoopBody").
+		const FString Want = FromExecPinName.Replace(TEXT(" "), TEXT("")).ToLower();
+		for (UEdGraphPin* P : From->Pins)
+		{
+			if (P && P->Direction == EGPD_Output &&
+				P->PinName.ToString().Replace(TEXT(" "), TEXT("")).ToLower() == Want)
+			{
+				Out = P; break;
+			}
+		}
+	}
+	if (!Out)
+	{
+		UE_LOG(LogBPParserTestGen, Warning, TEXT("ConnectExecFrom: exec pin '%s' not found on %s"),
+			*FromExecPinName, *From->GetClass()->GetName());
+		return false;
+	}
+	return Connect(Out, FindExecIn(To));
+}
+
+bool FBPGen::ConnectEnumCase(UEdGraphNode* SwitchNode, UEnum* Enum, const FString& CaseDisplayName, UEdGraphNode* To)
+{
+	if (!SwitchNode || !Enum || !To) { return false; }
+	int32 Idx = INDEX_NONE;
+	for (int32 i = 0; i < Enum->NumEnums(); ++i)
+	{
+		if (Enum->GetDisplayNameTextByIndex(i).ToString() == CaseDisplayName ||
+			Enum->GetNameStringByIndex(i) == CaseDisplayName)
+		{
+			Idx = i; break;
+		}
+	}
+	if (Idx == INDEX_NONE)
+	{
+		UE_LOG(LogBPParserTestGen, Warning, TEXT("ConnectEnumCase: case '%s' not found in enum %s"), *CaseDisplayName, *Enum->GetName());
+		return false;
+	}
+	// Case pin is named by the enum's internal name; fall back to the Nth exec output (enum order).
+	UEdGraphPin* Out = FindPin(SwitchNode, Enum->GetNameStringByIndex(Idx), EGPD_Output);
+	if (!Out)
+	{
+		const TArray<UEdGraphPin*> Outs = GetExecOutPins(SwitchNode);
+		if (Outs.IsValidIndex(Idx)) { Out = Outs[Idx]; }
+	}
+	if (!Out) { return false; }
+	return Connect(Out, FindExecIn(To));
 }
 
 bool FBPGen::SetPinDefault(UEdGraphNode* Node, const FString& PinName, const FString& Value)

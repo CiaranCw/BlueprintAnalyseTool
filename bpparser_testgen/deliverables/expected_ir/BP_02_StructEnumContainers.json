@@ -67,16 +67,23 @@
             { "pin_id": "n18_key", "pin_name": "Key", "direction": "input", "category": "name", "default_value": "Alpha", "is_connected": false },
             { "pin_id": "n18_val", "pin_name": "Value", "direction": "input", "category": "real", "sub_category": "float", "default_value": "1.0", "is_connected": false }
           ] },
-        { "node_id": "n19", "node_name": "Map Keys", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Keys", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 420, "y": 980 } }
+        { "node_id": "n19", "node_name": "Map Keys", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Keys", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 420, "y": 980 } },
+        { "node_id": "n20", "node_name": "Sequence", "node_class": "K2Node_ExecutionSequence", "node_type_category": "composite", "position": { "x": 560, "y": -40 },
+          "pins": [
+            { "pin_id": "n20_exec", "pin_name": "execute", "direction": "input", "category": "exec" },
+            { "pin_id": "n20_then0", "pin_name": "then_0", "direction": "output", "category": "exec" },
+            { "pin_id": "n20_then1", "pin_name": "then_1", "direction": "output", "category": "exec" }
+          ] }
       ],
       "edges": [
         { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n3", "to_pin": "execute", "edge_type": "exec" },
-        { "edge_id": "e2", "from_node": "n3", "from_pin": "then", "to_node": "n7", "to_pin": "n7_exec", "edge_type": "exec" },
-        { "edge_id": "e3", "from_node": "n7", "from_pin": "n7_moving", "to_node": "n8", "to_pin": "execute", "edge_type": "exec" },
-        { "edge_id": "e4", "from_node": "n3", "from_pin": "then", "to_node": "n10", "to_pin": "execute", "edge_type": "exec", "note": "exec chain continues to Array Add (Tail progression)" },
+        { "edge_id": "e2", "from_node": "n3", "from_pin": "then", "to_node": "n20", "to_pin": "n20_exec", "edge_type": "exec" },
+        { "edge_id": "e2b", "from_node": "n20", "from_pin": "n20_then0", "to_node": "n7", "to_pin": "n7_exec", "edge_type": "exec", "note": "Sequence fan-out -> switch path (exec out is 1:1; Sequence required)" },
+        { "edge_id": "e3", "from_node": "n7", "from_pin": "n7_moving", "to_node": "n8", "to_pin": "execute", "edge_type": "exec", "note": "switch case pin's real name is the enum internal name (NewEnumerator1); display is 'Moving'" },
+        { "edge_id": "e4", "from_node": "n20", "from_pin": "n20_then1", "to_node": "n10", "to_pin": "execute", "edge_type": "exec", "note": "Sequence fan-out -> container path" },
         { "edge_id": "e5", "from_node": "n10", "from_pin": "then", "to_node": "n12", "to_pin": "n12_exec", "edge_type": "exec" },
-        { "edge_id": "e6", "from_node": "n12", "from_pin": "n12_body", "to_node": "n13", "to_pin": "execute", "edge_type": "exec" },
-        { "edge_id": "e7", "from_node": "n12", "from_pin": "then", "to_node": "n15", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e6", "from_node": "n12", "from_pin": "n12_body", "to_node": "n13", "to_pin": "execute", "edge_type": "exec", "note": "ForEach body pin real name is 'LoopBody' (no space)" },
+        { "edge_id": "e7", "from_node": "n12", "from_pin": "n12_done", "to_node": "n15", "to_pin": "execute", "edge_type": "exec", "note": "ForEach 'Completed' -> Set Add" },
         { "edge_id": "e8", "from_node": "n15", "from_pin": "then", "to_node": "n18", "to_pin": "execute", "edge_type": "exec" },
         { "edge_id": "e9", "from_node": "n2", "from_pin": "n2_out", "to_node": "n3", "to_pin": "DataItem", "edge_type": "data" },
         { "edge_id": "e10", "from_node": "n4", "from_pin": "DataItem", "to_node": "n5", "to_pin": "ST_BPParserTestData", "edge_type": "data" },

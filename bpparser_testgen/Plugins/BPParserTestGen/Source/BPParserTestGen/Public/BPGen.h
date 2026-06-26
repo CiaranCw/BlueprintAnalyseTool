@@ -125,8 +125,15 @@ public:
 	static TArray<UEdGraphPin*> GetExecOutPins(UEdGraphNode* Node);  // all output exec pins (e.g. Sequence Then 0..N)
 	static bool Connect(UEdGraphPin* A, UEdGraphPin* B);
 	static bool ConnectByName(UEdGraphNode* From, const FString& FromPin, UEdGraphNode* To, const FString& ToPin);
-	/** Connects From's first output-exec to To's first input-exec. */
+	/** Connects From's single continuation exec ("then" or the only exec-out) to To's input-exec.
+	 *  REFUSES (warns) if From has multiple exec outputs and no "then" — use ConnectExecFrom for those. */
 	static bool ConnectExec(UEdGraphNode* From, UEdGraphNode* To);
+	/** Connects a SPECIFIC named exec output of From (e.g. "Completed", "Loop Body", "Moving") to To's input-exec.
+	 *  Use for multi-exec nodes: Switch / ForEach / Branch / FlipFlop / Gate / Sequence etc. */
+	static bool ConnectExecFrom(UEdGraphNode* From, const FString& FromExecPinName, UEdGraphNode* To);
+	/** Connect a Switch-on-Enum CASE by its DISPLAY name (case pins are named by the enum's
+	 *  internal name, e.g. NewEnumerator1, not the display "Moving"). Resolves via enum index. */
+	static bool ConnectEnumCase(UEdGraphNode* SwitchNode, UEnum* Enum, const FString& CaseDisplayName, UEdGraphNode* To);
 	static bool SetPinDefault(UEdGraphNode* Node, const FString& PinName, const FString& Value);
 	static bool SetPinDefaultObject(UEdGraphNode* Node, const FString& PinName, UObject* Obj);
 	/** Find an input pin whose name equals Prefix or starts with "Prefix_" (Make/Break struct pins are "Field_<idx>_<GUID>"). */

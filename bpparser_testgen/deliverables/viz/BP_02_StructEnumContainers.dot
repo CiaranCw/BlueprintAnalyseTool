@@ -6,6 +6,7 @@ digraph BP_02_StructEnumContainers {
   node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
 
   n1  [label="Event BeginPlay", fillcolor="#ffe9c7"];
+  nseq [label="Sequence\n(Then0 / Then1)"];
 
   subgraph cluster_struct {
     label="Make/Break Struct"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
@@ -35,11 +36,12 @@ digraph BP_02_StructEnumContainers {
     n19 [label="Map Keys"];
   }
 
-  // exec
+  // exec  (exec out is 1:1 -> Sequence fans out after Set DataItem)
   n1 -> n3 [color=black];
-  n3 -> n7 [color=black];
+  n3 -> nseq [color=black];
+  nseq -> n7 [color=black, label="Then 0", fontsize=9];
+  nseq -> n10 [color=black, label="Then 1", fontsize=9];
   n7 -> n8 [color=black, label="Moving", fontsize=9];
-  n3 -> n10 [color=black];
   n10 -> n12 [color=black];
   n12 -> n13 [color=black, label="Loop Body", fontsize=9];
   n12 -> n15 [color=black, label="Completed", fontsize=9];

@@ -206,87 +206,90 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP02_StructEnumContainers()
 		}
 	}
 
-	// --- Switch on Enum ---
+	// After SetData, fan execution with a Sequence (an exec OUTPUT is 1:1 in UE, so a single
+	// node cannot drive two paths directly -> Sequence is the correct way to fan out).
+	//   Then 0 -> Switch on Enum
+	//   Then 1 -> container ops (Array Add -> ForEach; ForEach.Completed -> Set Add -> Map Add)
+	UK2Node_ExecutionSequence* Seq = FBPGen::SpawnSequence(G, 2, 560, -40);
+	FBPGen::ConnectExec(Tail, Seq);
+	const TArray<UEdGraphPin*> SeqThen = FBPGen::GetExecOutPins(Seq);
+	auto Then = [&](int32 i) -> UEdGraphPin* { return SeqThen.IsValidIndex(i) ? SeqThen[i] : nullptr; };
+
+	// --- Switch on Enum (Sequence Then 0); Moving -> Print ---
 	if (StateEnum)
 	{
 		UK2Node_VariableGet* GetState = FBPGen::SpawnVarGet(G, "StateValue", 760, 0);
 		UK2Node_SwitchEnum* Sw = FBPGen::SpawnSwitchEnum(G, StateEnum, 1000, 0);
 		if (Sw)
 		{
-			FBPGen::ConnectExec(Tail, Sw);
-			Tail = Sw;
-			if (GetState)
-			{
-				UEdGraphPin* Sel = Sw->GetSelectionPin();
-				if (Sel) FBPGen::Connect(OutPin(GetState, "StateValue"), Sel);
-			}
-			// Print for the "Moving" case if present.
+			if (Then(0)) FBPGen::Connect(Then(0), FBPGen::FindExecIn(Sw));
+			if (GetState) { if (UEdGraphPin* Sel = Sw->GetSelectionPin()) FBPGen::Connect(OutPin(GetState, "StateValue"), Sel); }
 			UK2Node_CallFunction* PrintMoving = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 1240, 0);
 			if (PrintMoving)
 			{
 				FBPGen::SetPinDefault(PrintMoving, TEXT("InString"), TEXT("State=Moving"));
-				if (UEdGraphPin* Case = OutPin(Sw, TEXT("Moving"))) FBPGen::Connect(Case, FBPGen::FindExecIn(PrintMoving));
+				// Switch case pins are the enum's internal names (NewEnumerator1), not "Moving";
+				// ConnectEnumCase maps the display name -> correct case pin.
+				FBPGen::ConnectEnumCase(Sw, StateEnum, TEXT("Moving"), PrintMoving);
 			}
 		}
 	}
 
-	// --- Containers ---
+	// --- Containers (Sequence Then 1) ---
 	UK2Node_VariableGet* GetArr = FBPGen::SpawnVarGet(G, "IntArray", -80, 520);
 	UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 160, 480);
 	if (ArrAdd)
 	{
 		if (GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ArrAdd, "TargetArray"));
 		FBPGen::SetPinDefault(ArrAdd, TEXT("NewItem"), TEXT("4"));
-		FBPGen::ConnectExec(Tail, ArrAdd);
-		Tail = ArrAdd;
+		if (Then(1)) FBPGen::Connect(Then(1), FBPGen::FindExecIn(ArrAdd));
 	}
-	UK2Node_CallFunction* ArrLen = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Length", 160, 600);
+	UK2Node_CallFunction* ArrLen = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Length", 160, 620);
 	if (ArrLen && GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ArrLen, "TargetArray"));
 
-	// ForEachLoop over IntArray
-	UK2Node_MacroInstance* ForEach = FBPGen::SpawnStdMacro(G, TEXT("ForEachLoop"), 420, 480);
-	if (ForEach)
-	{
-		FBPGen::ConnectExec(Tail, ForEach);
-		Tail = ForEach;
-		if (GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ForEach, TEXT("Array")));
-		UK2Node_CallFunction* PrintElem = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 760, 460);
-		if (PrintElem && OutPin(ForEach, TEXT("Loop Body")))
-		{
-			FBPGen::Connect(OutPin(ForEach, TEXT("Loop Body")), FBPGen::FindExecIn(PrintElem));
-		}
-	}
-	else { R.Notes.Add(TEXT("ForEachLoop macro not found; container iteration uses Array_Length only.")); }
-
-	// Set Add / Contains
+	// Set Add (driven by ForEach.Completed below, or by Array Add if the macro is unavailable).
 	UK2Node_VariableGet* GetSet = FBPGen::SpawnVarGet(G, "NameSet", -80, 760);
-	UK2Node_CallFunction* SetAdd = FBPGen::SpawnCallFunc(G, UBlueprintSetLibrary::StaticClass(), "Set_Add", 160, 740);
+	UK2Node_CallFunction* SetAdd = FBPGen::SpawnCallFunc(G, UBlueprintSetLibrary::StaticClass(), "Set_Add", 760, 740);
 	if (SetAdd)
 	{
 		if (GetSet) FBPGen::Connect(OutPin(GetSet, "NameSet"), InPin(SetAdd, "TargetSet"));
 		FBPGen::SetPinDefault(SetAdd, TEXT("NewItem"), TEXT("Alpha"));
-		FBPGen::ConnectExec(Tail, SetAdd);
-		Tail = SetAdd;
 	}
-	UK2Node_CallFunction* SetContains = FBPGen::SpawnCallFunc(G, UBlueprintSetLibrary::StaticClass(), "Set_Contains", 160, 860);
+
+	// ForEachLoop over IntArray: Loop Body -> Print element; Completed -> Set Add.
+	UK2Node_MacroInstance* ForEach = FBPGen::SpawnStdMacro(G, TEXT("ForEachLoop"), 420, 480);
+	if (ForEach)
+	{
+		if (ArrAdd) FBPGen::ConnectExec(ArrAdd, ForEach);   // Array Add.then -> ForEach
+		if (GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ForEach, TEXT("Array")));
+		UK2Node_CallFunction* PrintElem = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 760, 460);
+		if (PrintElem) { FBPGen::SetPinDefault(PrintElem, TEXT("InString"), TEXT("Element")); FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), PrintElem); }
+		if (SetAdd) FBPGen::ConnectExecFrom(ForEach, TEXT("Completed"), SetAdd);
+	}
+	else
+	{
+		R.Notes.Add(TEXT("ForEachLoop macro not found; Set Add driven directly from Array Add."));
+		if (ArrAdd && SetAdd) FBPGen::ConnectExec(ArrAdd, SetAdd);
+	}
+
+	UK2Node_CallFunction* SetContains = FBPGen::SpawnCallFunc(G, UBlueprintSetLibrary::StaticClass(), "Set_Contains", 760, 860);
 	if (SetContains && GetSet)
 	{
 		FBPGen::Connect(OutPin(GetSet, "NameSet"), InPin(SetContains, "TargetSet"));
 		FBPGen::SetPinDefault(SetContains, TEXT("ItemToFind"), TEXT("Alpha"));
 	}
 
-	// Map Add / Keys
+	// Map Add after Set Add (Set Add.then -> Map Add), then Map Keys (data-only).
 	UK2Node_VariableGet* GetMap = FBPGen::SpawnVarGet(G, "ScoreMap", -80, 980);
-	UK2Node_CallFunction* MapAdd = FBPGen::SpawnCallFunc(G, UBlueprintMapLibrary::StaticClass(), "Map_Add", 160, 980);
+	UK2Node_CallFunction* MapAdd = FBPGen::SpawnCallFunc(G, UBlueprintMapLibrary::StaticClass(), "Map_Add", 1060, 740);
 	if (MapAdd)
 	{
 		if (GetMap) FBPGen::Connect(OutPin(GetMap, "ScoreMap"), InPin(MapAdd, "TargetMap"));
 		FBPGen::SetPinDefault(MapAdd, TEXT("Key"), TEXT("Alpha"));
 		FBPGen::SetPinDefault(MapAdd, TEXT("Value"), TEXT("1.0"));
-		FBPGen::ConnectExec(Tail, MapAdd);
-		Tail = MapAdd;
+		if (SetAdd) FBPGen::ConnectExec(SetAdd, MapAdd);
 	}
-	UK2Node_CallFunction* MapKeys = FBPGen::SpawnCallFunc(G, UBlueprintMapLibrary::StaticClass(), "Map_Keys", 420, 980);
+	UK2Node_CallFunction* MapKeys = FBPGen::SpawnCallFunc(G, UBlueprintMapLibrary::StaticClass(), "Map_Keys", 1060, 980);
 	if (MapKeys && GetMap) FBPGen::Connect(OutPin(GetMap, "ScoreMap"), InPin(MapKeys, "TargetMap"));
 
 	R.CompileStatus = FBPGen::CompileBlueprint(BP);
@@ -457,7 +460,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 		FBPGen::SetPinDefault(ForLoop, TEXT("First Index"), TEXT("0"));
 		FBPGen::SetPinDefault(ForLoop, TEXT("Last Index"),  TEXT("3"));
 		UK2Node_CallFunction* P = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 1020, 560);
-		if (P && OutPin(ForLoop, TEXT("Loop Body"))) FBPGen::Connect(OutPin(ForLoop, TEXT("Loop Body")), FBPGen::FindExecIn(P));
+		if (P) FBPGen::ConnectExecFrom(ForLoop, TEXT("Loop Body"), P);
 		// ForLoopWithBreak after completed, then ForEachLoop over FlowArray
 		if (UK2Node_MacroInstance* ForBreak = FBPGen::SpawnStdMacro(G, TEXT("ForLoopWithBreak"), 700, 700))
 		{
@@ -469,7 +472,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 				UK2Node_VariableGet* GetArr = FBPGen::SpawnVarGet(G, "FlowArray", 700, 940);
 				if (GetArr) FBPGen::Connect(OutPin(GetArr, "FlowArray"), InPin(ForEach, TEXT("Array")));
 				UK2Node_CallFunction* Pe = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 1020, 820);
-				if (Pe && OutPin(ForEach, TEXT("Loop Body"))) FBPGen::Connect(OutPin(ForEach, TEXT("Loop Body")), FBPGen::FindExecIn(Pe));
+				if (Pe) FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), Pe);
 			}
 			else R.Notes.Add(TEXT("ForEachLoop macro not found."));
 		}

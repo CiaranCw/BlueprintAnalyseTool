@@ -2,6 +2,7 @@
 %% Edge style: solid=exec, dotted=data
 flowchart LR
   n1["Event BeginPlay"]:::evt
+  nseq["Sequence (Then0 / Then1)"]
   subgraph C1["Make/Break Struct"]
     n2["Make ST_BPParserTestData (ID=1,Score=10.0; DisplayName=default)"]
     n3["Set DataItem"]
@@ -28,9 +29,10 @@ flowchart LR
   end
 
   n1 --> n3
-  n3 --> n7
+  n3 --> nseq
+  nseq -->|Then 0| n7
+  nseq -->|Then 1| n10
   n7 -->|Moving| n8
-  n3 --> n10
   n10 --> n12
   n12 -->|Loop Body| n13
   n12 -->|Completed| n15
