@@ -85,6 +85,8 @@ public:
 	static UK2Node_Event*             SpawnEvent(UEdGraph* G, FName EventName, UClass* EventClass, int32 X, int32 Y);
 	static UK2Node_CustomEvent*       SpawnCustomEvent(UEdGraph* G, FName Name, const TArray<FBPGenParam>& Params, int32 X, int32 Y);
 	static UK2Node_CallFunction*      SpawnCallFunc(UEdGraph* G, UClass* OwnerClass, FName FuncName, int32 X, int32 Y);
+	/** Like SpawnCallFunc but spawns UK2Node_CallArrayFunction (needed so Array_* wildcards resolve). */
+	static UK2Node_CallFunction*      SpawnCallArrayFunc(UEdGraph* G, UClass* OwnerClass, FName FuncName, int32 X, int32 Y);
 	static UK2Node_VariableGet*       SpawnVarGet(UEdGraph* G, FName VarName, int32 X, int32 Y);
 	static UK2Node_VariableSet*       SpawnVarSet(UEdGraph* G, FName VarName, int32 X, int32 Y);
 	static UK2Node_IfThenElse*        SpawnBranch(UEdGraph* G, int32 X, int32 Y);

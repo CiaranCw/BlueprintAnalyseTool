@@ -232,7 +232,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP02_StructEnumContainers()
 
 	// --- Containers ---
 	UK2Node_VariableGet* GetArr = FBPGen::SpawnVarGet(G, "IntArray", -80, 520);
-	UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 160, 480);
+	UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 160, 480);
 	if (ArrAdd)
 	{
 		if (GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ArrAdd, "TargetArray"));
@@ -240,7 +240,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP02_StructEnumContainers()
 		FBPGen::ConnectExec(Tail, ArrAdd);
 		Tail = ArrAdd;
 	}
-	UK2Node_CallFunction* ArrLen = FBPGen::SpawnCallFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Length", 160, 600);
+	UK2Node_CallFunction* ArrLen = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Length", 160, 600);
 	if (ArrLen && GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ArrLen, "TargetArray"));
 
 	// ForEachLoop over IntArray

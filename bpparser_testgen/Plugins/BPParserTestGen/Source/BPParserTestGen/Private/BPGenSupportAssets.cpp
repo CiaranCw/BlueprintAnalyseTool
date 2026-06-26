@@ -49,18 +49,22 @@ FBPGenAssetResult FBPGenSupportAssets::BuildEnum()
 
 	EnsureCleanAssetPath(PathEnum());
 
-	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+	// IAssetTools::CreateAsset can return null under a commandlet (unattended); call the
+	// factory directly instead.
+	UPackage* Pkg = CreatePackage(PathEnum());
 	UEnumFactory* Factory = NewObject<UEnumFactory>();
-
-	UUserDefinedEnum* Enum = Cast<UUserDefinedEnum>(AssetTools.CreateAsset(
-		TEXT("E_BPParserTestState"), TEXT("/Game/BPParserTest"), UUserDefinedEnum::StaticClass(), Factory));
+	UUserDefinedEnum* Enum = Cast<UUserDefinedEnum>(Factory->FactoryCreateNew(
+		UUserDefinedEnum::StaticClass(), Pkg, FName("E_BPParserTestState"),
+		RF_Public | RF_Standalone | RF_Transactional, nullptr, GWarn));
 
 	if (!Enum)
 	{
-		R.Notes.Add(TEXT("UEnumFactory CreateAsset returned null. Verify UserDefinedEnum factory availability in UE 5.4."));
+		R.Notes.Add(TEXT("UEnumFactory::FactoryCreateNew returned null."));
 		return R;
 	}
 	R.bCreated = true;
+	FAssetRegistryModule::AssetCreated(Enum);
+	Pkg->MarkPackageDirty();
 
 	const TArray<FString> Names = { TEXT("Idle"), TEXT("Moving"), TEXT("Attacking"), TEXT("Dead") };
 	// A freshly created UserDefinedEnum has 1 enumerator (+ hidden _MAX). Grow to 4.

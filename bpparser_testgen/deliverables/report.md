@@ -4,6 +4,22 @@
 
 ---
 
+## ✅ 本地验收结果（已在 UE 5.4.4 实测，非推断）
+
+| 项 | 结果 |
+|---|---|
+| 引擎版本 | UE **5.4.4** (35576357) |
+| 插件编译 | **通过**（BPParserTestGen + BlueprintAgentTools 均编译成功） |
+| 生成执行 | `-run=BPParserTestGen` 成功，写出 `generation_log.json` |
+| 资产生成 | **17/17 全部创建并保存**（`Content/BPParserTest/*.uasset` 已落盘） |
+| 蓝图编译 | **failed=0**：13 个 up_to_date + 2 个 warnings（BP_BPParserTestComponent、BP_05 的 ReturnNode exec 警告，非阻断）；Enum/Struct 为 n/a |
+| 前置条件 | `BPTest` 原为纯蓝图工程，已加入最小 C++ 模块 + 两个 Target.cs 转为代码工程（见 §8/§10），并在 `.uproject` 启用两个插件 |
+
+> 编译期/运行期发现并修复的 UE 5.4 真实问题（均已提交）：ExecutionSequence 引脚 API、SpawnActorFromClass 类型、FStructVariableDescription 头文件、SwitchEnum.Enum 直接赋值、SpawnActor 的 PostPlacedNewNode/AllocateDefaultPins 顺序、Enum 工厂改用 FactoryCreateNew、Array 容器节点改用 UK2Node_CallArrayFunction、CreateDelegate 连线后再绑定函数、SpawnTransform by-ref 引脚接 MakeTransform。
+> 仍需人工在编辑器内目视确认的细节（compile 通过但不等于语义 100% 对）：委托 Bind 红线、SwitchEnum 各 case 引脚、宏内部展开、BP_05 宏体（手动）、Soft 引用默认值、Timeline/Async（未自动生成）。
+
+---
+
 ## 0. 第一阶段：环境与能力检查（结论）
 
 | 项 | 结论 | 依据 |

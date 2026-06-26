@@ -57,11 +57,8 @@ FBPGenReport FBPGenOrchestrator::GenerateAll(bool bSave)
 	A.Add(FBPGenSupportAssets::BuildTargetActor());
 	A.Add(FBPGenSupportAssets::BuildTestComponent());
 
-	// Save support assets now so LoadObject/LoadBPClass during BP builds resolves cleanly.
-	if (bSave)
-	{
-		for (const FBPGenAssetResult& Sup : A) { SaveByPath(Sup.AssetPath); }
-	}
+	// (No early save needed: LoadObject/LoadBPClass during BP builds resolve the in-memory
+	// support assets. Everything is saved once in the final loop below.)
 
 	// Primary test blueprints.
 	A.Add(FBPGenTestBlueprints::Build_BP01_PrimitivePins());

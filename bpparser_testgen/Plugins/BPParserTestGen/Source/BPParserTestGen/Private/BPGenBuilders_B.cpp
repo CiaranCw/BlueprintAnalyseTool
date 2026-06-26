@@ -107,6 +107,8 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP06_DelegatesDispatchers()
 		UEdGraphPin* BindIn = InPin(Bind, TEXT("Delegate"));
 		if (!BindIn) { BindIn = DelegatePin(Bind, EGPD_Input); }
 		if (CreateOut && BindIn) { FBPGen::Connect(CreateOut, BindIn); }
+		// Bind the handler AFTER wiring the delegate pin (signature now known).
+		Create->SetFunction(FName("HandleParserTestTriggered"));
 		Create->HandleAnyChange(true);
 		FBPGen::ConnectExec(Begin, Bind);
 	}
@@ -234,7 +236,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP08_ComplexGameplay()
 		UK2Node_MakeStruct* Make = FBPGen::SpawnMakeStruct(G, DataStruct, -60, 60);
 		if (Make) FBPGen::SetPinDefault(Make, TEXT("ID"), TEXT("100"));
 		UK2Node_VariableGet* GetList = FBPGen::SpawnVarGet(G, "DataList", -60, 260);
-		UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 140, 60);
+		UK2Node_CallFunction* ArrAdd = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Add", 140, 60);
 		if (ArrAdd)
 		{
 			if (GetList) FBPGen::Connect(OutPin(GetList, "DataList"), InPin(ArrAdd, "TargetArray"));
@@ -418,7 +420,8 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP10_RoundTripMaster()
 		if (Cast && SetTarget)
 		{
 			FBPGen::ConnectExec(SetTarget, Cast);
-			FBPGen::Connect(OutPin(SetTarget, TEXT("TargetRef")), Cast->GetCastSourcePin());
+			// Cast source from the spawn return (VariableSet passthrough pin is unreliable for wildcard cast input).
+			if (Spawn) { FBPGen::Connect(OutPin(Spawn, TEXT("ReturnValue")), Cast->GetCastSourcePin()); }
 		}
 	}
 

@@ -121,10 +121,10 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP11_SupplementalCoverage()
 
 	// --- Container Get / Find / Remove / Values ---
 	UK2Node_VariableGet* GetArr = FBPGen::SpawnVarGet(G, "SupArray", 1080, -120);
-	UK2Node_CallFunction* ArrGet = FBPGen::SpawnCallFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Get", 1320, -160);
+	UK2Node_CallFunction* ArrGet = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_Get", 1320, -160);
 	if (ArrGet && GetArr) { FBPGen::Connect(OutPin(GetArr, "SupArray"), InPin(ArrGet, "TargetArray")); FBPGen::SetPinDefault(ArrGet, TEXT("Index"), TEXT("0")); }
 
-	UK2Node_CallFunction* ArrRemove = FBPGen::SpawnCallFunc(G, UKismetArrayLibrary::StaticClass(), "Array_RemoveItem", 1320, 0);
+	UK2Node_CallFunction* ArrRemove = FBPGen::SpawnCallArrayFunc(G, UKismetArrayLibrary::StaticClass(), "Array_RemoveItem", 1320, 0);
 	if (ArrRemove)
 	{
 		if (GetArr) FBPGen::Connect(OutPin(GetArr, "SupArray"), InPin(ArrRemove, "TargetArray"));
