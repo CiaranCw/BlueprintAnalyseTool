@@ -683,12 +683,14 @@ UEdGraphNode_Comment* FBPGen::AddComment(UEdGraph* G, const FString& Text, int32
 	C->SetFlags(RF_Transactional);
 	G->AddNode(C, false, false);
 	C->CreateNewGuid();
+	// LIFECYCLE: UEdGraphNode_Comment::PostPlacedNewNode() resets NodeComment to the
+	// literal "Comment". Call it FIRST, then write our title/size, or the title is lost.
+	C->PostPlacedNewNode();
 	C->NodePosX = X;
 	C->NodePosY = Y;
 	C->NodeWidth = W;
 	C->NodeHeight = H;
 	C->NodeComment = Text;
-	C->PostPlacedNewNode();
 	return C;
 }
 
