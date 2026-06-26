@@ -19,6 +19,7 @@ public:
 	static FBPGenAssetResult Build_BP08_ComplexGameplay();
 	static FBPGenAssetResult Build_BP09_FormattingCommentsReroutes();
 	static FBPGenAssetResult Build_BP10_RoundTripMaster();
+	static FBPGenAssetResult Build_BP11_SupplementalCoverage();
 	static FBPGenAssetResult Build_BP99_NegativeEdgeCases();
 
 	static const TCHAR* Path01() { return TEXT("/Game/BPParserTest/BP_01_PrimitivePins_Basic"); }
@@ -31,5 +32,6 @@ public:
 	static const TCHAR* Path08() { return TEXT("/Game/BPParserTest/BP_08_ComplexGameplayLikeGraph"); }
 	static const TCHAR* Path09() { return TEXT("/Game/BPParserTest/BP_09_NodeFormatting_Comments_Reroutes"); }
 	static const TCHAR* Path10() { return TEXT("/Game/BPParserTest/BP_10_ParserRoundTrip_Master"); }
+	static const TCHAR* Path11() { return TEXT("/Game/BPParserTest/BP_11_SupplementalCoverage"); }
 	static const TCHAR* Path99() { return TEXT("/Game/BPParserTest/BP_99_NegativeOrEdgeCases"); }
 };

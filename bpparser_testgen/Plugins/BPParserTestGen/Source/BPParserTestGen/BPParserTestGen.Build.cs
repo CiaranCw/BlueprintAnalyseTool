@@ -21,22 +21,20 @@ public class BPParserTestGen : ModuleRules
 			"JsonUtilities",
 		});
 
+		// Only modules actually referenced by the source are listed, to minimize
+		// link/compile surface in UE 5.4. (Removed: Kismet, EditorStyle [deprecated],
+		// EditorSubsystem, Projects, UMG, DeveloperSettings — none were used.)
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
-			"UnrealEd",            // FKismetEditorUtilities, FBlueprintEditorUtils, factories
-			"BlueprintGraph",      // UK2Node_* node classes
-			"KismetCompiler",      // compilation (explicit, defensive)
-			"Kismet",              // editor kismet helpers
-			"AssetTools",
-			"AssetRegistry",
-			"Slate",
-			"SlateCore",
-			"ToolMenus",           // editor menu button
-			"EditorStyle",
-			"EditorSubsystem",
-			"Projects",
-			"UMG",                 // FBPVariableDescription / LinearColor structs are engine; kept for safety
-			"DeveloperSettings",
+			"UnrealEd",            // FKismetEditorUtilities, FBlueprintEditorUtils, FStructureEditorUtils,
+			                       // FEnumEditorUtils, UEnumFactory, UEdGraphNode_Comment, save utils
+			"BlueprintGraph",      // UK2Node_* node classes, UEdGraphSchema_K2
+			"KismetCompiler",      // defensive (CompileBlueprint path)
+			"AssetTools",          // IAssetTools / FAssetToolsModule (enum asset creation)
+			"AssetRegistry",       // FAssetRegistryModule::AssetCreated
+			"ToolMenus",           // editor Tools menu entry
+			"Slate",               // FUIAction / FExecuteAction
+			"SlateCore",           // FSlateIcon
 		});
 	}
 }

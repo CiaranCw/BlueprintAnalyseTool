@@ -755,9 +755,11 @@ FEdGraphPinType FBPGen::PinText()   { return MakeType(UEdGraphSchema_K2::PC_Text
 FEdGraphPinType FBPGen::PinStruct(UScriptStruct* Struct) { return MakeType(UEdGraphSchema_K2::PC_Struct, NAME_None, Struct); }
 FEdGraphPinType FBPGen::PinVector()      { return PinStruct(TBaseStructure<FVector>::Get()); }
 FEdGraphPinType FBPGen::PinVector2D()    { return PinStruct(TBaseStructure<FVector2D>::Get()); }
+FEdGraphPinType FBPGen::PinVector4()     { return PinStruct(TBaseStructure<FVector4>::Get()); }
 FEdGraphPinType FBPGen::PinRotator()     { return PinStruct(TBaseStructure<FRotator>::Get()); }
 FEdGraphPinType FBPGen::PinTransform()   { return PinStruct(TBaseStructure<FTransform>::Get()); }
 FEdGraphPinType FBPGen::PinLinearColor() { return PinStruct(TBaseStructure<FLinearColor>::Get()); }
+FEdGraphPinType FBPGen::PinColor()       { return PinStruct(TBaseStructure<FColor>::Get()); }
 FEdGraphPinType FBPGen::PinObject(UClass* Class) { return MakeType(UEdGraphSchema_K2::PC_Object, NAME_None, Class ? Class : UObject::StaticClass()); }
 FEdGraphPinType FBPGen::PinClass(UClass* Class)  { return MakeType(UEdGraphSchema_K2::PC_Class, NAME_None, Class ? Class : UObject::StaticClass()); }
 FEdGraphPinType FBPGen::PinSoftObject(UClass* Class) { return MakeType(UEdGraphSchema_K2::PC_SoftObject, NAME_None, Class ? Class : UObject::StaticClass()); }

@@ -1,0 +1,53 @@
+// BP_11_SupplementalCoverage - structure graph
+// Edge legend: solid=exec, dashed=data
+digraph BP_11_SupplementalCoverage {
+  rankdir=LR;
+  labelloc="t"; label="BP_11_SupplementalCoverage (EventGraph + AccumulateByRef)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+
+  subgraph cluster_make {
+    label="Make Containers -> store into variables"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n2 [label="Make Array [10,20,30]"]; n3 [label="Set SupArray"];
+    n4 [label="Make Set"]; n5 [label="Set SupSet"];
+    n6 [label="Make Map"]; n7 [label="Set SupMap"];
+  }
+  subgraph cluster_ops {
+    label="Container Get/Find/Remove/Values"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n8 [label="Get SupArray"]; n9 [label="Array Get (Index=0)"]; n10 [label="Array Remove Item (20)"];
+    n11 [label="Get SupSet"]; n12 [label="Set Remove (1)"];
+    n13 [label="Get SupMap"]; n14 [label="Map Find (a)"]; n15 [label="Map Values"]; n16 [label="Map Remove (a)"];
+    n17 [label="Print (containers done)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_loops {
+    label="Boundary loops: DoN / WhileLoop / ForEachLoopWithBreak"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
+    n18 [label="Sequence"]; n19 [label="Do N (N=3)"]; n20 [label="Print (DoN)", fillcolor="#d8f5d8"];
+    n21 [label="While Loop (cond=false)"]; n22 [label="Print (While done)", fillcolor="#d8f5d8"];
+    n23 [label="For Each Loop With Break"]; n24 [label="Get SupArray (2)"]; n25 [label="Print (elem)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_types {
+    label="Extra type pins"; style="rounded"; color="#999999"; bgcolor="#fbf4f4";
+    n26 [label="Get SupVector4"]; n27 [label="Get SupColor"]; n28 [label="Get SupDateTime?"]; n29 [label="Get SupTimespan?"];
+  }
+  subgraph cluster_fn {
+    label="Function AccumulateByRef (by-ref param InOutValue)"; style="rounded,dashed"; color="#3a7d3a"; bgcolor="#f4fbf6";
+    f1 [label="Entry (InOutValue : int&)"];
+  }
+
+  // exec
+  n1 -> n3 [color=black]; n3 -> n5 [color=black]; n5 -> n7 [color=black];
+  n7 -> n10 [color=black]; n10 -> n12 [color=black]; n12 -> n16 [color=black]; n16 -> n17 [color=black];
+  n17 -> n18 [color=black];
+  n18 -> n19 [color=black, label="Then0", fontsize=9]; n19 -> n20 [color=black, label="Exit", fontsize=9];
+  n18 -> n21 [color=black, label="Then1", fontsize=9]; n21 -> n22 [color=black, label="Completed", fontsize=9];
+  n18 -> n23 [color=black, label="Then2", fontsize=9]; n23 -> n25 [color=black, label="Loop Body", fontsize=9];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n2 -> n3 [label="array"]; n4 -> n5 [label="set"]; n6 -> n7 [label="map"];
+  n8 -> n9 [label="array"]; n8 -> n10 [label="array"];
+  n11 -> n12 [label="set"];
+  n13 -> n14 [label="map"]; n13 -> n15 [label="map"]; n13 -> n16 [label="map"];
+  n24 -> n23 [label="array -> Array"];
+}

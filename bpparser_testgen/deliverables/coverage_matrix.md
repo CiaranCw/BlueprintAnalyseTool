@@ -17,14 +17,14 @@
 | Branch | 节点 | BP_04 / BP_08 | K2Node_IfThenElse | Condition/Then/Else | 已覆盖 | BP_08 由 IsValid 驱动 |
 | Sequence | 节点 | BP_04 / BP_08 | K2Node_ExecutionSequence | Then 0..N | 已覆盖 | BP_04 五路 |
 | DoOnce | 节点 | BP_04 | K2Node_MacroInstance(DoOnce) | Completed | 需要人工确认 | StandardMacros 宏名解析 |
-| DoN | 节点 | — | — | — | 部分覆盖 | 生成器 `SpawnStdMacro("DoN")` 可用，未编入测试 BP |
+| DoN | 节点 | BP_11_SupplementalCoverage | K2Node_MacroInstance(DoN) | N/Exit | 需要人工确认 | StandardMacros 宏，需 UE 确认解析 |
 | FlipFlop | 节点 | BP_04 | K2Node_MacroInstance(FlipFlop) | A/B | 需要人工确认 | 同上 |
 | Gate | 节点 | BP_04 | K2Node_MacroInstance(Gate) | Enter/Exit | 需要人工确认 | 多个 exec 输入，连 Enter |
 | ForLoop | 节点 | BP_04 | K2Node_MacroInstance(ForLoop) | First/Last/Loop Body/Completed | 需要人工确认 | |
 | ForLoopWithBreak | 节点 | BP_04 | K2Node_MacroInstance(ForLoopWithBreak) | Loop Body/Break/Completed | 需要人工确认 | |
-| WhileLoop | 节点 | — | — | — | 部分覆盖 | 生成器支持，未编入；可手动加 `SpawnStdMacro("WhileLoop")` |
+| WhileLoop | 节点 | BP_11 | K2Node_MacroInstance(WhileLoop) | Condition/Loop Body/Completed | 需要人工确认 | 条件默认 false（防死循环）；需 UE 确认 |
 | ForEachLoop | 节点 | BP_02 / BP_04 / BP_08 | K2Node_MacroInstance(ForEachLoop) | Array/Loop Body/Array Element/Completed | 需要人工确认 | |
-| ForEachLoopWithBreak | 节点 | — | — | — | 部分覆盖 | 生成器支持，未编入 |
+| ForEachLoopWithBreak | 节点 | BP_11 | K2Node_MacroInstance(ForEachLoopWithBreak) | Array/Loop Body/Break/Completed | 需要人工确认 | StandardMacros 宏，需 UE 确认 |
 | Switch on Int | 节点 | BP_04 | K2Node_SwitchInteger | Selection/Default/case | 已覆盖 | case pin 由 AddPinToSwitchNode 生成 |
 | Switch on String | 节点 | BP_04 | K2Node_SwitchString | Selection/Default/case | 需要人工确认 | case 字面值为引擎默认名 |
 | Switch on Enum | 节点 | BP_02 / BP_08 / BP_10 | K2Node_SwitchEnum | Selection/Idle.. | 已覆盖 | |
@@ -53,13 +53,13 @@
 | Text | Pin | BP_01/02 | Var TestText / Struct DisplayName | text | 已覆盖 | |
 | Vector | Pin | BP_01 | Var TestVector / MakeTransform | struct(Vector) | 已覆盖 | |
 | Vector2D | Pin | BP_01 | Var TestVector2D | struct(Vector2D) | 已覆盖 | 仅变量，未连线 |
-| Vector4 | Pin | — | — | — | 部分覆盖 | 未生成；`PinStruct(TBaseStructure<FVector4>::Get())` 可手动加 |
+| Vector4 | Pin | BP_11 | Var SupVector4 | struct(Vector4) | 已覆盖 | 仅变量 |
 | Rotator | Pin | BP_01 | Var TestRotator / MakeTransform | struct(Rotator) | 已覆盖 | |
 | Transform | Pin | BP_01 | Make/Break Transform | struct(Transform) | 已覆盖 | |
-| Color (FColor) | Pin | — | — | — | 部分覆盖 | 仅 LinearColor 生成；FColor 未加 |
+| Color (FColor) | Pin | BP_11 | Var SupColor | struct(Color) | 已覆盖 | 仅变量 |
 | LinearColor | Pin | BP_01 | Var TestLinearColor | struct(LinearColor) | 已覆盖 | 仅变量 |
-| DateTime | Pin | — | — | — | 部分覆盖 | 未生成；可作为 struct 变量手动加 |
-| Timespan | Pin | — | — | — | 部分覆盖 | 同上 |
+| DateTime | Pin | BP_11 | Var SupDateTime | struct(DateTime) | 需要人工确认 | 仅当 /Script/CoreUObject.DateTime 运行时解析到才生成 |
+| Timespan | Pin | BP_11 | Var SupTimespan | struct(Timespan) | 需要人工确认 | 仅当 Timespan 结构运行时解析到才生成 |
 
 ---
 
@@ -90,19 +90,20 @@
 | Set | 容器 | BP_02 | Var NameSet | set | 已覆盖 | |
 | Map | 容器 | BP_02/08 | Var ScoreMap/ResultMap | map | 已覆盖 | |
 | Array Add | 节点 | BP_02/08 | Array_Add | TargetArray/NewItem | 已覆盖 | wildcard 由容器变量解析 |
-| Array Get | 节点 | — | Array_Get | — | 部分覆盖 | 生成器可调用，未编入；可加 |
+| Array Get | 节点 | BP_11 | Array_Get | TargetArray/Index/Item | 已覆盖 | |
 | Array Length | 节点 | BP_02 | Array_Length | TargetArray/ReturnValue | 已覆盖 | |
-| Array Remove | 节点 | — | — | — | 部分覆盖 | 未编入 |
+| Array Remove | 节点 | BP_11 | Array_RemoveItem | TargetArray/Item | 已覆盖 | RemoveItem 变体 |
 | Set Add | 节点 | BP_02 | Set_Add | TargetSet/NewItem | 已覆盖 | |
 | Set Contains | 节点 | BP_02 | Set_Contains | TargetSet/ItemToFind | 已覆盖 | |
-| Set Remove | 节点 | — | — | — | 部分覆盖 | 未编入 |
+| Set Remove | 节点 | BP_11 | Set_Remove | TargetSet/Item | 已覆盖 | |
 | Map Add | 节点 | BP_02 | Map_Add | TargetMap/Key/Value | 已覆盖 | |
-| Map Find | 节点 | — | Map_Find | — | 部分覆盖 | 未编入；可加 |
+| Map Find | 节点 | BP_11 | Map_Find | TargetMap/Key/Value | 已覆盖 | |
 | Map Keys | 节点 | BP_02 | Map_Keys | TargetMap/Keys | 已覆盖 | |
-| Map Values/Remove | 节点 | — | — | — | 部分覆盖 | 未编入 |
-| Make Array | 节点 | — | K2Node_MakeArray | — | 部分覆盖 | 生成器 `SpawnMakeArray` 可用，未编入 |
-| Make Set | 节点 | — | K2Node_MakeSet | — | 部分覆盖 | 生成器可用，未编入 |
-| Make Map | 节点 | — | K2Node_MakeMap | — | 部分覆盖 | 生成器可用，未编入 |
+| Map Values | 节点 | BP_11 | Map_Values | TargetMap/Values | 已覆盖 | |
+| Map Remove | 节点 | BP_11 | Map_Remove | TargetMap/Key | 已覆盖 | |
+| Make Array | 节点 | BP_11 | K2Node_MakeArray | [0..2]/Array | 已覆盖 | |
+| Make Set | 节点 | BP_11 | K2Node_MakeSet | Set | 已覆盖 | |
+| Make Map | 节点 | BP_11 | K2Node_MakeMap | Map | 已覆盖 | |
 | Break Array / ForEach | 结构 | BP_02/04/08 | ForEachLoop | Array Element | 已覆盖 | |
 | 嵌套 Struct 含 Array/Set/Map | 结构 | 支持Struct / BP_02 | ST_BPParserTestData.Tags(array<name>) | array in struct | 已覆盖 | Set/Map in struct 未做（部分覆盖） |
 
@@ -153,7 +154,7 @@
 | 有返回值的函数 | 图 | BP_05 | ComputeScore→Total | Result.Total | 已覆盖 | |
 | 多输入参数函数 | 图 | BP_05 | ComputeStats(A,B) | Entry 多 pin | 已覆盖 | |
 | 多输出参数函数 | 图 | BP_05 | ComputeStats→(Sum,Product) | Result 多 pin | 已覆盖 | |
-| By Reference 参数 | Pin | — | — | — | 部分覆盖 | 未生成；可在 Result 端用 by-ref 手动加 |
+| By Reference 参数 | Pin | BP_11 | AccumulateByRef Entry | InOutValue (int&) | 已覆盖 | bIsReference=true |
 | Local Variable | 成员 | BP_05 | ComputeScore.TempSum | — | 已覆盖 | `AddLocalVariable` |
 | Macro | 图 | BP_05 | Macro_LogWithPrefix | 输入/输出 tunnel | 需要人工确认 | 宏外壳已建；**宏体连线为手动步骤** |
 | Collapsed Graph | 图 | — | — | — | 无法自动覆盖 | 折叠图需选区操作，不自动生成；手动 |
@@ -176,10 +177,10 @@
 | Delegate Signature Graph | Graph | BP_06/08/10 | 需要人工确认 | 随 dispatcher 生成 |
 | Interface Function Graph | Graph | BPI_BPParserTest | 需要人工确认 | |
 | Anim/Widget Graph | Graph | — | 无法自动覆盖 | 不在本测试范围（解析器另有 partial 支持） |
-| DOT 可视化 | 可视化 | 全部 11 个测试 BP | 已覆盖 | deliverables/viz/*.dot |
-| Mermaid 可视化 | 可视化 | 全部 11 个测试 BP | 已覆盖 | deliverables/viz/*.mmd |
+| DOT 可视化 | 可视化 | 全部 12 个测试 BP（BP_01..BP_11 + BP_99） | 已覆盖 | deliverables/viz/*.dot（12 个） |
+| Mermaid 可视化 | 可视化 | 全部 12 个测试 BP | 已覆盖 | deliverables/viz/*.mmd（12 个） |
 | PNG/SVG 图片 | 可视化 | — | 需要人工确认 | 本环境未出图；运行 render_viz.ps1 生成 |
-| JSON: asset/graphs/nodes/pins/edges | JSON | 全部 16 资产 | 已覆盖 | deliverables/expected_ir/*.json |
+| JSON: asset/graphs/nodes/pins/edges | JSON | 全部 17 资产 | 已覆盖 | deliverables/expected_ir/*.json（17 个） |
 | JSON: variables/functions/macros/dispatchers/interfaces | JSON | 各对应 BP | 已覆盖 | |
 | JSON: coverage_tags | JSON | 全部 | 已覆盖 | |
 | 差异回归 JSON | JSON | 流程 | 已覆盖 | regression_protocol.md 定义格式 |
@@ -190,5 +191,7 @@
 
 - 已覆盖：核心 Pin / 连线 / 节点 / Graph / 容器 / 引用 / 委托主路径，及全部 DOT/Mermaid/JSON。
 - 需要人工确认：UE 5.4 生成 API 有签名风险者（Struct/Enum 创建、Dispatcher、Interface 实现、宏实例解析、Pure 标记、委托 pin 解析、Soft 引用默认值、隐藏 WorldContext/Advanced pin），以及“是否编译通过 / PNG 是否生成”。
-- 部分覆盖：生成器已实现但未编入测试 BP 的项（DoN/WhileLoop/ForEachLoopWithBreak/MakeArray/MakeSet/MakeMap/Array Get-Remove/Map Find-Values/Vector4/FColor/DateTime/Timespan/SetMembersInStruct/By-Ref 参数）。
+- 部分覆盖（仍未编入，剩余）：Set Members in Struct、Enum to String/Name。其余原“部分覆盖”项已在 **BP_11_SupplementalCoverage** 编入（MakeArray/Set/Map、Array Get/RemoveItem、Set Remove、Map Find/Values/Remove、Vector4、FColor、By-Ref 参数 → 已覆盖；DoN/WhileLoop/ForEachLoopWithBreak、DateTime/Timespan → 需要人工确认）。
 - 无法自动覆盖：Timeline、Async Action、Collapsed Graph、Anim/Widget Graph。
+
+> 本轮（本地验收前审计）新增 BP_11_SupplementalCoverage，并据真实源码重新校准上表状态。

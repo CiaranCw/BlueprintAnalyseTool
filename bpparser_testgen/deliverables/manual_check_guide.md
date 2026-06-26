@@ -27,6 +27,7 @@
 - **BP_08**：6 个区域注释（Init/Spawn/Validate/Process/Dispatch/Log）；含 Cast + Interface + Dispatcher + Reroute 汇合，结构最复杂，重点看整体连通性。
 - **BP_09**：布局/注释/未连接测试。**故意存在**：空注释框、悬空 reroute 之外的孤立节点、默认值 Pin、远距离坐标、NodeComment 气泡。
 - **BP_10**：跨资产入口（Spawn/Cast/Interface/Dispatcher/MakeStruct/SwitchEnum）。
+- **BP_11**：补充覆盖。确认 MakeArray/Set/Map 三个容器构造节点；Array Get/RemoveItem、Set Remove、Map Find/Values/Remove 的容器 Pin 类型是否被正确推断；SupVector4/SupColor 变量类型；**SupDateTime/SupTimespan 仅当结构解析成功才会出现**（缺失属预期，已在 notes 标注）；AccumulateByRef 的 InOutValue 是否为**按引用**参数；DoN/WhileLoop/ForEachLoopWithBreak 三个宏是否解析成功（WhileLoop 条件默认 false，不会死循环）。
 - **BP_99**：**故意不完整**（compiles with warnings）：悬空 reroute 输出、无 exec 输入的孤立 Branch、未用变量。**这些不是 bug。**
 
 ## 3. 解析器最容易解析错的点（优先回归验证）

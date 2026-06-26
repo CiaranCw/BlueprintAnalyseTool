@@ -22,9 +22,10 @@
 
 ## 1. 本次生成或修改的内容
 - 新建 UE 5.4 C++ Editor 插件 **BPParserTestGen**（15 个源文件），可在 UE 内通过菜单 / 控制台 / Commandlet 程序化生成全部测试资产，并自动 Compile + Save，输出 `generation_log.json`。
-- 设计并构建 **5 个支持资产 + 10 个测试蓝图 + 1 个负面用例蓝图**（共 16 个）的生成逻辑。
-- 为 16 个资产编写**预期解析 JSON**（与 BPAT IR schema 对齐）。
-- 为 11 个测试蓝图编写 **DOT + Mermaid** 结构图，并提供渲染脚本。
+- 设计并构建 **5 个支持资产 + 11 个测试蓝图 + 1 个负面用例蓝图**（共 17 个）的生成逻辑。
+- 为 17 个资产编写**预期解析 JSON**（与 BPAT IR schema 对齐）。
+- 为 12 个测试蓝图编写 **DOT + Mermaid** 结构图，并提供渲染脚本。
+- 本地验收前审计：精简 Build.cs 依赖（移除未用/已弃用模块降低编译面）；新增 **BP_11_SupplementalCoverage** 折叠原“部分覆盖”项；新增本地验收脚本与验收门槛文档。
 - 编写**覆盖矩阵**、**人工检查指南**、**回归协议**、**README**、本**报告**。
 - 自检修复：补齐 builders 缺失的 K2Node 头文件（编译级）；为 BP_04 实际加入 Switch-on-String 与 ForEachLoop 使其与注释一致，并同步 JSON/DOT/MMD。
 
@@ -47,6 +48,7 @@
 | BP_08_ComplexGameplayLikeGraph | Actor | 6 区域综合：Init/Spawn/Validate/Process/Dispatch/Log |
 | BP_09_NodeFormatting_Comments_Reroutes | Actor | 注释/Reroute/未连接/默认值/坐标布局 |
 | BP_10_ParserRoundTrip_Master | Actor | 跨资产回归入口 |
+| BP_11_SupplementalCoverage | Actor | 补充覆盖：容器 Make/Get/Find/Remove/Values、Vector4/Color/DateTime/Timespan、by-ref 参数、DoN/WhileLoop/ForEachLoopWithBreak |
 | BP_99_NegativeOrEdgeCases | Actor | **故意不完整**（compiles with warnings） |
 
 ## 3. 文件清单
@@ -54,16 +56,19 @@
 **插件源码**（`bpparser_testgen/Plugins/BPParserTestGen/`）：
 `BPParserTestGen.uplugin`、`Source/BPParserTestGen/BPParserTestGen.Build.cs`、
 `Public/{BPParserTestGenModule.h, BPParserTestGenCommandlet.h, BPGenOrchestrator.h, BPGen.h, BPGenSupportAssets.h, BPGenTestBlueprints.h}`、
-`Private/{BPParserTestGenModule.cpp, BPParserTestGenCommandlet.cpp, BPGenOrchestrator.cpp, BPGen.cpp, BPGenSupportAssets.cpp, BPGenBuilders_A.cpp, BPGenBuilders_B.cpp}`
+`Private/{BPParserTestGenModule.cpp, BPParserTestGenCommandlet.cpp, BPGenOrchestrator.cpp, BPGen.cpp, BPGenSupportAssets.cpp, BPGenBuilders_A.cpp, BPGenBuilders_B.cpp, BPGenBuilders_C.cpp}`
 
 **交付物**（`bpparser_testgen/deliverables/`）：
-`expected_ir/*.json`（16）、`viz/*.dot`（11）、`viz/*.mmd`（11）、`render_viz.ps1`、`coverage_matrix.md`、`manual_check_guide.md`、`regression_protocol.md`、`report.md`；根目录 `README.md`。
+`expected_ir/*.json`（17）、`viz/*.dot`（12）、`viz/*.mmd`（12）、`render_viz.ps1`、`local_acceptance_gate.md`、`coverage_matrix.md`、`manual_check_guide.md`、`regression_protocol.md`、`report.md`；根目录 `README.md`。
+本地验收脚本（`scripts/`）：`build_plugin.ps1`、`run_generate.ps1`、`render_viz.ps1`、`dump_ir_sample.ps1`、`local_acceptance_checklist.md`。
 
 ## 4. 覆盖矩阵摘要
 详见 `coverage_matrix.md`。概括：
 - **已覆盖**：核心 Exec/Data 连线、基础数据 Pin（含 int64/real-float/real-double）、Object/Actor/Class/Component/Interface/Self/Target 引用、Array/Set/Map 主操作、Make/Break Struct、Switch(Int/String/Enum)、Branch/Sequence/Reroute/汇合、Delay+Timer(latent)、函数/多输出/Local Var、Comment/默认值/未连接 Pin、全部 DOT/Mermaid/JSON。
 - **需要人工确认**：Struct/Enum 创建 API、Event Dispatcher、Interface 实现、StandardMacros 宏实例解析、Pure 标记、委托 pin 连线、Soft 引用默认值、隐藏 WorldContext/Advanced pin，以及**“是否编译通过 / PNG 是否生成”**。
-- **部分覆盖**：DoN/WhileLoop/ForEachLoopWithBreak/MakeArray/MakeSet/MakeMap/Array Get-Remove/Map Find-Values/Vector4/FColor/DateTime/Timespan/SetMembersInStruct/By-Ref 参数（生成器多数已支持，仅未编入测试 BP）。
+- **本轮新增（BP_11）已覆盖**：MakeArray/MakeSet/MakeMap、Array Get/RemoveItem、Set Remove、Map Find/Values/Remove、Vector4、FColor、By-Ref 参数。
+- **部分覆盖（剩余）**：Set Members in Struct、Enum to String/Name（仍未编入）。
+- **需要人工确认（BP_11 内）**：DoN/WhileLoop/ForEachLoopWithBreak（StandardMacros 宏）、DateTime/Timespan（结构需运行时解析）。
 - **无法自动覆盖**：Timeline、Async Action、Collapsed Graph、Anim/Widget Graph。
 
 ## 5. 每个蓝图的作用 + 13 项要点
@@ -81,13 +86,14 @@
 - **BP_08**：复杂综合。6 区域；含 Cast+Interface+Dispatcher+Reroute 汇合。
 - **BP_09**：布局/注释/未连接。含空注释、长 reroute 链、NodeComment、孤立节点、默认值 Pin。
 - **BP_10**：跨资产回归入口。Spawn/Cast/Interface/Dispatcher/MakeStruct/SwitchEnum。限制: Get Class Defaults 节点未生成（用 Spawn+Cast 替代）。
+- **BP_11**：补充覆盖。节点: MakeArray/MakeSet/MakeMap、Array_Get/Array_RemoveItem、Set_Remove、Map_Find/Map_Values/Map_Remove、Sequence、DoN/WhileLoop/ForEachLoopWithBreak。Pin: Vector4/Color(+DateTime/Timespan 条件)、by-ref(int&)。需人工: 三个宏 + DateTime/Timespan 结构解析。
 - **BP_99**：**故意不完整**。悬空 reroute 输出、孤立 Branch（无 exec-in）、未用变量；保留 BeginPlay→Print 有效路径使其 compiles-with-warnings。
 
 ## 6. JSON 输出位置
-`bpparser_testgen/deliverables/expected_ir/<asset>.json`（16 个）。格式见各文件，含 asset/graphs/nodes/pins/edges/comments/variables/functions/macros/event_dispatchers/interfaces/coverage_tags，与 BPAT IR schema 对齐。
+`bpparser_testgen/deliverables/expected_ir/<asset>.json`（17 个）。格式见各文件，含 asset/graphs/nodes/pins/edges/comments/variables/functions/macros/event_dispatchers/interfaces/coverage_tags，与 BPAT IR schema 对齐。
 
 ## 7. 可视化图输出位置
-- 源码：`bpparser_testgen/deliverables/viz/<BP>.dot` 与 `<BP>.mmd`（各 11 个）。
+- 源码：`bpparser_testgen/deliverables/viz/<BP>.dot` 与 `<BP>.mmd`（各 12 个）。
 - 图片：**本环境未生成**。运行 `deliverables/render_viz.ps1` 在本地生成 PNG/SVG（建议输出到工程 `Saved/BPParserTestReports/`）。
 - 视觉约定：实线=exec、虚线=data、加粗/点划=delegate/latent、标注 `cast object input` / `interface message target` / `object ref`，含图例。
 

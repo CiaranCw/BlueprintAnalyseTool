@@ -1,0 +1,71 @@
+%% BP_11_SupplementalCoverage - EventGraph + AccumulateByRef
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  n1["Event BeginPlay"]:::evt
+  subgraph C1["Make Containers -> store"]
+    n2["Make Array [10,20,30]"]
+    n3["Set SupArray"]
+    n4["Make Set"]
+    n5["Set SupSet"]
+    n6["Make Map"]
+    n7["Set SupMap"]
+  end
+  subgraph C2["Container Get/Find/Remove/Values"]
+    n8["Get SupArray"]
+    n9["Array Get (Index=0)"]
+    n10["Array Remove Item (20)"]
+    n11["Get SupSet"]
+    n12["Set Remove (1)"]
+    n13["Get SupMap"]
+    n14["Map Find (a)"]
+    n15["Map Values"]
+    n16["Map Remove (a)"]
+    n17["Print (containers done)"]:::impure
+  end
+  subgraph C3["Boundary loops: DoN / WhileLoop / ForEachLoopWithBreak"]
+    n18["Sequence"]
+    n19["Do N (N=3)"]
+    n20["Print (DoN)"]:::impure
+    n21["While Loop (cond=false)"]
+    n22["Print (While done)"]:::impure
+    n23["For Each Loop With Break"]
+    n24["Get SupArray (2)"]
+    n25["Print (elem)"]:::impure
+  end
+  subgraph C4["Extra type pins"]
+    n26["Get SupVector4"]
+    n27["Get SupColor"]
+    n28["Get SupDateTime?"]
+    n29["Get SupTimespan?"]
+  end
+  subgraph FN["Function AccumulateByRef (by-ref InOutValue)"]
+    f1["Entry (InOutValue : int&)"]
+  end
+
+  n1 --> n3
+  n3 --> n5
+  n5 --> n7
+  n7 --> n10
+  n10 --> n12
+  n12 --> n16
+  n16 --> n17
+  n17 --> n18
+  n18 -->|Then0| n19
+  n19 -->|Exit| n20
+  n18 -->|Then1| n21
+  n21 -->|Completed| n22
+  n18 -->|Then2| n23
+  n23 -->|Loop Body| n25
+  n2 -.->|array| n3
+  n4 -.->|set| n5
+  n6 -.->|map| n7
+  n8 -.->|array| n9
+  n8 -.->|array| n10
+  n11 -.->|set| n12
+  n13 -.->|map| n14
+  n13 -.->|map| n15
+  n13 -.->|map| n16
+  n24 -.->|array| n23
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;

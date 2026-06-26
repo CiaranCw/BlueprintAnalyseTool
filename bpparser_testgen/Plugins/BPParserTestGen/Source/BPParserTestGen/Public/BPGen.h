@@ -142,9 +142,11 @@ public:
 	static FEdGraphPinType PinStruct(UScriptStruct* Struct);
 	static FEdGraphPinType PinVector();
 	static FEdGraphPinType PinVector2D();
+	static FEdGraphPinType PinVector4();
 	static FEdGraphPinType PinRotator();
 	static FEdGraphPinType PinTransform();
 	static FEdGraphPinType PinLinearColor();
+	static FEdGraphPinType PinColor();
 	static FEdGraphPinType PinObject(UClass* Class);
 	static FEdGraphPinType PinClass(UClass* Class);
 	static FEdGraphPinType PinSoftObject(UClass* Class);

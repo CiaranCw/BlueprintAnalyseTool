@@ -1,0 +1,122 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "note": "node_id/pin_id are design IDs (not UE runtime IDs). Compare by node_class + title + pin type on regression.",
+  "asset_name": "BP_11_SupplementalCoverage",
+  "asset_path": "/Game/BPParserTest/BP_11_SupplementalCoverage",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "purpose": "Fold in coverage items not naturally placed in BP_01..BP_10: container Make/Get/Find/Remove/Values, extra type pins (Vector4/Color/DateTime/Timespan), by-reference function param, and DoN/WhileLoop/ForEachLoopWithBreak macros.",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1",  "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": -40, "y": 0 } },
+        { "node_id": "n2",  "node_name": "Make Array", "node_class": "K2Node_MakeArray", "node_type_category": "composite", "position": { "x": 80, "y": 0 },
+          "pins": [
+            { "pin_id": "n2_0", "pin_name": "[0]", "direction": "input", "category": "int", "default_value": "10", "is_connected": false },
+            { "pin_id": "n2_1", "pin_name": "[1]", "direction": "input", "category": "int", "default_value": "20", "is_connected": false },
+            { "pin_id": "n2_2", "pin_name": "[2]", "direction": "input", "category": "int", "default_value": "30", "is_connected": false },
+            { "pin_id": "n2_out", "pin_name": "Array", "direction": "output", "category": "int", "container_type": "array", "is_connected": true }
+          ] },
+        { "node_id": "n3",  "node_name": "Set SupArray", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 360, "y": 0 } },
+        { "node_id": "n4",  "node_name": "Make Set", "node_class": "K2Node_MakeSet", "node_type_category": "composite", "position": { "x": 80, "y": 160 } },
+        { "node_id": "n5",  "node_name": "Set SupSet", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 360, "y": 160 } },
+        { "node_id": "n6",  "node_name": "Make Map", "node_class": "K2Node_MakeMap", "node_type_category": "composite", "position": { "x": 80, "y": 320 } },
+        { "node_id": "n7",  "node_name": "Set SupMap", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 360, "y": 320 } },
+        { "node_id": "n8",  "node_name": "Get SupArray", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1080, "y": -120 } },
+        { "node_id": "n9",  "node_name": "Array Get (a copy)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Array_Get", "member_parent": "/Script/Engine.KismetArrayLibrary" }, "position": { "x": 1320, "y": -160 },
+          "pins": [ { "pin_id": "n9_idx", "pin_name": "Index", "direction": "input", "category": "int", "default_value": "0", "is_connected": false } ] },
+        { "node_id": "n10", "node_name": "Array Remove Item", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Array_RemoveItem", "member_parent": "/Script/Engine.KismetArrayLibrary" }, "position": { "x": 1320, "y": 0 },
+          "pins": [ { "pin_id": "n10_item", "pin_name": "Item", "direction": "input", "category": "int", "default_value": "20", "is_connected": false } ] },
+        { "node_id": "n11", "node_name": "Get SupSet", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1080, "y": 140 } },
+        { "node_id": "n12", "node_name": "Set Remove", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Set_Remove", "member_parent": "/Script/Engine.BlueprintSetLibrary" }, "position": { "x": 1320, "y": 160 } },
+        { "node_id": "n13", "node_name": "Get SupMap", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1080, "y": 320 } },
+        { "node_id": "n14", "node_name": "Map Find", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Find", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 1320, "y": 300 } },
+        { "node_id": "n15", "node_name": "Map Values", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Values", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 1320, "y": 400 } },
+        { "node_id": "n16", "node_name": "Map Remove", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Remove", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 1320, "y": 500 } },
+        { "node_id": "n17", "node_name": "Print String (containers done)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1700, "y": 0 } },
+        { "node_id": "n18", "node_name": "Sequence", "node_class": "K2Node_ExecutionSequence", "node_type_category": "composite", "position": { "x": 80, "y": 560 } },
+        { "node_id": "n19", "node_name": "Do N", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "DoN", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 360, "y": 540 } },
+        { "node_id": "n20", "node_name": "Print String (DoN)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 700, "y": 540 } },
+        { "node_id": "n21", "node_name": "While Loop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "WhileLoop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 360, "y": 660 } },
+        { "node_id": "n22", "node_name": "Print String (While done)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 700, "y": 680 } },
+        { "node_id": "n23", "node_name": "For Each Loop with Break", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForEachLoopWithBreak", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 360, "y": 800 } },
+        { "node_id": "n24", "node_name": "Get SupArray (2)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 360, "y": 900 } },
+        { "node_id": "n25", "node_name": "Print String (elem)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 700, "y": 800 } },
+        { "node_id": "n26", "node_name": "Get SupVector4", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 540 } },
+        { "node_id": "n27", "node_name": "Get SupColor", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 640 } },
+        { "node_id": "n28", "node_name": "Get SupDateTime (if resolved)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 740 }, "conditional": true },
+        { "node_id": "n29", "node_name": "Get SupTimespan (if resolved)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 840 }, "conditional": true }
+      ],
+      "edges": [
+        { "edge_id": "e1",  "from_node": "n1",  "from_pin": "then", "to_node": "n3",  "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2",  "from_node": "n3",  "from_pin": "then", "to_node": "n5",  "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e3",  "from_node": "n5",  "from_pin": "then", "to_node": "n7",  "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e4",  "from_node": "n7",  "from_pin": "then", "to_node": "n10", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e5",  "from_node": "n10", "from_pin": "then", "to_node": "n12", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e6",  "from_node": "n12", "from_pin": "then", "to_node": "n16", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e7",  "from_node": "n16", "from_pin": "then", "to_node": "n17", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e8",  "from_node": "n17", "from_pin": "then", "to_node": "n18", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e9",  "from_node": "n18", "from_pin": "then_0", "to_node": "n19", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e10", "from_node": "n19", "from_pin": "Exit", "to_node": "n20", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e11", "from_node": "n18", "from_pin": "then_1", "to_node": "n21", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e12", "from_node": "n21", "from_pin": "Completed", "to_node": "n22", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e13", "from_node": "n18", "from_pin": "then_2", "to_node": "n23", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e14", "from_node": "n23", "from_pin": "Loop Body", "to_node": "n25", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e15", "from_node": "n2",  "from_pin": "n2_out", "to_node": "n3", "to_pin": "SupArray", "edge_type": "data" },
+        { "edge_id": "e16", "from_node": "n4",  "from_pin": "Set", "to_node": "n5", "to_pin": "SupSet", "edge_type": "data" },
+        { "edge_id": "e17", "from_node": "n6",  "from_pin": "Map", "to_node": "n7", "to_pin": "SupMap", "edge_type": "data" },
+        { "edge_id": "e18", "from_node": "n8",  "from_pin": "SupArray", "to_node": "n9",  "to_pin": "TargetArray", "edge_type": "data" },
+        { "edge_id": "e19", "from_node": "n8",  "from_pin": "SupArray", "to_node": "n10", "to_pin": "TargetArray", "edge_type": "data" },
+        { "edge_id": "e20", "from_node": "n11", "from_pin": "SupSet", "to_node": "n12", "to_pin": "TargetSet", "edge_type": "data" },
+        { "edge_id": "e21", "from_node": "n13", "from_pin": "SupMap", "to_node": "n14", "to_pin": "TargetMap", "edge_type": "data" },
+        { "edge_id": "e22", "from_node": "n13", "from_pin": "SupMap", "to_node": "n15", "to_pin": "TargetMap", "edge_type": "data" },
+        { "edge_id": "e23", "from_node": "n13", "from_pin": "SupMap", "to_node": "n16", "to_pin": "TargetMap", "edge_type": "data" },
+        { "edge_id": "e24", "from_node": "n24", "from_pin": "SupArray", "to_node": "n23", "to_pin": "Array", "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Make Containers (Array/Set/Map) -> store into variables", "bounds": { "x": -80, "y": -200, "w": 1100, "h": 420 } },
+        { "comment_id": "c2", "text": "Container Get/Find/Remove/Values", "bounds": { "x": 1060, "y": -200, "w": 1100, "h": 620 } },
+        { "comment_id": "c3", "text": "Boundary loops: DoN / WhileLoop / ForEachLoopWithBreak", "bounds": { "x": -80, "y": 460, "w": 1500, "h": 480 } },
+        { "comment_id": "c4", "text": "Extra type pins: Vector4 / Color / DateTime / Timespan", "bounds": { "x": 1560, "y": 460, "w": 760, "h": 480 } }
+      ]
+    },
+    {
+      "graph_name": "AccumulateByRef", "graph_type": "function", "is_pure": false,
+      "signature": { "inputs": [ { "name": "InOutValue", "category": "int", "is_reference": true } ], "outputs": [] },
+      "nodes": [
+        { "node_id": "f1", "node_name": "Function Entry (AccumulateByRef)", "node_class": "K2Node_FunctionEntry", "node_type_category": "function_entry",
+          "pins": [ { "pin_id": "f1_v", "pin_name": "InOutValue", "direction": "output", "category": "int", "is_reference": true } ] }
+      ],
+      "edges": [],
+      "note": "By-reference parameter (InOutValue). Body minimal; the by-ref pin flag is the coverage target."
+    }
+  ],
+  "variables": [
+    { "name": "SupVector4", "type": "vector4", "category": "struct", "object_type": "/Script/CoreUObject.Vector4", "container_type": "none" },
+    { "name": "SupColor",   "type": "color",   "category": "struct", "object_type": "/Script/CoreUObject.Color",   "container_type": "none" },
+    { "name": "SupDateTime","type": "datetime","category": "struct", "object_type": "/Script/CoreUObject.DateTime", "container_type": "none", "conditional": "added only if struct resolves at build time" },
+    { "name": "SupTimespan","type": "timespan","category": "struct", "object_type": "/Script/CoreUObject.Timespan", "container_type": "none", "conditional": "added only if struct resolves at build time" },
+    { "name": "SupArray", "type": "int",  "category": "int",  "container_type": "array" },
+    { "name": "SupSet",   "type": "int",  "category": "int",  "container_type": "set" },
+    { "name": "SupMap",   "type": "map",  "category": "name", "container_type": "map", "value_type": "int" }
+  ],
+  "functions": [ { "name": "AccumulateByRef", "graph_id": "func_accumulatebyref", "is_pure": false, "has_by_ref_param": true } ],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "node.make_array", "node.make_set", "node.make_map",
+    "node.array_get", "node.array_remove_item", "node.set_remove",
+    "node.map_find", "node.map_values", "node.map_remove",
+    "pin.struct.vector4", "pin.struct.color", "pin.struct.datetime", "pin.struct.timespan",
+    "func.by_ref_param",
+    "node.do_n", "node.while_loop", "node.foreach_loop_with_break",
+    "edge.exec", "edge.data"
+  ],
+  "needs_confirm": [
+    "DoN / WhileLoop / ForEachLoopWithBreak resolved from StandardMacros (verify in UE).",
+    "SupDateTime / SupTimespan added only if /Script/CoreUObject.DateTime|Timespan resolved at build time."
+  ]
+}

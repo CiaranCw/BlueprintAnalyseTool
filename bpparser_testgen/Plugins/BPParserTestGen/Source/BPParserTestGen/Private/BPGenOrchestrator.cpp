@@ -74,6 +74,7 @@ FBPGenReport FBPGenOrchestrator::GenerateAll(bool bSave)
 	A.Add(FBPGenTestBlueprints::Build_BP08_ComplexGameplay());
 	A.Add(FBPGenTestBlueprints::Build_BP09_FormattingCommentsReroutes());
 	A.Add(FBPGenTestBlueprints::Build_BP10_RoundTripMaster());
+	A.Add(FBPGenTestBlueprints::Build_BP11_SupplementalCoverage());
 	A.Add(FBPGenTestBlueprints::Build_BP99_NegativeEdgeCases());
 
 	// --- Save + tally ---
