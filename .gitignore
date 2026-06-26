@@ -1,0 +1,96 @@
+# ============================================================
+# BlueprintAnalyseTool .gitignore
+# Mixed repo: Python tooling + UE 5.4 C++ editor plugin source + docs
+# ============================================================
+
+# ---------- Unreal Engine (intermediate / generated) ----------
+Binaries/
+Intermediate/
+DerivedDataCache/
+Saved/
+Build/
+Packaged/
+Releases/
+.vs/
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.sdf
+*.suo
+*.sln
+*.sln.docstates
+*.user
+*.userosscache
+*.xcodeproj/
+*.xcworkspace/
+
+# ---------- Build outputs / native binaries ----------
+build/
+dist/
+out/
+bin/
+obj/
+target/
+*.dll
+*.lib
+*.exe
+*.pdb
+*.o
+*.obj
+
+# ---------- Logs / crash dumps / temp ----------
+*.log
+*.dmp
+*.tmp
+*.temp
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- Node (in case JS tooling is added later) ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------- IDE / editor ----------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Secrets / environment (NEVER commit) ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa
+id_rsa.*
+*.secret
+config.local.*
+secrets.*
+
+# ---------- Project test/output artifacts ----------
+agent_tools/tests/fixtures/_generated/
+listing.txt
+test_output.txt
+
+# ---------- Local bootstrap helper (not part of the project) ----------
+scripts/git_init_push.ps1

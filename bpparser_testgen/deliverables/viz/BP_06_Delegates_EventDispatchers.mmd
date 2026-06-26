@@ -1,0 +1,26 @@
+%% BP_06_Delegates_EventDispatchers - EventGraph
+%% Edge style: solid=exec, dotted=data, thick=delegate/event pin
+flowchart LR
+  subgraph C1["Delegate Test: Bind -> Call -> Unbind"]
+    n1["Event BeginPlay"]:::evt
+    n2["Create Event (HandleParserTestTriggered)"]:::del
+    n3["Bind Event to OnParserTestTriggered"]:::del
+    n4["Call OnParserTestTriggered (Message=Triggered!)"]
+    n5["Unbind All (Clear OnParserTestTriggered)"]
+  end
+  subgraph C2["Custom Event handler"]
+    n6["Custom Event HandleParserTestTriggered"]:::evt
+    n7["Print String"]:::impure
+  end
+
+  n1 --> n3
+  n3 --> n4
+  n4 --> n5
+  n6 --> n7
+  n2 ==>|event/delegate pin| n3
+  n6 -.->|Message| n7
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef del fill:#e6e0ff,stroke:#6a40b0;
+  linkStyle 4 stroke:#8a3ab0,stroke-width:3px;

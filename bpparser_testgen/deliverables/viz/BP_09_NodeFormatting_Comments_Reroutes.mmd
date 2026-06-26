@@ -1,0 +1,25 @@
+%% BP_09_NodeFormatting_Comments_Reroutes - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  subgraph A["Region A: Connected exec with long reroute chain"]
+    n1["Event BeginPlay"]:::evt
+    n2(("Reroute 1"))
+    n3(("Reroute 2"))
+    n4["Print String (NodeComment bubble)"]:::impure
+  end
+  subgraph B["Region B: Unconnected nodes + default-only pins (far away)"]
+    n5["Get UnusedFlag (dangling)"]:::orphan
+    n6["Print String (orphan, default-only)"]:::orphan
+    n7["Add_IntInt (A=2,B=3, dangling output)"]:::orphan
+  end
+  subgraph E["(empty comment box)"]
+    ne[" "]:::orphan
+  end
+
+  n1 --> n2
+  n2 --> n3
+  n3 --> n4
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef orphan fill:#f0f0f0,stroke:#aaaaaa,stroke-dasharray:3 2;

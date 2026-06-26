@@ -1,0 +1,36 @@
+// BP_03_ObjectReference_Cast_Interface - structure graph
+// Edge legend: solid=exec, dashed=data (labelled object ref / cast object input / interface message)
+digraph BP_03_ObjectReference_Cast_Interface {
+  rankdir=LR;
+  labelloc="t"; label="BP_03_ObjectReference_Cast_Interface (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_spawn {
+    label="Spawn + Cast (cast object input)"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="SpawnActor\nBP_BPParserTargetActor"];
+    n3 [label="Cast To\nBP_BPParserTargetActor", fillcolor="#ffe0e0"];
+  }
+  subgraph cluster_iface {
+    label="Interface Message + Self + Target Pin + IsValid"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n4 [label="GetParserTestName\n(Interface Message)", fillcolor="#e6e0ff"];
+    n5 [label="Print String", fillcolor="#d8f5d8"];
+    n6 [label="Self"];
+    n7 [label="Get TargetActorRef\n(object ref)"];
+    n8 [label="IsValid"];
+    n9 [label="Get Component By Class\n(ComponentClass=SceneComponent)"];
+  }
+
+  // exec
+  n1 -> n2 [color=black];
+  n2 -> n3 [color=black];
+  n3 -> n4 [color=black, label="valid", fontsize=9];
+  n4 -> n5 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n2 -> n3 [label="cast object input", color="#b04040"];
+  n3 -> n4 [label="interface message target", color="#6a40b0"];
+  n4 -> n5 [label="string"];
+  n7 -> n8 [label="object ref"];
+}

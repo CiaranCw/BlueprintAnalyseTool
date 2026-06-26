@@ -1,0 +1,138 @@
+{
+  "schema_version": "0.1.0",
+  "namespaces": {
+    "blueprint": {
+      "description": "Forward-direction blueprint analysis tools (read-only or writes-output-only).",
+      "tools": [
+        {
+          "tool_name": "dump_blueprint",
+          "description": "Parse a single Blueprint asset into IR files under output_dir.",
+          "command": "ue_runner.dump_blueprint",
+          "input_schema": {
+            "type": "object",
+            "required": ["project", "asset_path", "output_dir"],
+            "properties": {
+              "project":     { "type": "string" },
+              "asset_path":  { "type": "string" },
+              "output_dir":  { "type": "string" },
+              "overwrite":   { "type": "string", "enum": ["skip","overwrite","fail"], "default": "skip" },
+              "layers":      { "type": "array",  "items": { "type": "string", "enum": ["manifest","graphs","nodes"] } },
+              "dry_run":     { "type": "boolean", "default": false }
+            }
+          },
+          "output_schema_ref": "schemas/tool_response.schema.json",
+          "whether_requires_unreal_editor": true,
+          "whether_uses_cache": true,
+          "side_effect_level": "writes_output_only",
+          "safety_notes": "OutputDir must be outside ProjectPath. ReadOnlyGuard active throughout."
+        },
+        {
+          "tool_name": "dump_project_blueprints",
+          "description": "Batch-parse all Blueprint-class assets in a project.",
+          "command": "ue_runner.dump_project_blueprints",
+          "input_schema": {
+            "type": "object",
+            "required": ["project", "output_dir"],
+            "properties": {
+              "project":      { "type": "string" },
+              "class_filter": { "type": "array",  "items": { "type": "string" } },
+              "output_dir":   { "type": "string" },
+              "overwrite":    { "type": "string", "enum": ["skip","overwrite","fail"], "default": "skip" }
+            }
+          },
+          "output_schema_ref": "schemas/tool_response.schema.json",
+          "whether_requires_unreal_editor": true,
+          "whether_uses_cache": true,
+          "side_effect_level": "writes_output_only",
+          "safety_notes": "Same as dump_blueprint."
+        },
+        {
+          "tool_name": "list_blueprint_assets",
+          "description": "List blueprints already present in the IR cache.",
+          "command": "query_api.list_blueprint_assets",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "get_blueprint_manifest",
+          "description": "Return the manifest.json for a blueprint.",
+          "command": "query_api.get_blueprint_manifest",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "list_graphs",
+          "description": "List graphs of a blueprint.",
+          "command": "query_api.list_graphs",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "get_graph_summary",
+          "description": "Return graph summary JSON.",
+          "command": "query_api.get_graph_summary",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "search_nodes",
+          "description": "Full-text + class search inside a blueprint.",
+          "command": "query_api.search_nodes",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "get_node_detail",
+          "description": "Return node_detail JSON.",
+          "command": "query_api.get_node_detail",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "trace_exec_flow",
+          "description": "BFS along exec edges starting from a node.",
+          "command": "query_api.trace_exec_flow",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "trace_variable_usage",
+          "description": "List read/write nodes for a variable.",
+          "command": "query_api.trace_variable_usage",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "slice_subgraph",
+          "description": "General BFS/DFS slice with direction + edge filter.",
+          "command": "query_api.slice_subgraph",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        },
+        {
+          "tool_name": "validate_blueprint_ir",
+          "description": "Run structural + schema validation on an IR.",
+          "command": "query_api.validate_blueprint_ir",
+          "whether_requires_unreal_editor": false,
+          "whether_uses_cache": true,
+          "side_effect_level": "read_only"
+        }
+      ]
+    },
+    "authoring": {
+      "description": "Reverse-direction tools. RESERVED for next phase. Currently no tools registered.",
+      "reserved": true,
+      "tools": []
+    }
+  },
+  "side_effect_levels_allowed_phase1": ["read_only", "writes_output_only"]
+}

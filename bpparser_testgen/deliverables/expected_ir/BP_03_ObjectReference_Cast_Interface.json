@@ -1,0 +1,75 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_03_ObjectReference_Cast_Interface",
+  "asset_path": "/Game/BPParserTest/BP_03_ObjectReference_Cast_Interface",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph",
+      "graph_type": "ubergraph",
+      "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "SpawnActor BP_BPParserTargetActor", "node_class": "K2Node_SpawnActorFromClass", "node_type_category": "function_call", "position": { "x": 260, "y": 0 },
+          "pins": [
+            { "pin_id": "n2_class", "pin_name": "Class", "direction": "input", "category": "class", "default_object": "/Game/BPParserTest/BP_BPParserTargetActor.BP_BPParserTargetActor_C", "is_connected": false },
+            { "pin_id": "n2_ret", "pin_name": "ReturnValue", "direction": "output", "category": "object", "object_type": "/Script/Engine.Actor", "is_connected": true }
+          ] },
+        { "node_id": "n3", "node_name": "Cast To BP_BPParserTargetActor", "node_class": "K2Node_DynamicCast", "node_type_category": "cast", "position": { "x": 640, "y": 0 },
+          "pins": [
+            { "pin_id": "n3_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n3_obj", "pin_name": "Object", "direction": "input", "category": "object", "object_type": "/Script/Engine.Object", "is_connected": true },
+            { "pin_id": "n3_valid", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n3_invalid", "pin_name": "CastFailed", "direction": "output", "category": "exec", "is_connected": false },
+            { "pin_id": "n3_as", "pin_name": "AsBP_BPParser_Target_Actor", "direction": "output", "category": "object", "object_type": "/Game/BPParserTest/BP_BPParserTargetActor.BP_BPParserTargetActor_C", "is_connected": true }
+          ] },
+        { "node_id": "n4", "node_name": "GetParserTestName (Message)", "node_class": "K2Node_Message", "node_type_category": "function_call", "function_reference": { "member_name": "GetParserTestName", "member_parent": "/Game/BPParserTest/BPI_BPParserTest.BPI_BPParserTest_C", "is_interface": true }, "position": { "x": 1080, "y": 0 },
+          "pins": [
+            { "pin_id": "n4_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n4_self", "pin_name": "self", "direction": "input", "category": "interface", "object_type": "/Game/BPParserTest/BPI_BPParserTest.BPI_BPParserTest_C", "is_connected": true },
+            { "pin_id": "n4_name", "pin_name": "Name", "direction": "output", "category": "string", "is_connected": true }
+          ] },
+        { "node_id": "n5", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 1440, "y": 0 } },
+        { "node_id": "n6", "node_name": "Self", "node_class": "K2Node_Self", "node_type_category": "variable_get", "position": { "x": 260, "y": 360 } },
+        { "node_id": "n7", "node_name": "Get TargetActorRef", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 260, "y": 460 } },
+        { "node_id": "n8", "node_name": "IsValid", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "IsValid", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 520, "y": 460 } },
+        { "node_id": "n9", "node_name": "Get Component By Class", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "GetComponentByClass", "member_parent": "/Script/Engine.Actor" }, "position": { "x": 520, "y": 560 },
+          "pins": [ { "pin_id": "n9_cc", "pin_name": "ComponentClass", "direction": "input", "category": "class", "default_object": "/Script/Engine.SceneComponent", "is_connected": false } ] }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "then", "to_node": "n3", "to_pin": "n3_exec", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n3", "from_pin": "n3_valid", "to_node": "n4", "to_pin": "n4_exec", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n4", "from_pin": "then", "to_node": "n5", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e5", "from_node": "n2", "from_pin": "n2_ret", "to_node": "n3", "to_pin": "n3_obj", "edge_type": "data", "label": "cast object input" },
+        { "edge_id": "e6", "from_node": "n3", "from_pin": "n3_as", "to_node": "n4", "to_pin": "n4_self", "edge_type": "data", "label": "interface message target" },
+        { "edge_id": "e7", "from_node": "n4", "from_pin": "n4_name", "to_node": "n5", "to_pin": "InString", "edge_type": "data" },
+        { "edge_id": "e8", "from_node": "n7", "from_pin": "TargetActorRef", "to_node": "n8", "to_pin": "Object", "edge_type": "data", "label": "object ref" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Spawn + Cast (cast object input)", "bounds": { "x": -80, "y": -160, "w": 1100, "h": 560 } },
+        { "comment_id": "c2", "text": "Interface Message + Self + Target Pin + IsValid", "bounds": { "x": 1060, "y": -160, "w": 980, "h": 560 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "TargetActorRef", "type": "object",     "category": "object",     "object_type": "/Script/Engine.Actor", "container_type": "none", "is_exposed": true },
+    { "name": "TargetClassRef", "type": "class",      "category": "class",      "object_type": "/Script/Engine.Actor", "container_type": "none", "is_exposed": true },
+    { "name": "SoftActorRef",   "type": "softobject", "category": "softobject", "object_type": "/Script/Engine.Actor", "container_type": "none", "is_exposed": true },
+    { "name": "SoftClassRef",   "type": "softclass",  "category": "softclass",  "object_type": "/Script/Engine.Actor", "container_type": "none", "is_exposed": true },
+    { "name": "SceneCompRef",   "type": "object",     "category": "object",     "object_type": "/Script/Engine.SceneComponent", "container_type": "none" }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "ref.object", "ref.actor", "ref.class", "ref.softobject", "ref.softclass", "ref.component",
+    "ref.self", "ref.target_pin",
+    "node.spawn_actor", "node.dynamic_cast", "node.interface_message", "node.is_valid", "node.self",
+    "edge.cast_object_input", "edge.object_ref", "edge.interface_message",
+    "feature.default_object_pin"
+  ]
+}

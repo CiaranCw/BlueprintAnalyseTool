@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blueprint-analyse-tool/schemas/tool_response.schema.json",
+  "title": "BlueprintAgentTools tool response envelope",
+  "type": "object",
+  "required": ["tool", "ok", "data", "errors", "warnings", "meta"],
+  "properties": {
+    "tool":   { "type": "string" },
+    "ok":     { "type": "boolean" },
+    "data":   {},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code":    { "type": "string" },
+          "message": { "type": "string" },
+          "where":   { "type": "object" }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code":    { "type": "string" },
+          "message": { "type": "string" },
+          "where":   { "type": "object" }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["schema_version"],
+      "properties": {
+        "from_cache":     { "type": "boolean" },
+        "schema_version": { "type": "string" },
+        "elapsed_ms":     { "type": "number" },
+        "ue_invoked":     { "type": "boolean" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "ST_BPParserTestData",
+  "asset_path": "/Game/BPParserTest/ST_BPParserTestData",
+  "blueprint_type": "Struct",
+  "blueprint_class": "UserDefinedStruct",
+  "fields": [
+    { "name": "ID",             "category": "int",        "sub_category": "",       "object_type": null,                                            "container_type": "none" },
+    { "name": "DisplayName",    "category": "text",       "sub_category": "",       "object_type": null,                                            "container_type": "none" },
+    { "name": "Score",          "category": "real",       "sub_category": "float",  "object_type": null,                                            "container_type": "none" },
+    { "name": "Location",       "category": "struct",     "sub_category": "",       "object_type": "/Script/CoreUObject.Vector",                    "container_type": "none" },
+    { "name": "Rotation",       "category": "struct",     "sub_category": "",       "object_type": "/Script/CoreUObject.Rotator",                   "container_type": "none" },
+    { "name": "TransformValue", "category": "struct",     "sub_category": "",       "object_type": "/Script/CoreUObject.Transform",                 "container_type": "none" },
+    { "name": "Tags",           "category": "name",       "sub_category": "",       "object_type": null,                                            "container_type": "array" },
+    { "name": "State",          "category": "byte",       "sub_category": "",       "object_type": "/Game/BPParserTest/E_BPParserTestState.E_BPParserTestState", "container_type": "none" },
+    { "name": "TargetActor",    "category": "object",     "sub_category": "",       "object_type": "/Script/Engine.Actor",                          "container_type": "none" },
+    { "name": "SoftMesh",       "category": "softobject", "sub_category": "",       "object_type": "/Script/Engine.StaticMesh",                     "container_type": "none" }
+  ],
+  "graphs": [],
+  "variables": [],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "asset.struct", "type.struct.user_defined",
+    "pin.int", "pin.text", "pin.real.float", "pin.struct.vector", "pin.struct.rotator",
+    "pin.struct.transform", "pin.name.array", "pin.byte.enum", "pin.object.actor", "pin.softobject",
+    "container.array.in_struct"
+  ]
+}

@@ -1,0 +1,31 @@
+// BP_06_Delegates_EventDispatchers - structure graph
+// Edge legend: solid=exec, dashed=data, dashdot=delegate/event
+digraph BP_06_Delegates_EventDispatchers {
+  rankdir=LR;
+  labelloc="t"; label="BP_06_Delegates_EventDispatchers (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_bind {
+    label="Delegate Test: Bind -> Call -> Unbind"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="Create Event\n(HandleParserTestTriggered)", fillcolor="#e6e0ff"];
+    n3 [label="Bind Event to\nOnParserTestTriggered", fillcolor="#e6e0ff"];
+    n4 [label="Call OnParserTestTriggered\nMessage=\"Triggered!\""];
+    n5 [label="Unbind All\n(Clear OnParserTestTriggered)"];
+  }
+  subgraph cluster_handler {
+    label="Custom Event handler"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n6 [label="Custom Event\nHandleParserTestTriggered", fillcolor="#ffe9c7"];
+    n7 [label="Print String", fillcolor="#d8f5d8"];
+  }
+
+  // exec
+  n1 -> n3 [color=black]; n3 -> n4 [color=black]; n4 -> n5 [color=black];
+  n6 -> n7 [color=black];
+
+  // delegate (dashdot)
+  n2 -> n3 [style="dashed", color="#8a3ab0", label="event/delegate pin", fontsize=10, penwidth=1.6];
+
+  // data
+  n6 -> n7 [style=dashed, color="#7a7a7a", label="Message", fontsize=10];
+}

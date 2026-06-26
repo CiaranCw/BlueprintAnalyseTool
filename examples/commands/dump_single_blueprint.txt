@@ -1,0 +1,12 @@
+# 解析单个蓝图（Windows 示例）
+# 注意：OutputDir 必须在工程外。
+
+UnrealEditor-Cmd.exe ^
+  D:\MyGame\MyGame.uproject ^
+  -run=BPATDump ^
+  -AssetPath=/Game/Blueprints/BP_Hero ^
+  -OutputDir=D:\bp_out\MyGame ^
+  -Layers=manifest,graphs,nodes ^
+  -OverwritePolicy=skip ^
+  -DryRun=0 ^
+  -StrictReadOnly=1

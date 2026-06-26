@@ -1,0 +1,45 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_99_NegativeOrEdgeCases",
+  "asset_path": "/Game/BPParserTest/BP_99_NegativeOrEdgeCases",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "intentional": true,
+  "intentional_notes": [
+    "This blueprint deliberately contains incomplete / dangling structures to test parser robustness.",
+    "It is still expected to COMPILE (with warnings) because the BeginPlay -> PrintString path is valid.",
+    "These are NOT bugs: dangling reroute output, orphan Branch with no exec-in, orphan VariableGet, unused variable."
+  ],
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "Print String (valid path)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 280, "y": 0 },
+          "pins": [ { "pin_id": "n2_str", "pin_name": "InString", "direction": "input", "category": "string", "default_value": "BP_99 valid path", "is_connected": false } ] },
+        { "node_id": "n3", "node_name": "Reroute to nowhere (output dangling)", "node_class": "K2Node_Knot", "node_type_category": "reroute", "position": { "x": 280, "y": 200 } },
+        { "node_id": "n4", "node_name": "Branch (orphan, no exec-in)", "node_class": "K2Node_IfThenElse", "node_type_category": "branch", "position": { "x": 600, "y": 200 } },
+        { "node_id": "n5", "node_name": "Get NeverUsed (orphan)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 600, "y": 380 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "then", "to_node": "n3", "to_pin": "InputPin", "edge_type": "exec", "note": "reroute output is intentionally left dangling" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "INTENTIONAL EDGE CASES (see report): dangling exec, orphan nodes, reroute-to-nowhere, empty pins", "bounds": { "x": -80, "y": -160, "w": 1400, "h": 560 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "NeverUsed", "type": "int", "category": "int", "container_type": "none", "default_value": "0", "is_exposed": true, "note": "intentionally unused" }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "negative.dangling_reroute", "negative.orphan_node", "negative.orphan_variable_get",
+    "negative.unused_variable", "edge.exec"
+  ]
+}

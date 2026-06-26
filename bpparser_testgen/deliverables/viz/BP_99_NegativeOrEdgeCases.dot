@@ -1,0 +1,20 @@
+// BP_99_NegativeOrEdgeCases - structure graph (INTENTIONAL edge cases)
+// Edge legend: solid=exec, dashed=data
+digraph BP_99_NegativeOrEdgeCases {
+  rankdir=LR;
+  labelloc="t"; label="BP_99_NegativeOrEdgeCases (EventGraph) - INTENTIONAL incomplete structures";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_neg {
+    label="INTENTIONAL EDGE CASES (compiles with warnings)"; style="rounded,dashed"; color="#b04040"; bgcolor="#fdf3f3";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="Print String (valid path)", fillcolor="#d8f5d8"];
+    n3 [label="Reroute to nowhere\n(output dangling)", shape=circle, width=0.25, label=""];
+    n4 [label="Branch (orphan, no exec-in)", fillcolor="#f0f0f0"];
+    n5 [label="Get NeverUsed (orphan)", fillcolor="#f0f0f0"];
+  }
+
+  // exec (valid path keeps it compilable)
+  n1 -> n2 [color=black];
+  n2 -> n3 [color=black, label="-> dangling", fontsize=9, style=dashed];
+}

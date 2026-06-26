@@ -1,0 +1,59 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_10_ParserRoundTrip_Master",
+  "asset_path": "/Game/BPParserTest/BP_10_ParserRoundTrip_Master",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1",  "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2",  "node_name": "SpawnActor BP_BPParserTargetActor", "node_class": "K2Node_SpawnActorFromClass", "node_type_category": "function_call", "position": { "x": 240, "y": 0 } },
+        { "node_id": "n3",  "node_name": "Set TargetRef", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 520, "y": 0 } },
+        { "node_id": "n4",  "node_name": "Cast To BP_BPParserTargetActor", "node_class": "K2Node_DynamicCast", "node_type_category": "cast", "position": { "x": 800, "y": 0 } },
+        { "node_id": "n5",  "node_name": "GetParserTestName (Message)", "node_class": "K2Node_Message", "node_type_category": "function_call", "function_reference": { "member_name": "GetParserTestName", "member_parent": "/Game/BPParserTest/BPI_BPParserTest.BPI_BPParserTest_C", "is_interface": true }, "position": { "x": 1080, "y": 0 } },
+        { "node_id": "n6",  "node_name": "Call OnMasterDone", "node_class": "K2Node_CallDelegate", "node_type_category": "delegate", "position": { "x": 1360, "y": 0 },
+          "pins": [ { "pin_id": "n6_res", "pin_name": "Result", "direction": "input", "category": "string", "is_connected": true } ] },
+        { "node_id": "n7",  "node_name": "Print String (Master done)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1640, "y": 0 } },
+        { "node_id": "n8",  "node_name": "Make ST_BPParserTestData", "node_class": "K2Node_MakeStruct", "node_type_category": "composite", "position": { "x": 240, "y": 320 },
+          "pins": [ { "pin_id": "n8_id", "pin_name": "ID", "direction": "input", "category": "int", "default_value": "999", "is_connected": false } ] },
+        { "node_id": "n9",  "node_name": "Get MasterState", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 240, "y": 460 } },
+        { "node_id": "n10", "node_name": "Switch on E_BPParserTestState", "node_class": "K2Node_SwitchEnum", "node_type_category": "switch", "position": { "x": 440, "y": 460 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "then", "to_node": "n3", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n3", "from_pin": "then", "to_node": "n4", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n4", "from_pin": "then", "to_node": "n5", "to_pin": "execute", "edge_type": "exec", "note": "valid cast exec" },
+        { "edge_id": "e5", "from_node": "n5", "from_pin": "then", "to_node": "n6", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e6", "from_node": "n6", "from_pin": "then", "to_node": "n7", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e7", "from_node": "n2", "from_pin": "ReturnValue", "to_node": "n3", "to_pin": "TargetRef", "edge_type": "data" },
+        { "edge_id": "e8", "from_node": "n3", "from_pin": "TargetRef", "to_node": "n4", "to_pin": "Object", "edge_type": "data", "label": "cast object input" },
+        { "edge_id": "e9", "from_node": "n4", "from_pin": "AsBP_BPParser_Target_Actor", "to_node": "n5", "to_pin": "self", "edge_type": "data", "label": "interface message target" },
+        { "edge_id": "e10", "from_node": "n5", "from_pin": "Name", "to_node": "n6", "to_pin": "n6_res", "edge_type": "data" },
+        { "edge_id": "e11", "from_node": "n9", "from_pin": "MasterState", "to_node": "n10", "to_pin": "Selection", "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Master regression entry: Spawn -> Cast -> Interface -> Enum branch -> Dispatch -> Log", "bounds": { "x": -80, "y": -160, "w": 2200, "h": 620 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "MasterState", "type": "enum",   "category": "byte",   "object_type": "/Game/BPParserTest/E_BPParserTestState.E_BPParserTestState", "container_type": "none", "is_exposed": true },
+    { "name": "TargetRef",   "type": "object", "category": "object", "object_type": "/Script/Engine.Actor", "container_type": "none" }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [
+    { "name": "OnMasterDone", "signature": { "inputs": [ { "name": "Result", "category": "string" } ] } }
+  ],
+  "interfaces": [],
+  "coverage_tags": [
+    "roundtrip.master", "ref.cross_asset", "node.spawn_actor", "node.dynamic_cast", "node.interface_message",
+    "node.call_delegate", "node.make_struct", "node.switch_enum", "node.print_string",
+    "edge.exec", "edge.data", "edge.cast_object_input", "edge.interface_message"
+  ],
+  "manual_optional": [ "Get Class Defaults node (UK2Node_GetClassDefaults) was omitted in favor of Spawn+Cast for reliability; add manually if you want explicit CDO-read coverage." ]
+}

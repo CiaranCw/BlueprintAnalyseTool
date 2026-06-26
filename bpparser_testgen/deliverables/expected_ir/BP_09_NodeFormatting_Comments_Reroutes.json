@@ -1,0 +1,53 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_09_NodeFormatting_Comments_Reroutes",
+  "asset_path": "/Game/BPParserTest/BP_09_NodeFormatting_Comments_Reroutes",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "Reroute 1", "node_class": "K2Node_Knot", "node_type_category": "reroute", "position": { "x": 400, "y": 40 } },
+        { "node_id": "n3", "node_name": "Reroute 2", "node_class": "K2Node_Knot", "node_type_category": "reroute", "position": { "x": 900, "y": 40 } },
+        { "node_id": "n4", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "node_comment": "This node carries a NodeComment bubble", "position": { "x": 1300, "y": 0 },
+          "pins": [ { "pin_id": "n4_str", "pin_name": "InString", "direction": "input", "category": "string", "default_value": "Rerouted exec", "is_connected": false } ] },
+        { "node_id": "n5", "node_name": "Get UnusedFlag (dangling output)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": -40, "y": 760 } },
+        { "node_id": "n6", "node_name": "Print String (orphan, default-only, no exec)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 300, "y": 760 },
+          "pins": [ { "pin_id": "n6_str", "pin_name": "InString", "direction": "input", "category": "string", "default_value": "Orphan default-only", "is_connected": false } ] },
+        { "node_id": "n7", "node_name": "Add (Integer + Integer) - dangling data output", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Add_IntInt", "member_parent": "/Script/Engine.KismetMathLibrary" }, "position": { "x": 600, "y": 900 },
+          "pins": [
+            { "pin_id": "n7_a", "pin_name": "A", "direction": "input", "category": "int", "default_value": "2", "is_connected": false },
+            { "pin_id": "n7_b", "pin_name": "B", "direction": "input", "category": "int", "default_value": "3", "is_connected": false },
+            { "pin_id": "n7_ret", "pin_name": "ReturnValue", "direction": "output", "category": "int", "is_connected": false }
+          ] }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "InputPin", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "OutputPin", "to_node": "n3", "to_pin": "InputPin", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n3", "from_pin": "OutputPin", "to_node": "n4", "to_pin": "execute", "edge_type": "exec" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Region A: Connected exec with long reroute chain", "bounds": { "x": -80, "y": -160, "w": 1700, "h": 360 } },
+        { "comment_id": "c2", "text": "Region B: Unconnected nodes + default-only pins (far away)", "bounds": { "x": -80, "y": 700, "w": 900, "h": 400 } },
+        { "comment_id": "c3", "text": "", "bounds": { "x": 1100, "y": 700, "w": 360, "h": 200 }, "note": "intentionally empty comment text" }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "LayoutInt",    "type": "int",    "category": "int",    "container_type": "none", "default_value": "5", "is_exposed": true },
+    { "name": "LayoutString", "type": "string", "category": "string", "container_type": "none", "default_value": "Layout", "is_exposed": true },
+    { "name": "UnusedFlag",   "type": "bool",   "category": "bool",   "container_type": "none", "default_value": "false", "is_exposed": true }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "layout.comment_box", "layout.empty_comment", "layout.node_comment_bubble", "layout.far_coordinates",
+    "node.reroute.chain", "feature.unconnected_node", "feature.default_only_pin", "feature.dangling_data_output",
+    "feature.unused_variable", "edge.exec"
+  ]
+}

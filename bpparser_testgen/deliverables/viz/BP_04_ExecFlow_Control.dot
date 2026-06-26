@@ -1,0 +1,47 @@
+// BP_04_ExecFlow_Control - structure graph
+// Edge legend: solid=exec, dashed=data
+digraph BP_04_ExecFlow_Control {
+  rankdir=LR;
+  labelloc="t"; label="BP_04_ExecFlow_Control (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+  n2 [label="Sequence\n(Then 0..4)"];
+
+  subgraph cluster_branch {
+    label="Branch + converge (Reroute)"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n3 [label="Branch"]; n4 [label="Get FlowBool"]; n5 [label="Reroute", shape=circle, width=0.2, label=""]; n6 [label="Print (converge)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_macros1 {
+    label="DoOnce / FlipFlop / Gate"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n7 [label="Do Once (macro)"]; n8 [label="Print (DoOnce)", fillcolor="#d8f5d8"];
+    n9 [label="FlipFlop (macro)"]; n10 [label="Print (Flip A)", fillcolor="#d8f5d8"]; n11 [label="Print (Flip B)", fillcolor="#d8f5d8"];
+    n12 [label="Gate (macro)"];
+  }
+  subgraph cluster_loops {
+    label="ForLoop / ForLoopWithBreak / ForEachLoop"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
+    n13 [label="For Loop (macro)\nFirst=0,Last=3"]; n14 [label="Print (index)", fillcolor="#d8f5d8"]; n15 [label="For Loop With Break (macro)"];
+    n20 [label="For Each Loop (macro)"]; n21 [label="Get FlowArray"]; n22 [label="Print (element)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_switch {
+    label="Switch Int / Switch String / Delay (latent)"; style="rounded"; color="#999999"; bgcolor="#fbf4f4";
+    n16 [label="Switch on Int"]; n19 [label="Switch on String"]; n17 [label="Delay (latent)", fillcolor="#ffeccc"]; n18 [label="Print (after delay)", fillcolor="#d8f5d8"];
+  }
+
+  // exec
+  n1 -> n2 [color=black];
+  n2 -> n3 [color=black, label="Then0", fontsize=9];
+  n3 -> n5 [color=black, label="True"];  n3 -> n5 [color=black, label="False"];
+  n5 -> n6 [color=black];
+  n2 -> n7 [color=black, label="Then1", fontsize=9];  n7 -> n8 [color=black, label="Completed", fontsize=9];
+  n2 -> n9 [color=black, label="Then2", fontsize=9];  n9 -> n10 [color=black, label="A"]; n9 -> n11 [color=black, label="B"];
+  n2 -> n12 [color=black, label="Then3", fontsize=9]; n12 -> n13 [color=black, label="Exit", fontsize=9];
+  n13 -> n14 [color=black, label="Loop Body", fontsize=9]; n13 -> n15 [color=black, label="Completed", fontsize=9];
+  n15 -> n20 [color=black, label="Completed", fontsize=9]; n20 -> n22 [color=black, label="Loop Body", fontsize=9];
+  n2 -> n16 [color=black, label="Then4", fontsize=9]; n16 -> n19 [color=black, label="Default", fontsize=9]; n19 -> n17 [color=black, label="Default", fontsize=9]; n17 -> n18 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n4 -> n3 [label="bool -> Condition"];
+  n21 -> n20 [label="array -> Array"];
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blueprint-analyse-tool/schemas/graph_summary.schema.json",
+  "title": "Graph Summary",
+  "type": "object",
+  "required": ["schema_version", "graph_id", "graph_name", "graph_type"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "graph_id":       { "type": "string" },
+    "graph_name":     { "type": "string" },
+    "graph_type":     { "type": "string" },
+    "entry_nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "node_class"],
+        "properties": {
+          "node_id":    { "type": "string" },
+          "node_class": { "type": "string" },
+          "title":      { "type": "string" }
+        }
+      }
+    },
+    "node_type_distribution": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "called_functions":   { "type": "array" },
+    "read_variables":     { "type": "array" },
+    "written_variables":  { "type": "array" },
+    "external_object_refs": { "type": "array", "items": { "type": "string" } },
+    "exec_chain_summaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from_event"],
+        "properties": {
+          "from_event":   { "type": "string" },
+          "depth":        { "type": "integer", "minimum": 0 },
+          "branch_count": { "type": "integer", "minimum": 0 },
+          "ends_at":      { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "complex_regions": { "type": "array" },
+    "graph_warnings":  { "type": "array" }
+  }
+}

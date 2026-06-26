@@ -1,0 +1,21 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "note": "Expected-parse baseline authored from the generator design. node_id/pin_id are design IDs; the BPAT parser assigns stable hashes - compare by structure (node_class/title/type) on regression.",
+  "asset_name": "E_BPParserTestState",
+  "asset_path": "/Game/BPParserTest/E_BPParserTestState",
+  "blueprint_type": "Enum",
+  "blueprint_class": "UserDefinedEnum",
+  "enumerators": [
+    { "index": 0, "name": "NewEnumerator0", "display_name": "Idle" },
+    { "index": 1, "name": "NewEnumerator1", "display_name": "Moving" },
+    { "index": 2, "name": "NewEnumerator2", "display_name": "Attacking" },
+    { "index": 3, "name": "NewEnumerator3", "display_name": "Dead" }
+  ],
+  "graphs": [],
+  "variables": [],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [ "asset.enum", "type.enum.user_defined" ]
+}

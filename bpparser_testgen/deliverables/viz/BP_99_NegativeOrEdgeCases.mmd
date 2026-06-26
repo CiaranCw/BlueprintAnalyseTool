@@ -1,0 +1,17 @@
+%% BP_99_NegativeOrEdgeCases - EventGraph (INTENTIONAL edge cases)
+%% Edge style: solid=exec, dotted=dangling
+flowchart LR
+  subgraph C1["INTENTIONAL EDGE CASES (compiles with warnings)"]
+    n1["Event BeginPlay"]:::evt
+    n2["Print String (valid path)"]:::impure
+    n3(("Reroute to nowhere"))
+    n4["Branch (orphan, no exec-in)"]:::orphan
+    n5["Get NeverUsed (orphan)"]:::orphan
+  end
+
+  n1 --> n2
+  n2 -.->|dangling| n3
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef orphan fill:#f0f0f0,stroke:#aaaaaa,stroke-dasharray:3 2;

@@ -1,0 +1,57 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_07_Latent_Timeline_Async",
+  "asset_path": "/Game/BPParserTest/BP_07_Latent_Timeline_Async",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1", "n8" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "Delay", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Delay", "member_parent": "/Script/Engine.KismetSystemLibrary", "is_latent": true }, "position": { "x": 260, "y": 0 },
+          "pins": [ { "pin_id": "n2_dur", "pin_name": "Duration", "direction": "input", "category": "real", "sub_category": "float", "default_value": "1.0", "is_connected": false } ] },
+        { "node_id": "n3", "node_name": "Set Timer by Function Name", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "K2_SetTimer", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 560, "y": 0 },
+          "pins": [
+            { "pin_id": "n3_obj", "pin_name": "Object", "direction": "input", "category": "object", "object_type": "/Script/CoreUObject.Object", "is_connected": true },
+            { "pin_id": "n3_fn", "pin_name": "FunctionName", "direction": "input", "category": "string", "default_value": "OnTimerTick", "is_connected": false },
+            { "pin_id": "n3_time", "pin_name": "Time", "direction": "input", "category": "real", "sub_category": "float", "default_value": "0.5", "is_connected": false },
+            { "pin_id": "n3_loop", "pin_name": "bLooping", "direction": "input", "category": "bool", "default_value": "true", "is_connected": false }
+          ] },
+        { "node_id": "n4", "node_name": "Self", "node_class": "K2Node_Self", "node_type_category": "variable_get", "position": { "x": 540, "y": 160 } },
+        { "node_id": "n5", "node_name": "Print String (Timer scheduled)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 900, "y": 0 } },
+        { "node_id": "n6", "node_name": "Clear Timer by Function Name", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "K2_ClearTimer", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 1200, "y": 0 } },
+        { "node_id": "n7", "node_name": "Self", "node_class": "K2Node_Self", "node_type_category": "variable_get", "position": { "x": 1180, "y": 160 } },
+        { "node_id": "n8", "node_name": "Custom Event OnTimerTick", "node_class": "K2Node_CustomEvent", "node_type_category": "event", "position": { "x": 0, "y": 380 } },
+        { "node_id": "n9", "node_name": "Print String (Timer tick)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 320, "y": 380 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "then", "to_node": "n3", "to_pin": "execute", "edge_type": "latent_continuation", "note": "Delay is latent" },
+        { "edge_id": "e3", "from_node": "n3", "from_pin": "then", "to_node": "n5", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n5", "from_pin": "then", "to_node": "n6", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e5", "from_node": "n4", "from_pin": "self", "to_node": "n3", "to_pin": "n3_obj", "edge_type": "data", "label": "object ref (self)" },
+        { "edge_id": "e6", "from_node": "n7", "from_pin": "self", "to_node": "n6", "to_pin": "Object", "edge_type": "data", "label": "object ref (self)" },
+        { "edge_id": "e7", "from_node": "n8", "from_pin": "then", "to_node": "n9", "to_pin": "execute", "edge_type": "exec" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Latent: Delay -> SetTimerByFunctionName -> ClearTimer", "bounds": { "x": -80, "y": -160, "w": 1700, "h": 420 } },
+        { "comment_id": "c2", "text": "Timer callback (Custom Event)", "bounds": { "x": -80, "y": 300, "w": 700, "h": 260 } }
+      ]
+    }
+  ],
+  "variables": [],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "node.delay.latent", "node.set_timer_by_name", "node.clear_timer", "node.custom_event", "node.self",
+    "edge.latent_continuation", "edge.exec", "edge.data"
+  ],
+  "not_covered": [
+    { "item": "Timeline / Timeline Float Track", "status": "cannot-auto-cover", "reason": "UK2Node_Timeline auto-creation of UTimelineTemplate (+ float track + UCurveFloat) is high-risk to script reliably and can leave the BP non-compilable; deliberately omitted. Timer used as the documented substitute. Add a Timeline manually in UE if needed (see manual_check_guide.md)." },
+    { "item": "Async Action node (UK2Node_AsyncAction)", "status": "cannot-auto-cover", "reason": "No guaranteed engine-native async-action node without extra plugins; not auto-generated. Mark needs-manual." }
+  ]
+}

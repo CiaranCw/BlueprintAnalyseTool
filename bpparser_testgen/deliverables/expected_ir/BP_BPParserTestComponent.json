@@ -1,0 +1,32 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_BPParserTestComponent",
+  "asset_path": "/Game/BPParserTest/BP_BPParserTestComponent",
+  "blueprint_type": "ActorComponent",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.ActorComponent",
+  "graphs": [
+    { "graph_name": "EventGraph", "graph_type": "ubergraph", "nodes": [], "edges": [], "comments": [] },
+    { "graph_name": "IncrementActivation", "graph_type": "function", "is_pure": false,
+      "nodes": [
+        { "node_id": "fe", "node_name": "Function Entry (IncrementActivation)", "node_class": "K2Node_FunctionEntry",
+          "pins": [ { "pin_id": "fe_then", "pin_name": "then", "direction": "output", "category": "exec" } ] },
+        { "node_id": "fr", "node_name": "Return Node", "node_class": "K2Node_FunctionResult",
+          "pins": [
+            { "pin_id": "fr_exec", "pin_name": "execute", "direction": "input", "category": "exec" },
+            { "pin_id": "fr_newcount", "pin_name": "NewCount", "direction": "input", "category": "int" }
+          ] }
+      ],
+      "edges": [ { "edge_id": "e1", "from_node": "fe", "from_pin": "fe_then", "to_node": "fr", "to_pin": "fr_exec", "edge_type": "exec" } ],
+      "signature": { "inputs": [], "outputs": [ { "name": "NewCount", "category": "int" } ] } }
+  ],
+  "variables": [
+    { "name": "ComponentTag", "category": "name", "container_type": "none", "default_value": "ParserTestComp", "is_exposed": true },
+    { "name": "ActivationCount", "category": "int", "container_type": "none", "default_value": "0", "is_exposed": true }
+  ],
+  "functions": [ { "name": "IncrementActivation", "graph_id": "func_inc", "is_pure": false } ],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [ "asset.actor_component", "pin.name", "pin.int", "graph.function", "func.return.int", "node.function_entry", "node.function_result" ]
+}

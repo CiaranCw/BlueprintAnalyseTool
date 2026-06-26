@@ -1,0 +1,30 @@
+%% BP_03_ObjectReference_Cast_Interface - EventGraph
+%% Edge style: solid=exec, dotted=data (labels: cast object input / interface message target / object ref)
+flowchart LR
+  subgraph C1["Spawn + Cast (cast object input)"]
+    n1["Event BeginPlay"]:::evt
+    n2["SpawnActor BP_BPParserTargetActor"]
+    n3["Cast To BP_BPParserTargetActor"]:::cast
+  end
+  subgraph C2["Interface Message + Self + Target Pin + IsValid"]
+    n4["GetParserTestName (Interface Message)"]:::iface
+    n5["Print String"]:::impure
+    n6["Self"]
+    n7["Get TargetActorRef (object ref)"]
+    n8["IsValid"]
+    n9["Get Component By Class (SceneComponent)"]
+  end
+
+  n1 --> n2
+  n2 --> n3
+  n3 -->|valid| n4
+  n4 --> n5
+  n2 -.->|cast object input| n3
+  n3 -.->|interface message target| n4
+  n4 -.->|string| n5
+  n7 -.->|object ref| n8
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef cast fill:#ffe0e0,stroke:#b04040;
+  classDef iface fill:#e6e0ff,stroke:#6a40b0;

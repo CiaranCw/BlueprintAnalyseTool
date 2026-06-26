@@ -1,0 +1,29 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BPI_BPParserTest",
+  "asset_path": "/Game/BPParserTest/BPI_BPParserTest",
+  "blueprint_type": "Interface",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/CoreUObject.Interface",
+  "graphs": [
+    { "graph_name": "GetParserTestName", "graph_type": "function", "is_pure": false,
+      "signature": { "inputs": [], "outputs": [ { "name": "Name", "category": "string" } ] } },
+    { "graph_name": "ReceiveParserTestData", "graph_type": "function", "is_pure": false,
+      "signature": { "inputs": [ { "name": "Data", "category": "struct", "object_type": "/Game/BPParserTest/ST_BPParserTestData.ST_BPParserTestData" } ], "outputs": [] } },
+    { "graph_name": "CanAcceptState", "graph_type": "function", "is_pure": false,
+      "signature": { "inputs": [ { "name": "State", "category": "byte", "object_type": "/Game/BPParserTest/E_BPParserTestState.E_BPParserTestState" } ], "outputs": [ { "name": "bCanAccept", "category": "bool" } ] } }
+  ],
+  "variables": [],
+  "functions": [
+    { "name": "GetParserTestName", "graph_id": "func_getname", "is_pure": false },
+    { "name": "ReceiveParserTestData", "graph_id": "func_recvdata", "is_pure": false },
+    { "name": "CanAcceptState", "graph_id": "func_canaccept", "is_pure": false }
+  ],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "asset.interface", "graph.function",
+    "func.return.string", "func.input.struct", "func.input.enum", "func.return.bool"
+  ]
+}

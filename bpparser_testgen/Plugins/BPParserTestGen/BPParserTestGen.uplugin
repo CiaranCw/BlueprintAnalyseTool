@@ -1,0 +1,26 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "BP Parser Test Generator",
+	"Description": "Editor-only plugin that procedurally generates a systematic set of Blueprint test assets under /Game/BPParserTest for validating a Blueprint parsing Agent. Generation only; safe to remove after assets are produced.",
+	"Category": "Editor",
+	"CreatedBy": "BlueprintAnalyseTool",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"EnabledByDefault": false,
+	"Modules": [
+		{
+			"Name": "BPParserTestGen",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ]
+		}
+	]
+}

@@ -1,0 +1,8 @@
+{
+  "tool": "trace_variable_usage",
+  "input": {
+    "output_dir":    "D:\\bp_out\\MyGame",
+    "asset_path":    "/Game/Blueprints/BP_Hero",
+    "variable_name": "Health"
+  }
+}

@@ -1,0 +1,32 @@
+%% BP_10_ParserRoundTrip_Master - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  subgraph C1["Master regression entry: Spawn -> Cast -> Interface -> Enum branch -> Dispatch -> Log"]
+    n1["Event BeginPlay"]:::evt
+    n2["SpawnActor BP_BPParserTargetActor"]
+    n3["Set TargetRef"]
+    n4["Cast To BP_BPParserTargetActor"]:::cast
+    n5["GetParserTestName (Interface Message)"]:::iface
+    n6["Call OnMasterDone"]
+    n7["Print String (Master done)"]:::impure
+    n8["Make ST_BPParserTestData ID=999"]
+    n9["Get MasterState"]
+    n10["Switch on Enum"]
+  end
+
+  n1 --> n2
+  n2 --> n3
+  n3 --> n4
+  n4 -->|valid| n5
+  n5 --> n6
+  n6 --> n7
+  n2 -.->|actor| n3
+  n3 -.->|cast object input| n4
+  n4 -.->|interface message target| n5
+  n5 -.->|Name to Result| n6
+  n9 -.->|enum| n10
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef cast fill:#ffe0e0,stroke:#b04040;
+  classDef iface fill:#e6e0ff,stroke:#6a40b0;

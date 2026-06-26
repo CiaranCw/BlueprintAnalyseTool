@@ -1,0 +1,56 @@
+// BP_02_StructEnumContainers - structure graph
+// Edge legend: solid=exec, dashed=data
+digraph BP_02_StructEnumContainers {
+  rankdir=LR;
+  labelloc="t"; label="BP_02_StructEnumContainers (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  n1  [label="Event BeginPlay", fillcolor="#ffe9c7"];
+
+  subgraph cluster_struct {
+    label="Make/Break Struct"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n2  [label="Make ST_BPParserTestData\n(ID=1, Score=10.0)\nDisplayName=default(unconnected)"];
+    n3  [label="Set DataItem"];
+    n4  [label="Get DataItem"];
+    n5  [label="Break ST_BPParserTestData"];
+  }
+  subgraph cluster_enum {
+    label="Switch on Enum"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n6  [label="Get StateValue\n(enum)"];
+    n7  [label="Switch on E_BPParserTestState"];
+    n8  [label="Print String (Moving)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_containers {
+    label="Array Set Map + ForEachLoop"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
+    n9  [label="Get IntArray (array<int>)"];
+    n10 [label="Array Add (NewItem=4)"];
+    n11 [label="Array Length"];
+    n12 [label="For Each Loop (macro)"];
+    n13 [label="Print String (element)", fillcolor="#d8f5d8"];
+    n14 [label="Get NameSet (set<name>)"];
+    n15 [label="Set Add (Alpha)"];
+    n16 [label="Set Contains (Alpha)"];
+    n17 [label="Get ScoreMap (map<name,real>)"];
+    n18 [label="Map Add (Alpha=1.0)"];
+    n19 [label="Map Keys"];
+  }
+
+  // exec
+  n1 -> n3 [color=black];
+  n3 -> n7 [color=black];
+  n7 -> n8 [color=black, label="Moving", fontsize=9];
+  n3 -> n10 [color=black];
+  n10 -> n12 [color=black];
+  n12 -> n13 [color=black, label="Loop Body", fontsize=9];
+  n12 -> n15 [color=black, label="Completed", fontsize=9];
+  n15 -> n18 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n2 -> n3 [label="struct"];
+  n4 -> n5 [label="struct"];
+  n6 -> n7 [label="enum"];
+  n9 -> n10 [label="array"]; n9 -> n11 [label="array"]; n9 -> n12 [label="array"];
+  n14 -> n15 [label="set"]; n14 -> n16 [label="set"];
+  n17 -> n18 [label="map"]; n17 -> n19 [label="map"];
+}

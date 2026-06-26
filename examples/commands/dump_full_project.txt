@@ -1,0 +1,18 @@
+# 全工程批量解析。仅扫蓝图类资产。
+
+UnrealEditor-Cmd.exe ^
+  D:\MyGame\MyGame.uproject ^
+  -run=BPATDump ^
+  -ProjectScan=1 ^
+  -ClassFilter=Blueprint,WidgetBlueprint,AnimBlueprint ^
+  -OutputDir=D:\bp_out\MyGame ^
+  -OverwritePolicy=skip ^
+  -StrictReadOnly=1
+
+# 输出目录布局：
+#   D:\bp_out\MyGame\MyGame\
+#       _summary.json
+#       _index\
+#       logs\
+#       blueprints\<safe_path>\manifest.json
+#       blueprints\<safe_path>\graphs\<id>.summary.json

@@ -1,0 +1,55 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_06_Delegates_EventDispatchers",
+  "asset_path": "/Game/BPParserTest/BP_06_Delegates_EventDispatchers",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1", "n6" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "Create Event (HandleParserTestTriggered)", "node_class": "K2Node_CreateDelegate", "node_type_category": "delegate", "position": { "x": 240, "y": 120 },
+          "pins": [ { "pin_id": "n2_out", "pin_name": "OutputDelegate", "direction": "output", "category": "delegate", "is_connected": true } ] },
+        { "node_id": "n3", "node_name": "Bind Event to OnParserTestTriggered", "node_class": "K2Node_AddDelegate", "node_type_category": "delegate", "position": { "x": 560, "y": 0 },
+          "pins": [
+            { "pin_id": "n3_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n3_then", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n3_del", "pin_name": "Delegate", "direction": "input", "category": "delegate", "is_connected": true }
+          ] },
+        { "node_id": "n4", "node_name": "Call OnParserTestTriggered", "node_class": "K2Node_CallDelegate", "node_type_category": "delegate", "position": { "x": 880, "y": 0 },
+          "pins": [ { "pin_id": "n4_msg", "pin_name": "Message", "direction": "input", "category": "string", "default_value": "Triggered!", "is_connected": false } ] },
+        { "node_id": "n5", "node_name": "Unbind All (Clear OnParserTestTriggered)", "node_class": "K2Node_ClearDelegate", "node_type_category": "delegate", "position": { "x": 1200, "y": 0 } },
+        { "node_id": "n6", "node_name": "Custom Event HandleParserTestTriggered", "node_class": "K2Node_CustomEvent", "node_type_category": "event", "position": { "x": 0, "y": 320 },
+          "pins": [ { "pin_id": "n6_msg", "pin_name": "Message", "direction": "output", "category": "string", "is_connected": true } ] },
+        { "node_id": "n7", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 320, "y": 320 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n3", "to_pin": "n3_exec", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n3", "from_pin": "n3_then", "to_node": "n4", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n4", "from_pin": "then", "to_node": "n5", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n2", "from_pin": "n2_out", "to_node": "n3", "to_pin": "n3_del", "edge_type": "delegate", "label": "event/delegate pin" },
+        { "edge_id": "e5", "from_node": "n6", "from_pin": "then", "to_node": "n7", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e6", "from_node": "n6", "from_pin": "n6_msg", "to_node": "n7", "to_pin": "InString", "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Delegate Test: Bind -> Call -> Unbind", "bounds": { "x": -80, "y": -160, "w": 1600, "h": 360 } },
+        { "comment_id": "c2", "text": "Custom Event handler", "bounds": { "x": -80, "y": 240, "w": 760, "h": 280 } }
+      ]
+    }
+  ],
+  "variables": [],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [
+    { "name": "OnParserTestTriggered", "signature": { "inputs": [ { "name": "Message", "category": "string" } ] } }
+  ],
+  "interfaces": [],
+  "coverage_tags": [
+    "delegate.event_dispatcher", "delegate.multicast", "node.create_delegate", "node.add_delegate",
+    "node.call_delegate", "node.clear_delegate", "node.custom_event",
+    "edge.delegate", "edge.exec", "edge.data", "pin.delegate"
+  ],
+  "manual_confirm": [ "Create Event -> Bind delegate-pin resolution should be verified in UE; if the bind pin did not resolve, re-pick the function on the Create Event node." ]
+}

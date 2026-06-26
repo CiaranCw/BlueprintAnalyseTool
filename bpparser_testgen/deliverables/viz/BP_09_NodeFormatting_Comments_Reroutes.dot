@@ -1,0 +1,28 @@
+// BP_09_NodeFormatting_Comments_Reroutes - structure graph
+// Edge legend: solid=exec, dashed=data
+digraph BP_09_NodeFormatting_Comments_Reroutes {
+  rankdir=LR;
+  labelloc="t"; label="BP_09_NodeFormatting_Comments_Reroutes (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_a {
+    label="Region A: Connected exec with long reroute chain"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="Reroute 1", shape=circle, width=0.2, label=""];
+    n3 [label="Reroute 2", shape=circle, width=0.2, label=""];
+    n4 [label="Print String\n(NodeComment bubble)", fillcolor="#d8f5d8"];
+  }
+  subgraph cluster_b {
+    label="Region B: Unconnected nodes + default-only pins (far away)"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
+    n5 [label="Get UnusedFlag\n(dangling output)", fillcolor="#f0f0f0"];
+    n6 [label="Print String\n(orphan, default-only)", fillcolor="#f0f0f0"];
+    n7 [label="Add_IntInt\n(A=2,B=3, dangling output)", fillcolor="#f0f0f0"];
+  }
+  subgraph cluster_empty {
+    label="(empty comment box)"; style="rounded,dashed"; color="#cccccc"; bgcolor="#ffffff";
+    ne [label="", shape=point, color=white];
+  }
+
+  // exec
+  n1 -> n2 [color=black]; n2 -> n3 [color=black]; n3 -> n4 [color=black];
+}

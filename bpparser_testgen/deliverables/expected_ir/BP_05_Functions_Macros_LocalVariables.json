@@ -1,0 +1,105 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_05_Functions_Macros_LocalVariables",
+  "asset_path": "/Game/BPParserTest/BP_05_Functions_Macros_LocalVariables",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph", "graph_type": "ubergraph", "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "ComputeScore (self)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "ComputeScore", "member_parent": "self" }, "position": { "x": 260, "y": 0 },
+          "pins": [
+            { "pin_id": "n2_base", "pin_name": "Base", "direction": "input", "category": "int", "default_value": "10", "is_connected": false },
+            { "pin_id": "n2_bonus", "pin_name": "Bonus", "direction": "input", "category": "int", "default_value": "5", "is_connected": false },
+            { "pin_id": "n2_total", "pin_name": "Total", "direction": "output", "category": "int", "is_connected": true }
+          ] },
+        { "node_id": "n3", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "position": { "x": 560, "y": 120 } },
+        { "node_id": "n4", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 820, "y": 0 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n2", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n2", "from_pin": "then", "to_node": "n4", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n2", "from_pin": "n2_total", "to_node": "n3", "to_pin": "InInt", "edge_type": "data" },
+        { "edge_id": "e4", "from_node": "n3", "from_pin": "ReturnValue", "to_node": "n4", "to_pin": "InString", "edge_type": "data" }
+      ],
+      "comments": [ { "comment_id": "c1", "text": "Call functions (ComputeScore / NormalizeScore / ComputeStats)", "bounds": { "x": -80, "y": -160, "w": 1500, "h": 520 } } ]
+    },
+    {
+      "graph_name": "ComputeScore", "graph_type": "function", "is_pure": false,
+      "local_variables": [ { "name": "TempSum", "category": "int", "default_value": "0" } ],
+      "signature": { "inputs": [ { "name": "Base", "category": "int" }, { "name": "Bonus", "category": "int" } ], "outputs": [ { "name": "Total", "category": "int" } ] },
+      "nodes": [
+        { "node_id": "f1", "node_name": "Function Entry (ComputeScore)", "node_class": "K2Node_FunctionEntry", "node_type_category": "function_entry" },
+        { "node_id": "f2", "node_name": "Add (Integer + Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Add_IntInt", "member_parent": "/Script/Engine.KismetMathLibrary" } },
+        { "node_id": "f3", "node_name": "Return Node", "node_class": "K2Node_FunctionResult", "node_type_category": "function_result" }
+      ],
+      "edges": [
+        { "edge_id": "fe1", "from_node": "f1", "from_pin": "then", "to_node": "f3", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "fe2", "from_node": "f1", "from_pin": "Base", "to_node": "f2", "to_pin": "A", "edge_type": "data" },
+        { "edge_id": "fe3", "from_node": "f1", "from_pin": "Bonus", "to_node": "f2", "to_pin": "B", "edge_type": "data" },
+        { "edge_id": "fe4", "from_node": "f2", "from_pin": "ReturnValue", "to_node": "f3", "to_pin": "Total", "edge_type": "data" }
+      ]
+    },
+    {
+      "graph_name": "NormalizeScore", "graph_type": "function", "is_pure": true,
+      "signature": { "inputs": [ { "name": "Raw", "category": "real", "sub_category": "float" } ], "outputs": [ { "name": "Norm", "category": "real", "sub_category": "float" } ] },
+      "nodes": [
+        { "node_id": "g1", "node_name": "Function Entry (NormalizeScore)", "node_class": "K2Node_FunctionEntry", "node_type_category": "function_entry" },
+        { "node_id": "g2", "node_name": "Divide (Double / Double)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Divide_DoubleDouble", "member_parent": "/Script/Engine.KismetMathLibrary" } },
+        { "node_id": "g3", "node_name": "Return Node", "node_class": "K2Node_FunctionResult", "node_type_category": "function_result" }
+      ],
+      "edges": [
+        { "edge_id": "ge1", "from_node": "g1", "from_pin": "Raw", "to_node": "g2", "to_pin": "A", "edge_type": "data" },
+        { "edge_id": "ge2", "from_node": "g2", "from_pin": "ReturnValue", "to_node": "g3", "to_pin": "Norm", "edge_type": "data" }
+      ],
+      "note": "Pure function: no exec pins on entry/result."
+    },
+    {
+      "graph_name": "ComputeStats", "graph_type": "function", "is_pure": false,
+      "signature": { "inputs": [ { "name": "A", "category": "int" }, { "name": "B", "category": "int" } ], "outputs": [ { "name": "Sum", "category": "int" }, { "name": "Product", "category": "int" } ] },
+      "nodes": [
+        { "node_id": "h1", "node_name": "Function Entry (ComputeStats)", "node_class": "K2Node_FunctionEntry", "node_type_category": "function_entry" },
+        { "node_id": "h2", "node_name": "Add (Integer + Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Add_IntInt", "member_parent": "/Script/Engine.KismetMathLibrary" } },
+        { "node_id": "h3", "node_name": "Multiply (Integer * Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Multiply_IntInt", "member_parent": "/Script/Engine.KismetMathLibrary" } },
+        { "node_id": "h4", "node_name": "Return Node", "node_class": "K2Node_FunctionResult", "node_type_category": "function_result" }
+      ],
+      "edges": [
+        { "edge_id": "he1", "from_node": "h1", "from_pin": "then", "to_node": "h4", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "he2", "from_node": "h1", "from_pin": "A", "to_node": "h2", "to_pin": "A", "edge_type": "data" },
+        { "edge_id": "he3", "from_node": "h1", "from_pin": "B", "to_node": "h2", "to_pin": "B", "edge_type": "data" },
+        { "edge_id": "he4", "from_node": "h1", "from_pin": "A", "to_node": "h3", "to_pin": "A", "edge_type": "data" },
+        { "edge_id": "he5", "from_node": "h1", "from_pin": "B", "to_node": "h3", "to_pin": "B", "edge_type": "data" },
+        { "edge_id": "he6", "from_node": "h2", "from_pin": "ReturnValue", "to_node": "h4", "to_pin": "Sum", "edge_type": "data" },
+        { "edge_id": "he7", "from_node": "h3", "from_pin": "ReturnValue", "to_node": "h4", "to_pin": "Product", "edge_type": "data" }
+      ]
+    },
+    {
+      "graph_name": "Macro_LogWithPrefix", "graph_type": "macro",
+      "signature": { "inputs": [ { "name": "Exec", "category": "exec" }, { "name": "Prefix", "category": "string" }, { "name": "Message", "category": "string" } ], "outputs": [ { "name": "Exec", "category": "exec" } ] },
+      "nodes": [
+        { "node_id": "m1", "node_name": "Input (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel" },
+        { "node_id": "m2", "node_name": "Output (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel" }
+      ],
+      "edges": [],
+      "note": "MANUAL: macro body (Concat + PrintString) is intentionally not auto-wired; tunnel-pin body wiring is fragile to automate. Wire it in UE if needed."
+    }
+  ],
+  "variables": [],
+  "functions": [
+    { "name": "ComputeScore",   "graph_id": "func_computescore",  "is_pure": false },
+    { "name": "NormalizeScore", "graph_id": "func_normalizescore","is_pure": true },
+    { "name": "ComputeStats",   "graph_id": "func_computestats",  "is_pure": false }
+  ],
+  "macros": [ { "name": "Macro_LogWithPrefix", "graph_id": "macro_log" } ],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "graph.event", "graph.function", "graph.macro",
+    "func.impure", "func.pure", "func.multi_in_out", "func.return_value", "feature.local_variable",
+    "node.function_entry", "node.function_result", "node.macro_tunnel", "node.function_call.self",
+    "edge.exec", "edge.data"
+  ]
+}

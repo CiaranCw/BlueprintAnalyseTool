@@ -1,0 +1,41 @@
+%% BP_01_PrimitivePins_Basic - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  subgraph C1["Primitive Pins: Get/Set + Math + Make/Break Transform + Print"]
+    n1["Event BeginPlay"]:::evt
+    n2["Get TestInt :int"]:::get
+    n3["Add_IntInt (pure, B=8)"]:::pure
+    n4["Set TestInt"]:::set
+    n5["Get TestDouble :real/double"]:::get
+    n6["Multiply_DoubleDouble (pure, B=2.0)"]:::pure
+    n7["Get TestVector"]:::get
+    n8["Get TestRotator"]:::get
+    n9["Make Transform (pure)"]:::pure
+    n10["Set TestTransform"]:::set
+    n11["Get TestTransform"]:::get
+    n12["Break Transform (pure)"]:::pure
+    n13["Get TestInt(2)"]:::get
+    n14["Conv_IntToString (pure)"]:::pure
+    n15["Concat_StrStr (pure, A=TestInt=)"]:::pure
+    n16["Print String (impure)"]:::impure
+  end
+
+  n1 --> n4
+  n4 --> n10
+  n10 --> n16
+  n2 -.->|int| n3
+  n3 -.->|int| n4
+  n5 -.->|double| n6
+  n7 -.->|vector| n9
+  n8 -.->|rotator| n9
+  n9 -.->|transform| n10
+  n11 -.->|transform| n12
+  n13 -.->|int| n14
+  n14 -.->|string| n15
+  n15 -.->|string| n16
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef pure fill:#eef3fb,stroke:#5b7fb0;
+  classDef get fill:#f3f6fb,stroke:#8aa0bf;
+  classDef set fill:#f3f6fb,stroke:#8aa0bf;

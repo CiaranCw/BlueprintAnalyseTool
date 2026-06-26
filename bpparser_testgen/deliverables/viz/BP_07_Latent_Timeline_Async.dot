@@ -1,0 +1,37 @@
+// BP_07_Latent_Timeline_Async - structure graph (Timer-based; Timeline/Async = manual)
+// Edge legend: solid=exec, dashed=data, double=latent continuation
+digraph BP_07_Latent_Timeline_Async {
+  rankdir=LR;
+  labelloc="t"; label="BP_07_Latent_Timeline_Async (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_latent {
+    label="Latent: Delay -> SetTimerByFunctionName -> ClearTimer"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="Delay (latent)\nDuration=1.0", fillcolor="#ffeccc"];
+    n3 [label="Set Timer by Function Name\nFn=OnTimerTick,Time=0.5,Loop"];
+    n4 [label="Self"];
+    n5 [label="Print (Timer scheduled)", fillcolor="#d8f5d8"];
+    n6 [label="Clear Timer by Function Name\nFn=OnTimerTick"];
+    n7 [label="Self"];
+  }
+  subgraph cluster_cb {
+    label="Timer callback (Custom Event)"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n8 [label="Custom Event OnTimerTick", fillcolor="#ffe9c7"];
+    n9 [label="Print (Timer tick)", fillcolor="#d8f5d8"];
+  }
+
+  // exec / latent
+  n1 -> n2 [color=black];
+  n2 -> n3 [color="#cc7a00", style=bold, label="latent", fontsize=9];
+  n3 -> n5 [color=black]; n5 -> n6 [color=black];
+  n8 -> n9 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n4 -> n3 [label="self (object ref)"];
+  n7 -> n6 [label="self (object ref)"];
+
+  // not auto-covered
+  na [shape=note, fillcolor="#fff4d6", label="NOT auto-generated:\nTimeline / Timeline Float Track\nAsync Action node\n(see report -> add manually)"];
+}

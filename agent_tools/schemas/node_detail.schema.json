@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blueprint-analyse-tool/schemas/node_detail.schema.json",
+  "title": "Node Detail IR",
+  "type": "object",
+  "required": ["schema_version", "node_id", "node_class", "graph_id", "owner_asset"],
+  "properties": {
+    "schema_version":   { "type": "string" },
+    "node_id":          { "type": "string" },
+    "node_guid":        { "type": "string" },
+    "node_class":       { "type": "string" },
+    "node_title":       { "type": "string" },
+    "node_comment":     { "type": "string" },
+    "node_position": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "node_enabled_state": { "type": "string" },
+    "node_type_category": { "type": "string" },
+    "function_reference": { "type": ["object", "null"] },
+    "variable_reference": { "type": ["object", "null"] },
+    "event_reference":    { "type": ["object", "null"] },
+    "macro_reference":    { "type": ["object", "null"] },
+    "pins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pin_id", "pin_name", "direction", "category"],
+        "properties": {
+          "pin_id":         { "type": "string" },
+          "pin_name":       { "type": "string" },
+          "direction":      { "type": "string", "enum": ["input", "output"] },
+          "category":       { "type": "string" },
+          "sub_category":   { "type": "string" },
+          "object_type":    { "type": ["string", "null"] },
+          "container_type": { "type": "string" },
+          "is_exec":        { "type": "boolean" },
+          "is_data":        { "type": "boolean" },
+          "default_value":  { "type": ["string", "null"] },
+          "default_object": { "type": ["string", "null"] },
+          "linked_to": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["node_id", "pin_id"],
+              "properties": {
+                "node_id": { "type": "string" },
+                "pin_id":  { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata":    { "type": "object" },
+    "graph_id":    { "type": "string" },
+    "owner_asset": { "type": "string" },
+    "reverse_hints": {}
+  }
+}

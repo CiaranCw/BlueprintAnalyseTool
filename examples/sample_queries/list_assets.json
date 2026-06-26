@@ -1,0 +1,7 @@
+{
+  "tool": "list_blueprint_assets",
+  "input": {
+    "output_dir":   "D:\\bp_out\\MyGame",
+    "filter_class": "Character"
+  }
+}

@@ -1,0 +1,47 @@
+%% BP_05_Functions_Macros_LocalVariables - multiple graphs
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  subgraph EV["EventGraph"]
+    e1["Event BeginPlay"]:::evt
+    e2["ComputeScore (self) Base=10,Bonus=5"]
+    e3["Conv_IntToString"]
+    e4["Print String"]:::impure
+    e1 --> e2
+    e2 --> e4
+    e2 -.->|Total| e3
+    e3 -.->|string| e4
+  end
+  subgraph CS["Function ComputeScore (impure, local TempSum)"]
+    f1["Entry (Base,Bonus)"]
+    f2["Add_IntInt"]
+    f3["Return (Total)"]
+    f1 --> f3
+    f1 -.-> f2
+    f2 -.->|int| f3
+  end
+  subgraph NS["Function NormalizeScore (PURE)"]
+    g1["Entry (Raw)"]
+    g2["Divide_DoubleDouble B=100"]
+    g3["Return (Norm)"]
+    g1 -.-> g2
+    g2 -.->|real| g3
+  end
+  subgraph ST["Function ComputeStats (multi in/out)"]
+    h1["Entry (A,B)"]
+    h2["Add_IntInt"]
+    h3["Multiply_IntInt"]
+    h4["Return (Sum,Product)"]
+    h1 --> h4
+    h1 -.-> h2
+    h1 -.-> h3
+    h2 -.->|Sum| h4
+    h3 -.->|Product| h4
+  end
+  subgraph MAC["Macro Macro_LogWithPrefix (body = manual)"]
+    m1["Input Tunnel (Exec,Prefix,Message)"]
+    m2["Output Tunnel (Exec)"]
+    m1 -.->|manual body| m2
+  end
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;

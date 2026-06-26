@@ -1,0 +1,31 @@
+%% BP_07_Latent_Timeline_Async - EventGraph (Timer-based; Timeline/Async = manual)
+%% Edge style: solid=exec, dotted=data, thick=latent continuation
+flowchart LR
+  subgraph C1["Latent: Delay -> SetTimerByFunctionName -> ClearTimer"]
+    n1["Event BeginPlay"]:::evt
+    n2["Delay (latent) Duration=1.0"]:::latent
+    n3["Set Timer by Function Name (OnTimerTick,0.5,Loop)"]
+    n4["Self"]
+    n5["Print (Timer scheduled)"]:::impure
+    n6["Clear Timer by Function Name (OnTimerTick)"]
+    n7["Self"]
+  end
+  subgraph C2["Timer callback (Custom Event)"]
+    n8["Custom Event OnTimerTick"]:::evt
+    n9["Print (Timer tick)"]:::impure
+  end
+  NA["NOT auto-generated: Timeline / Timeline Float Track / Async Action node - add manually (see report)"]:::note
+
+  n1 --> n2
+  n2 ==>|latent| n3
+  n3 --> n5
+  n5 --> n6
+  n8 --> n9
+  n4 -.->|self object ref| n3
+  n7 -.->|self object ref| n6
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef latent fill:#ffeccc,stroke:#cc7a00;
+  classDef note fill:#fff4d6,stroke:#b08a3a,stroke-dasharray:4 3;
+  linkStyle 1 stroke:#cc7a00,stroke-width:3px;

@@ -1,0 +1,50 @@
+%% BP_02_StructEnumContainers - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  n1["Event BeginPlay"]:::evt
+  subgraph C1["Make/Break Struct"]
+    n2["Make ST_BPParserTestData (ID=1,Score=10.0; DisplayName=default)"]
+    n3["Set DataItem"]
+    n4["Get DataItem"]
+    n5["Break ST_BPParserTestData"]
+  end
+  subgraph C2["Switch on Enum"]
+    n6["Get StateValue :enum"]
+    n7["Switch on E_BPParserTestState"]
+    n8["Print (State=Moving)"]:::impure
+  end
+  subgraph C3["Array Set Map + ForEachLoop"]
+    n9["Get IntArray :array&lt;int&gt;"]
+    n10["Array Add (NewItem=4)"]
+    n11["Array Length"]
+    n12["For Each Loop (macro)"]
+    n13["Print (element)"]:::impure
+    n14["Get NameSet :set&lt;name&gt;"]
+    n15["Set Add (Alpha)"]
+    n16["Set Contains (Alpha)"]
+    n17["Get ScoreMap :map&lt;name,real&gt;"]
+    n18["Map Add (Alpha=1.0)"]
+    n19["Map Keys"]
+  end
+
+  n1 --> n3
+  n3 --> n7
+  n7 -->|Moving| n8
+  n3 --> n10
+  n10 --> n12
+  n12 -->|Loop Body| n13
+  n12 -->|Completed| n15
+  n15 --> n18
+  n2 -.->|struct| n3
+  n4 -.->|struct| n5
+  n6 -.->|enum| n7
+  n9 -.->|array| n10
+  n9 -.->|array| n11
+  n9 -.->|array| n12
+  n14 -.->|set| n15
+  n14 -.->|set| n16
+  n17 -.->|map| n18
+  n17 -.->|map| n19
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;

@@ -1,0 +1,60 @@
+%% BP_04_ExecFlow_Control - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  n1["Event BeginPlay"]:::evt
+  n2["Sequence (Then 0..4)"]
+  subgraph C1["Branch + converge (Reroute)"]
+    n3["Branch"]
+    n4["Get FlowBool"]
+    n5(("Reroute"))
+    n6["Print (converge)"]:::impure
+  end
+  subgraph C2["DoOnce / FlipFlop / Gate"]
+    n7["Do Once (macro)"]
+    n8["Print (DoOnce)"]:::impure
+    n9["FlipFlop (macro)"]
+    n10["Print (Flip A)"]:::impure
+    n11["Print (Flip B)"]:::impure
+    n12["Gate (macro)"]
+  end
+  subgraph C3["ForLoop / ForLoopWithBreak / ForEachLoop"]
+    n13["For Loop (macro) First=0,Last=3"]
+    n14["Print (index)"]:::impure
+    n15["For Loop With Break (macro)"]
+    n20["For Each Loop (macro)"]
+    n21["Get FlowArray"]
+    n22["Print (element)"]:::impure
+  end
+  subgraph C4["Switch Int / Switch String / Delay (latent)"]
+    n16["Switch on Int"]
+    n19["Switch on String"]
+    n17["Delay (latent)"]:::latent
+    n18["Print (after delay)"]:::impure
+  end
+
+  n1 --> n2
+  n2 -->|Then0| n3
+  n3 -->|True| n5
+  n3 -->|False| n5
+  n5 --> n6
+  n2 -->|Then1| n7
+  n7 -->|Completed| n8
+  n2 -->|Then2| n9
+  n9 -->|A| n10
+  n9 -->|B| n11
+  n2 -->|Then3| n12
+  n12 -->|Exit| n13
+  n13 -->|Loop Body| n14
+  n13 -->|Completed| n15
+  n15 -->|Completed| n20
+  n20 -->|Loop Body| n22
+  n2 -->|Then4| n16
+  n16 -->|Default| n19
+  n19 -->|Default| n17
+  n17 --> n18
+  n4 -.->|bool to Condition| n3
+  n21 -.->|array to Array| n20
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef latent fill:#ffeccc,stroke:#cc7a00;

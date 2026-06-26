@@ -1,0 +1,99 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_04_ExecFlow_Control",
+  "asset_path": "/Game/BPParserTest/BP_04_ExecFlow_Control",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph",
+      "graph_type": "ubergraph",
+      "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1",  "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": -40, "y": 0 } },
+        { "node_id": "n2",  "node_name": "Sequence", "node_class": "K2Node_ExecutionSequence", "node_type_category": "composite", "position": { "x": 80, "y": 0 },
+          "pins": [
+            { "pin_id": "n2_then0", "pin_name": "then_0", "direction": "output", "category": "exec" },
+            { "pin_id": "n2_then1", "pin_name": "then_1", "direction": "output", "category": "exec" },
+            { "pin_id": "n2_then2", "pin_name": "then_2", "direction": "output", "category": "exec" },
+            { "pin_id": "n2_then3", "pin_name": "then_3", "direction": "output", "category": "exec" },
+            { "pin_id": "n2_then4", "pin_name": "then_4", "direction": "output", "category": "exec" }
+          ] },
+        { "node_id": "n3",  "node_name": "Branch", "node_class": "K2Node_IfThenElse", "node_type_category": "branch", "position": { "x": 380, "y": -120 } },
+        { "node_id": "n4",  "node_name": "Get FlowBool", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 380, "y": -220 } },
+        { "node_id": "n5",  "node_name": "Reroute (converge)", "node_class": "K2Node_Knot", "node_type_category": "reroute", "position": { "x": 760, "y": -60 } },
+        { "node_id": "n6",  "node_name": "Print String (Branch converge)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 900, "y": -120 } },
+        { "node_id": "n7",  "node_name": "Do Once", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "DoOnce", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 380, "y": 220 } },
+        { "node_id": "n8",  "node_name": "Print String (DoOnce)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 720, "y": 220 } },
+        { "node_id": "n9",  "node_name": "FlipFlop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "FlipFlop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 380, "y": 340 } },
+        { "node_id": "n10", "node_name": "Print String (Flip A)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 720, "y": 320 } },
+        { "node_id": "n11", "node_name": "Print String (Flip B)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 720, "y": 400 } },
+        { "node_id": "n12", "node_name": "Gate", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "Gate", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 380, "y": 580 } },
+        { "node_id": "n13", "node_name": "For Loop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForLoop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 700, "y": 580 },
+          "pins": [
+            { "pin_id": "n13_first", "pin_name": "First Index", "direction": "input", "category": "int", "default_value": "0", "is_connected": false },
+            { "pin_id": "n13_last", "pin_name": "Last Index", "direction": "input", "category": "int", "default_value": "3", "is_connected": false },
+            { "pin_id": "n13_body", "pin_name": "Loop Body", "direction": "output", "category": "exec" },
+            { "pin_id": "n13_idx", "pin_name": "Index", "direction": "output", "category": "int" },
+            { "pin_id": "n13_done", "pin_name": "Completed", "direction": "output", "category": "exec" }
+          ] },
+        { "node_id": "n14", "node_name": "Print String (index)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1020, "y": 560 } },
+        { "node_id": "n15", "node_name": "For Loop with Break", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForLoopWithBreak", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 700, "y": 700 } },
+        { "node_id": "n16", "node_name": "Switch on Int", "node_class": "K2Node_SwitchInteger", "node_type_category": "switch", "position": { "x": 380, "y": 980 } },
+        { "node_id": "n17", "node_name": "Delay", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Delay", "member_parent": "/Script/Engine.KismetSystemLibrary", "is_latent": true }, "position": { "x": 980, "y": 980 },
+          "pins": [ { "pin_id": "n17_dur", "pin_name": "Duration", "direction": "input", "category": "real", "sub_category": "float", "default_value": "0.2", "is_connected": false } ] },
+        { "node_id": "n18", "node_name": "Print String (after delay)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1280, "y": 980 } },
+        { "node_id": "n19", "node_name": "Switch on String", "node_class": "K2Node_SwitchString", "node_type_category": "switch", "position": { "x": 680, "y": 980 }, "note": "case literal values are engine-default (Case_0/Case_1); confirm/rename in UE if needed" },
+        { "node_id": "n20", "node_name": "For Each Loop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForEachLoop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 700, "y": 820 } },
+        { "node_id": "n21", "node_name": "Get FlowArray", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 700, "y": 940 } },
+        { "node_id": "n22", "node_name": "Print String (FlowArray element)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1020, "y": 820 } }
+      ],
+      "edges": [
+        { "edge_id": "e1",  "from_node": "n1",  "from_pin": "then",     "to_node": "n2",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e2",  "from_node": "n2",  "from_pin": "n2_then0", "to_node": "n3",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e3",  "from_node": "n3",  "from_pin": "then",     "to_node": "n5",  "to_pin": "InputPin",    "edge_type": "exec", "note": "Branch True -> reroute" },
+        { "edge_id": "e4",  "from_node": "n3",  "from_pin": "else",     "to_node": "n5",  "to_pin": "InputPin",    "edge_type": "exec", "note": "Branch False -> same reroute (converge)" },
+        { "edge_id": "e5",  "from_node": "n5",  "from_pin": "OutputPin","to_node": "n6",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e6",  "from_node": "n2",  "from_pin": "n2_then1", "to_node": "n7",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e7",  "from_node": "n7",  "from_pin": "Completed","to_node": "n8",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e8",  "from_node": "n2",  "from_pin": "n2_then2", "to_node": "n9",  "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e9",  "from_node": "n9",  "from_pin": "A",        "to_node": "n10", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e10", "from_node": "n9",  "from_pin": "B",        "to_node": "n11", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e11", "from_node": "n2",  "from_pin": "n2_then3", "to_node": "n12", "to_pin": "Enter",       "edge_type": "exec" },
+        { "edge_id": "e12", "from_node": "n12", "from_pin": "Exit",     "to_node": "n13", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e13", "from_node": "n13", "from_pin": "n13_body", "to_node": "n14", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e14", "from_node": "n13", "from_pin": "n13_done", "to_node": "n15", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e15", "from_node": "n2",  "from_pin": "n2_then4", "to_node": "n16", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e16", "from_node": "n16", "from_pin": "Default",  "to_node": "n19", "to_pin": "execute",     "edge_type": "exec", "note": "Switch Int default -> Switch String" },
+        { "edge_id": "e17", "from_node": "n19", "from_pin": "Default",  "to_node": "n17", "to_pin": "execute",     "edge_type": "exec", "note": "Switch String default -> Delay" },
+        { "edge_id": "e18", "from_node": "n17", "from_pin": "then",     "to_node": "n18", "to_pin": "execute",     "edge_type": "latent_continuation", "note": "Delay is latent" },
+        { "edge_id": "e19", "from_node": "n15", "from_pin": "Completed","to_node": "n20", "to_pin": "execute",     "edge_type": "exec", "note": "ForLoopWithBreak completed -> ForEachLoop" },
+        { "edge_id": "e20", "from_node": "n20", "from_pin": "Loop Body","to_node": "n22", "to_pin": "execute",     "edge_type": "exec" },
+        { "edge_id": "e21", "from_node": "n21", "from_pin": "FlowArray","to_node": "n20", "to_pin": "Array",       "edge_type": "data" },
+        { "edge_id": "e22", "from_node": "n4",  "from_pin": "FlowBool", "to_node": "n3",  "to_pin": "Condition",   "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Sequence fan-out", "bounds": { "x": -80, "y": -200, "w": 360, "h": 1100 } },
+        { "comment_id": "c2", "text": "Branch + converge (Reroute)", "bounds": { "x": 320, "y": -200, "w": 760, "h": 320 } },
+        { "comment_id": "c3", "text": "DoOnce / FlipFlop / Gate", "bounds": { "x": 320, "y": 160, "w": 760, "h": 360 } },
+        { "comment_id": "c4", "text": "ForLoop / ForLoopWithBreak / ForEachLoop", "bounds": { "x": 320, "y": 540, "w": 900, "h": 360 } },
+        { "comment_id": "c5", "text": "Switch Int / Switch String / Delay (latent)", "bounds": { "x": 320, "y": 920, "w": 900, "h": 360 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "FlowBool",  "type": "bool", "category": "bool", "container_type": "none", "default_value": "true", "is_exposed": true },
+    { "name": "FlowArray", "type": "int",  "category": "int",  "container_type": "array" }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "node.sequence", "node.branch", "node.do_once", "node.flipflop", "node.gate",
+    "node.for_loop", "node.for_loop_with_break", "node.foreach", "node.switch_int", "node.switch_string", "node.reroute",
+    "node.delay.latent", "edge.exec", "edge.latent_continuation", "edge.converge",
+    "pin.exec.then", "pin.exec.loop_body", "pin.exec.completed", "feature.unconnected_pin_default"
+  ]
+}

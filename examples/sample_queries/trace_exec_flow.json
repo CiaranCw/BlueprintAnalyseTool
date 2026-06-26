@@ -1,0 +1,10 @@
+{
+  "tool": "trace_exec_flow",
+  "input": {
+    "output_dir":    "D:\\bp_out\\MyGame",
+    "asset_path":    "/Game/Blueprints/BP_Hero",
+    "start_node_id": "node_0001",
+    "max_depth":     8
+  },
+  "_note": "起点通常取 manifest 中 EventGraph 的入口节点 id。"
+}

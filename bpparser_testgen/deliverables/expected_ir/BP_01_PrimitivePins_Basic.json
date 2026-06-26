@@ -1,0 +1,136 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "note": "node_id/pin_id are design IDs. The BPAT parser assigns stable hashes from NodeGuid/PinId; on regression compare by node_class + node_title + pin type/structure, not by these literal ids.",
+  "asset_name": "BP_01_PrimitivePins_Basic",
+  "asset_path": "/Game/BPParserTest/BP_01_PrimitivePins_Basic",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph",
+      "graph_type": "ubergraph",
+      "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 },
+          "pins": [ { "pin_id": "n1_then", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": true } ] },
+        { "node_id": "n2", "node_name": "Get TestInt", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 0, "y": 200 },
+          "pins": [ { "pin_id": "n2_v", "pin_name": "TestInt", "direction": "output", "category": "int", "is_connected": true } ] },
+        { "node_id": "n3", "node_name": "Add (Integer + Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Add_IntInt", "member_parent": "/Script/Engine.KismetMathLibrary" }, "position": { "x": 260, "y": 200 },
+          "pins": [
+            { "pin_id": "n3_a", "pin_name": "A", "direction": "input", "category": "int", "is_connected": true },
+            { "pin_id": "n3_b", "pin_name": "B", "direction": "input", "category": "int", "default_value": "8", "is_connected": false },
+            { "pin_id": "n3_ret", "pin_name": "ReturnValue", "direction": "output", "category": "int", "is_connected": true }
+          ] },
+        { "node_id": "n4", "node_name": "Set TestInt", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 520, "y": 40 },
+          "pins": [
+            { "pin_id": "n4_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n4_then", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n4_v", "pin_name": "TestInt", "direction": "input", "category": "int", "is_connected": true }
+          ] },
+        { "node_id": "n5", "node_name": "Get TestDouble", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 0, "y": 360 },
+          "pins": [ { "pin_id": "n5_v", "pin_name": "TestDouble", "direction": "output", "category": "real", "sub_category": "double", "is_connected": true } ] },
+        { "node_id": "n6", "node_name": "Multiply (Double * Double)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Multiply_DoubleDouble", "member_parent": "/Script/Engine.KismetMathLibrary" }, "position": { "x": 260, "y": 360 },
+          "pins": [
+            { "pin_id": "n6_a", "pin_name": "A", "direction": "input", "category": "real", "sub_category": "double", "is_connected": true },
+            { "pin_id": "n6_b", "pin_name": "B", "direction": "input", "category": "real", "sub_category": "double", "default_value": "2.0", "is_connected": false },
+            { "pin_id": "n6_ret", "pin_name": "ReturnValue", "direction": "output", "category": "real", "sub_category": "double", "is_connected": false }
+          ] },
+        { "node_id": "n7", "node_name": "Get TestVector", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 0, "y": 520 },
+          "pins": [ { "pin_id": "n7_v", "pin_name": "TestVector", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Vector", "is_connected": true } ] },
+        { "node_id": "n8", "node_name": "Get TestRotator", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 0, "y": 620 },
+          "pins": [ { "pin_id": "n8_v", "pin_name": "TestRotator", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Rotator", "is_connected": true } ] },
+        { "node_id": "n9", "node_name": "Make Transform", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "MakeTransform", "member_parent": "/Script/Engine.KismetMathLibrary" }, "position": { "x": 260, "y": 520 },
+          "pins": [
+            { "pin_id": "n9_loc", "pin_name": "Location", "direction": "input", "category": "struct", "object_type": "/Script/CoreUObject.Vector", "is_connected": true },
+            { "pin_id": "n9_rot", "pin_name": "Rotation", "direction": "input", "category": "struct", "object_type": "/Script/CoreUObject.Rotator", "is_connected": true },
+            { "pin_id": "n9_scl", "pin_name": "Scale", "direction": "input", "category": "struct", "object_type": "/Script/CoreUObject.Vector", "is_connected": false },
+            { "pin_id": "n9_ret", "pin_name": "ReturnValue", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Transform", "is_connected": true }
+          ] },
+        { "node_id": "n10", "node_name": "Set TestTransform", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 520, "y": 360 },
+          "pins": [
+            { "pin_id": "n10_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n10_then", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n10_v", "pin_name": "TestTransform", "direction": "input", "category": "struct", "object_type": "/Script/CoreUObject.Transform", "is_connected": true }
+          ] },
+        { "node_id": "n11", "node_name": "Get TestTransform", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 540, "y": 640 },
+          "pins": [ { "pin_id": "n11_v", "pin_name": "TestTransform", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Transform", "is_connected": true } ] },
+        { "node_id": "n12", "node_name": "Break Transform", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "BreakTransform", "member_parent": "/Script/Engine.KismetMathLibrary" }, "position": { "x": 780, "y": 520 },
+          "pins": [
+            { "pin_id": "n12_in", "pin_name": "InTransform", "direction": "input", "category": "struct", "object_type": "/Script/CoreUObject.Transform", "is_connected": true },
+            { "pin_id": "n12_loc", "pin_name": "Location", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Vector", "is_connected": false },
+            { "pin_id": "n12_rot", "pin_name": "Rotation", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Rotator", "is_connected": false },
+            { "pin_id": "n12_scl", "pin_name": "Scale", "direction": "output", "category": "struct", "object_type": "/Script/CoreUObject.Vector", "is_connected": false }
+          ] },
+        { "node_id": "n13", "node_name": "Get TestInt (2)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 540, "y": 280 },
+          "pins": [ { "pin_id": "n13_v", "pin_name": "TestInt", "direction": "output", "category": "int", "is_connected": true } ] },
+        { "node_id": "n14", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "position": { "x": 780, "y": 200 },
+          "pins": [
+            { "pin_id": "n14_in", "pin_name": "InInt", "direction": "input", "category": "int", "is_connected": true },
+            { "pin_id": "n14_ret", "pin_name": "ReturnValue", "direction": "output", "category": "string", "is_connected": true }
+          ] },
+        { "node_id": "n15", "node_name": "Append (Concat_StrStr)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Concat_StrStr", "member_parent": "/Script/Engine.KismetStringLibrary" }, "position": { "x": 1040, "y": 200 },
+          "pins": [
+            { "pin_id": "n15_a", "pin_name": "A", "direction": "input", "category": "string", "default_value": "TestInt=", "is_connected": false },
+            { "pin_id": "n15_b", "pin_name": "B", "direction": "input", "category": "string", "is_connected": true },
+            { "pin_id": "n15_ret", "pin_name": "ReturnValue", "direction": "output", "category": "string", "is_connected": true }
+          ] },
+        { "node_id": "n16", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 1320, "y": 40 },
+          "pins": [
+            { "pin_id": "n16_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n16_then", "pin_name": "then", "direction": "output", "category": "exec", "is_connected": false },
+            { "pin_id": "n16_str", "pin_name": "InString", "direction": "input", "category": "string", "is_connected": true },
+            { "pin_id": "n16_screen", "pin_name": "bPrintToScreen", "direction": "input", "category": "bool", "default_value": "true", "is_connected": false },
+            { "pin_id": "n16_dur", "pin_name": "Duration", "direction": "input", "category": "real", "sub_category": "float", "default_value": "2.0", "is_connected": false }
+          ] }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "n1_then", "to_node": "n4", "to_pin": "n4_exec", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n4", "from_pin": "n4_then", "to_node": "n10", "to_pin": "n10_exec", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n10", "from_pin": "n10_then", "to_node": "n16", "to_pin": "n16_exec", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n2", "from_pin": "n2_v", "to_node": "n3", "to_pin": "n3_a", "edge_type": "data" },
+        { "edge_id": "e5", "from_node": "n3", "from_pin": "n3_ret", "to_node": "n4", "to_pin": "n4_v", "edge_type": "data" },
+        { "edge_id": "e6", "from_node": "n5", "from_pin": "n5_v", "to_node": "n6", "to_pin": "n6_a", "edge_type": "data" },
+        { "edge_id": "e7", "from_node": "n7", "from_pin": "n7_v", "to_node": "n9", "to_pin": "n9_loc", "edge_type": "data" },
+        { "edge_id": "e8", "from_node": "n8", "from_pin": "n8_v", "to_node": "n9", "to_pin": "n9_rot", "edge_type": "data" },
+        { "edge_id": "e9", "from_node": "n9", "from_pin": "n9_ret", "to_node": "n10", "to_pin": "n10_v", "edge_type": "data" },
+        { "edge_id": "e10", "from_node": "n11", "from_pin": "n11_v", "to_node": "n12", "to_pin": "n12_in", "edge_type": "data" },
+        { "edge_id": "e11", "from_node": "n13", "from_pin": "n13_v", "to_node": "n14", "to_pin": "n14_in", "edge_type": "data" },
+        { "edge_id": "e12", "from_node": "n14", "from_pin": "n14_ret", "to_node": "n15", "to_pin": "n15_b", "edge_type": "data" },
+        { "edge_id": "e13", "from_node": "n15", "from_pin": "n15_ret", "to_node": "n16", "to_pin": "n16_str", "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Primitive Pins: Get/Set + Math (pure) + Make/Break Transform + PrintString (impure)", "bounds": { "x": -80, "y": -160, "w": 1700, "h": 720 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "TestBool",        "type": "bool",     "category": "bool",   "container_type": "none", "default_value": "true",        "is_exposed": true },
+    { "name": "TestByte",        "type": "byte",     "category": "byte",   "container_type": "none", "default_value": "7",           "is_exposed": false },
+    { "name": "TestInt",         "type": "int",      "category": "int",    "container_type": "none", "default_value": "42",          "is_exposed": false },
+    { "name": "TestInt64",       "type": "int64",    "category": "int64",  "container_type": "none", "default_value": "9000000000",  "is_exposed": false },
+    { "name": "TestFloat",       "type": "float",    "category": "real",   "sub_category": "float",  "container_type": "none", "default_value": "3.14", "is_exposed": false },
+    { "name": "TestDouble",      "type": "double",   "category": "real",   "sub_category": "double", "container_type": "none", "default_value": "2.7182818", "is_exposed": false },
+    { "name": "TestName",        "type": "name",     "category": "name",   "container_type": "none", "default_value": "ParserName",  "is_exposed": false },
+    { "name": "TestString",      "type": "string",   "category": "string", "container_type": "none", "default_value": "Hello",       "is_exposed": false },
+    { "name": "TestText",        "type": "text",     "category": "text",   "container_type": "none", "default_value": "",            "is_exposed": false },
+    { "name": "TestVector",      "type": "vector",   "category": "struct", "object_type": "/Script/CoreUObject.Vector",    "container_type": "none", "is_exposed": false },
+    { "name": "TestVector2D",    "type": "vector2d", "category": "struct", "object_type": "/Script/CoreUObject.Vector2D",  "container_type": "none", "is_exposed": false },
+    { "name": "TestRotator",     "type": "rotator",  "category": "struct", "object_type": "/Script/CoreUObject.Rotator",   "container_type": "none", "is_exposed": false },
+    { "name": "TestTransform",   "type": "transform","category": "struct", "object_type": "/Script/CoreUObject.Transform", "container_type": "none", "is_exposed": false },
+    { "name": "TestLinearColor", "type": "linearcolor","category": "struct","object_type": "/Script/CoreUObject.LinearColor","container_type": "none", "is_exposed": false }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "pin.exec", "pin.bool", "pin.byte", "pin.int", "pin.int64", "pin.real.float", "pin.real.double",
+    "pin.name", "pin.string", "pin.text", "pin.struct.vector", "pin.struct.vector2d", "pin.struct.rotator",
+    "pin.struct.transform", "pin.struct.linearcolor",
+    "node.event", "node.variable_get", "node.variable_set", "node.call_function.pure", "node.call_function.impure",
+    "node.print_string",
+    "edge.exec", "edge.data",
+    "feature.node_default_value", "feature.unconnected_pin_default"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blueprint-analyse-tool/schemas/subgraph_slice.schema.json",
+  "title": "Subgraph slice",
+  "type": "object",
+  "required": ["schema_version", "slice_kind", "origin", "params", "nodes", "edges", "boundary"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "slice_kind": {
+      "type": "string",
+      "enum": [
+        "trace_exec_flow",
+        "trace_data_deps",
+        "trace_variable_usage",
+        "trace_function_callers",
+        "trace_widget_binding",
+        "trace_input_handler",
+        "slice_subgraph"
+      ]
+    },
+    "origin": {
+      "type": "object",
+      "required": ["asset_path"],
+      "properties": {
+        "asset_path":    { "type": "string" },
+        "graph_id":      { "type": "string" },
+        "start_node_id": { "type": "string" }
+      }
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "direction":   { "type": "string", "enum": ["forward", "backward", "both"] },
+        "depth":       { "type": "integer", "minimum": 0 },
+        "edge_filter": { "type": "string", "enum": ["exec", "data", "all"] }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "node_class"],
+        "properties": {
+          "node_id":           { "type": "string" },
+          "node_class":        { "type": "string" },
+          "title":             { "type": "string" },
+          "ref_to_node_detail":{ "type": "string" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["edge_id", "from_node_id", "to_node_id", "edge_kind"],
+        "properties": {
+          "edge_id":      { "type": "string" },
+          "from_node_id": { "type": "string" },
+          "from_pin_id":  { "type": "string" },
+          "to_node_id":   { "type": "string" },
+          "to_pin_id":    { "type": "string" },
+          "edge_kind":    { "type": "string" }
+        }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "properties": {
+        "truncated_at_depth":  { "type": "array" },
+        "external_references": { "type": "array" }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "node_count": { "type": "integer", "minimum": 0 },
+        "edge_count": { "type": "integer", "minimum": 0 },
+        "elapsed_ms": { "type": "number" }
+      }
+    }
+  }
+}

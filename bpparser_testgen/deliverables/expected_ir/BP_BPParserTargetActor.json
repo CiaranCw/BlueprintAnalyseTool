@@ -1,0 +1,27 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_BPParserTargetActor",
+  "asset_path": "/Game/BPParserTest/BP_BPParserTargetActor",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "components": [
+    { "node_id": "scs_0", "name": "TestRoot", "class": "/Script/Engine.SceneComponent", "children": [] },
+    { "node_id": "scs_1", "name": "TestMesh", "class": "/Script/Engine.StaticMeshComponent", "children": [] }
+  ],
+  "graphs": [
+    { "graph_name": "EventGraph", "graph_type": "ubergraph", "nodes": [], "edges": [], "comments": [],
+      "note": "Default empty EventGraph unless interface bodies are edited in UE." }
+  ],
+  "variables": [
+    { "name": "DisplayLabel", "category": "string", "container_type": "none", "default_value": "Target", "is_exposed": true }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [ { "interface_class": "/Game/BPParserTest/BPI_BPParserTest.BPI_BPParserTest_C" } ],
+  "coverage_tags": [
+    "asset.actor", "ref.component.scene", "ref.component.staticmesh",
+    "interface.implemented", "pin.string", "var.instance_editable"
+  ]
+}

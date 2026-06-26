@@ -1,0 +1,117 @@
+{
+  "schema_version": "bpat-0.1.0-expected",
+  "asset_name": "BP_02_StructEnumContainers",
+  "asset_path": "/Game/BPParserTest/BP_02_StructEnumContainers",
+  "blueprint_type": "Actor",
+  "blueprint_class": "Blueprint",
+  "parent_class": "/Script/Engine.Actor",
+  "graphs": [
+    {
+      "graph_name": "EventGraph",
+      "graph_type": "ubergraph",
+      "entry_nodes": [ "n1" ],
+      "nodes": [
+        { "node_id": "n1", "node_name": "Event BeginPlay", "node_class": "K2Node_Event", "node_type_category": "event", "position": { "x": 0, "y": 0 } },
+        { "node_id": "n2", "node_name": "Make ST_BPParserTestData", "node_class": "K2Node_MakeStruct", "node_type_category": "composite", "position": { "x": 0, "y": 80 },
+          "pins": [
+            { "pin_id": "n2_id", "pin_name": "ID", "direction": "input", "category": "int", "default_value": "1", "is_connected": false },
+            { "pin_id": "n2_score", "pin_name": "Score", "direction": "input", "category": "real", "sub_category": "float", "default_value": "10.0", "is_connected": false },
+            { "pin_id": "n2_name", "pin_name": "DisplayName", "direction": "input", "category": "text", "is_connected": false, "note": "intentionally unconnected default" },
+            { "pin_id": "n2_out", "pin_name": "ST_BPParserTestData", "direction": "output", "category": "struct", "object_type": "/Game/BPParserTest/ST_BPParserTestData.ST_BPParserTestData", "is_connected": true }
+          ] },
+        { "node_id": "n3", "node_name": "Set DataItem", "node_class": "K2Node_VariableSet", "node_type_category": "variable_set", "position": { "x": 320, "y": 0 } },
+        { "node_id": "n4", "node_name": "Get DataItem", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 0, "y": 320 } },
+        { "node_id": "n5", "node_name": "Break ST_BPParserTestData", "node_class": "K2Node_BreakStruct", "node_type_category": "composite", "position": { "x": 320, "y": 320 } },
+        { "node_id": "n6", "node_name": "Get StateValue", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 760, "y": 0 } },
+        { "node_id": "n7", "node_name": "Switch on E_BPParserTestState", "node_class": "K2Node_SwitchEnum", "node_type_category": "switch", "position": { "x": 1000, "y": 0 },
+          "pins": [
+            { "pin_id": "n7_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n7_sel", "pin_name": "Selection", "direction": "input", "category": "byte", "object_type": "/Game/BPParserTest/E_BPParserTestState.E_BPParserTestState", "is_connected": true },
+            { "pin_id": "n7_idle", "pin_name": "Idle", "direction": "output", "category": "exec", "is_connected": false },
+            { "pin_id": "n7_moving", "pin_name": "Moving", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n7_attack", "pin_name": "Attacking", "direction": "output", "category": "exec", "is_connected": false },
+            { "pin_id": "n7_dead", "pin_name": "Dead", "direction": "output", "category": "exec", "is_connected": false }
+          ] },
+        { "node_id": "n8", "node_name": "Print String (State=Moving)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 1240, "y": 0 } },
+        { "node_id": "n9", "node_name": "Get IntArray", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": -80, "y": 520 },
+          "pins": [ { "pin_id": "n9_v", "pin_name": "IntArray", "direction": "output", "category": "int", "container_type": "array", "is_connected": true } ] },
+        { "node_id": "n10", "node_name": "Array Add", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Array_Add", "member_parent": "/Script/Engine.KismetArrayLibrary" }, "position": { "x": 160, "y": 480 },
+          "pins": [
+            { "pin_id": "n10_arr", "pin_name": "TargetArray", "direction": "input", "category": "int", "container_type": "array", "is_connected": true },
+            { "pin_id": "n10_item", "pin_name": "NewItem", "direction": "input", "category": "int", "default_value": "4", "is_connected": false }
+          ] },
+        { "node_id": "n11", "node_name": "Array Length", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Array_Length", "member_parent": "/Script/Engine.KismetArrayLibrary" }, "position": { "x": 160, "y": 600 } },
+        { "node_id": "n12", "node_name": "For Each Loop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForEachLoop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 420, "y": 480 },
+          "pins": [
+            { "pin_id": "n12_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
+            { "pin_id": "n12_arr", "pin_name": "Array", "direction": "input", "category": "int", "container_type": "array", "is_connected": true },
+            { "pin_id": "n12_body", "pin_name": "Loop Body", "direction": "output", "category": "exec", "is_connected": true },
+            { "pin_id": "n12_elem", "pin_name": "Array Element", "direction": "output", "category": "int", "is_connected": false },
+            { "pin_id": "n12_idx", "pin_name": "Array Index", "direction": "output", "category": "int", "is_connected": false },
+            { "pin_id": "n12_done", "pin_name": "Completed", "direction": "output", "category": "exec", "is_connected": false }
+          ] },
+        { "node_id": "n13", "node_name": "Print String (element)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 760, "y": 460 } },
+        { "node_id": "n14", "node_name": "Get NameSet", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": -80, "y": 760 },
+          "pins": [ { "pin_id": "n14_v", "pin_name": "NameSet", "direction": "output", "category": "name", "container_type": "set", "is_connected": true } ] },
+        { "node_id": "n15", "node_name": "Set Add", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Set_Add", "member_parent": "/Script/Engine.BlueprintSetLibrary" }, "position": { "x": 160, "y": 740 },
+          "pins": [
+            { "pin_id": "n15_set", "pin_name": "TargetSet", "direction": "input", "category": "name", "container_type": "set", "is_connected": true },
+            { "pin_id": "n15_item", "pin_name": "NewItem", "direction": "input", "category": "name", "default_value": "Alpha", "is_connected": false }
+          ] },
+        { "node_id": "n16", "node_name": "Set Contains", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Set_Contains", "member_parent": "/Script/Engine.BlueprintSetLibrary" }, "position": { "x": 160, "y": 860 } },
+        { "node_id": "n17", "node_name": "Get ScoreMap", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": -80, "y": 980 },
+          "pins": [ { "pin_id": "n17_v", "pin_name": "ScoreMap", "direction": "output", "category": "name", "container_type": "map", "value_type": "real", "is_connected": true } ] },
+        { "node_id": "n18", "node_name": "Map Add", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Add", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 160, "y": 980 },
+          "pins": [
+            { "pin_id": "n18_map", "pin_name": "TargetMap", "direction": "input", "category": "name", "container_type": "map", "is_connected": true },
+            { "pin_id": "n18_key", "pin_name": "Key", "direction": "input", "category": "name", "default_value": "Alpha", "is_connected": false },
+            { "pin_id": "n18_val", "pin_name": "Value", "direction": "input", "category": "real", "sub_category": "float", "default_value": "1.0", "is_connected": false }
+          ] },
+        { "node_id": "n19", "node_name": "Map Keys", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Map_Keys", "member_parent": "/Script/Engine.BlueprintMapLibrary" }, "position": { "x": 420, "y": 980 } }
+      ],
+      "edges": [
+        { "edge_id": "e1", "from_node": "n1", "from_pin": "then", "to_node": "n3", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e2", "from_node": "n3", "from_pin": "then", "to_node": "n7", "to_pin": "n7_exec", "edge_type": "exec" },
+        { "edge_id": "e3", "from_node": "n7", "from_pin": "n7_moving", "to_node": "n8", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e4", "from_node": "n3", "from_pin": "then", "to_node": "n10", "to_pin": "execute", "edge_type": "exec", "note": "exec chain continues to Array Add (Tail progression)" },
+        { "edge_id": "e5", "from_node": "n10", "from_pin": "then", "to_node": "n12", "to_pin": "n12_exec", "edge_type": "exec" },
+        { "edge_id": "e6", "from_node": "n12", "from_pin": "n12_body", "to_node": "n13", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e7", "from_node": "n12", "from_pin": "then", "to_node": "n15", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e8", "from_node": "n15", "from_pin": "then", "to_node": "n18", "to_pin": "execute", "edge_type": "exec" },
+        { "edge_id": "e9", "from_node": "n2", "from_pin": "n2_out", "to_node": "n3", "to_pin": "DataItem", "edge_type": "data" },
+        { "edge_id": "e10", "from_node": "n4", "from_pin": "DataItem", "to_node": "n5", "to_pin": "ST_BPParserTestData", "edge_type": "data" },
+        { "edge_id": "e11", "from_node": "n6", "from_pin": "StateValue", "to_node": "n7", "to_pin": "n7_sel", "edge_type": "data" },
+        { "edge_id": "e12", "from_node": "n9", "from_pin": "n9_v", "to_node": "n10", "to_pin": "n10_arr", "edge_type": "data" },
+        { "edge_id": "e13", "from_node": "n9", "from_pin": "n9_v", "to_node": "n11", "to_pin": "TargetArray", "edge_type": "data" },
+        { "edge_id": "e14", "from_node": "n9", "from_pin": "n9_v", "to_node": "n12", "to_pin": "n12_arr", "edge_type": "data" },
+        { "edge_id": "e15", "from_node": "n14", "from_pin": "n14_v", "to_node": "n15", "to_pin": "n15_set", "edge_type": "data" },
+        { "edge_id": "e16", "from_node": "n14", "from_pin": "n14_v", "to_node": "n16", "to_pin": "TargetSet", "edge_type": "data" },
+        { "edge_id": "e17", "from_node": "n17", "from_pin": "n17_v", "to_node": "n18", "to_pin": "n18_map", "edge_type": "data" },
+        { "edge_id": "e18", "from_node": "n17", "from_pin": "n17_v", "to_node": "n19", "to_pin": "TargetMap", "edge_type": "data" }
+      ],
+      "comments": [
+        { "comment_id": "c1", "text": "Make/Break Struct", "bounds": { "x": -80, "y": -160, "w": 760, "h": 520 } },
+        { "comment_id": "c2", "text": "Switch on Enum", "bounds": { "x": 760, "y": -160, "w": 620, "h": 620 } },
+        { "comment_id": "c3", "text": "Array Set Map + ForEachLoop", "bounds": { "x": -80, "y": 420, "w": 1460, "h": 640 } }
+      ]
+    }
+  ],
+  "variables": [
+    { "name": "DataItem",   "type": "struct", "category": "struct", "object_type": "/Game/BPParserTest/ST_BPParserTestData.ST_BPParserTestData", "container_type": "none" },
+    { "name": "StateValue", "type": "enum",   "category": "byte",   "object_type": "/Game/BPParserTest/E_BPParserTestState.E_BPParserTestState", "container_type": "none", "is_exposed": true },
+    { "name": "IntArray",   "type": "int",    "category": "int",    "container_type": "array", "default_value": "" },
+    { "name": "NameSet",    "type": "name",   "category": "name",   "container_type": "set" },
+    { "name": "ScoreMap",   "type": "map",    "category": "name",   "container_type": "map", "value_type": "real" }
+  ],
+  "functions": [],
+  "macros": [],
+  "event_dispatchers": [],
+  "interfaces": [],
+  "coverage_tags": [
+    "type.struct.custom", "type.enum.custom",
+    "node.make_struct", "node.break_struct", "node.switch_enum", "node.macro_instance.foreach",
+    "container.array", "container.set", "container.map",
+    "node.array_add", "node.array_length", "node.set_add", "node.set_contains", "node.map_add", "node.map_keys",
+    "edge.exec", "edge.data", "feature.unconnected_pin_default", "container.array.in_struct"
+  ]
+}

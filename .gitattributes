@@ -1,0 +1,42 @@
+# ============================================================
+# .gitattributes — BlueprintAnalyseTool
+# This repo is text-only (Python / C++ / Markdown / JSON / DOT / Mermaid).
+# No binary assets are committed today, so Git LFS is NOT enabled here.
+# If large binaries (.uasset/.umap/images/audio/video) are added later AND
+# Git LFS is installed, convert the binary rules below to LFS filters, e.g.:
+#   *.uasset filter=lfs diff=lfs merge=lfs -text
+# ============================================================
+
+# Normalize line endings for text files; let Git auto-detect.
+* text=auto
+
+# Keep Windows scripts CRLF, shell scripts LF.
+*.ps1   text eol=crlf
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.sh     text eol=lf
+
+# Source / config / docs are text.
+*.py     text
+*.cpp    text
+*.h      text
+*.cs     text
+*.json   text
+*.md     text
+*.dot    text
+*.mmd    text
+*.uplugin text
+*.uproject text
+
+# Treat UE / media assets as binary if they ever appear (no LFS yet).
+*.uasset binary
+*.umap   binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.wav    binary
+*.mp3    binary
+*.mp4    binary
+*.fbx    binary
+*.tga    binary

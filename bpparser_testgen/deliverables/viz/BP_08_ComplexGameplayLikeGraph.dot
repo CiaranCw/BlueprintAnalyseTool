@@ -1,0 +1,40 @@
+// BP_08_ComplexGameplayLikeGraph - structure graph
+// Edge legend: solid=exec, dashed=data, dashdot=delegate
+digraph BP_08_ComplexGameplayLikeGraph {
+  rankdir=LR;
+  labelloc="t"; label="BP_08_ComplexGameplayLikeGraph (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+  n2 [label="Sequence"];
+
+  subgraph cluster_init  { label="Init Test Data"; style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n3 [label="Make ST_BPParserTestData\nID=100"]; n4 [label="Get DataList\n(array<struct>)"]; n5 [label="Array Add"]; }
+  subgraph cluster_spawn { label="Spawn Target"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n6 [label="SpawnActor\nBP_BPParserTargetActor"]; n7 [label="Set TargetRef"]; }
+  subgraph cluster_val   { label="Validate Target"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
+    n8 [label="Get TargetRef"]; n9 [label="IsValid"]; n10 [label="Branch"]; }
+  subgraph cluster_proc  { label="Process State"; style="rounded"; color="#999999"; bgcolor="#fbf4f4";
+    n11 [label="Cast To\nBP_BPParserTargetActor", fillcolor="#ffe0e0"]; n12 [label="GetParserTestName\n(Interface Message)", fillcolor="#e6e0ff"];
+    n13 [label="Get CurrentState"]; n14 [label="Switch on Enum"]; }
+  subgraph cluster_disp  { label="Dispatch Result"; style="rounded"; color="#999999"; bgcolor="#f4f8fb";
+    n15 [label="Reroute", shape=circle, width=0.2, label=""]; n16 [label="Call OnSummaryReady\nSummary=\"Processed\""]; }
+  subgraph cluster_log   { label="Log Summary"; style="rounded"; color="#999999"; bgcolor="#f4fbf6";
+    n17 [label="Print String (summary)", fillcolor="#d8f5d8"]; }
+
+  // exec
+  n1 -> n2 [color=black];
+  n2 -> n5 [color=black, label="Then0", fontsize=9];
+  n2 -> n6 [color=black, label="Then1", fontsize=9]; n6 -> n7 [color=black];
+  n2 -> n10 [color=black, label="Then2", fontsize=9];
+  n10 -> n11 [color=black, label="True"]; n11 -> n12 [color=black, label="valid"];
+  n10 -> n15 [color=black, label="False"]; n15 -> n16 [color=black]; n16 -> n17 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n3 -> n5 [label="struct"]; n4 -> n5 [label="array"];
+  n6 -> n7 [label="actor"]; n8 -> n9 [label="object ref"]; n9 -> n10 [label="bool"];
+  n8 -> n11 [label="cast object input", color="#b04040"];
+  n11 -> n12 [label="interface message target", color="#6a40b0"];
+  n13 -> n14 [label="enum"];
+}

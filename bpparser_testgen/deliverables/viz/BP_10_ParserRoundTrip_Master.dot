@@ -1,0 +1,34 @@
+// BP_10_ParserRoundTrip_Master - structure graph
+// Edge legend: solid=exec, dashed=data, dashdot=delegate
+digraph BP_10_ParserRoundTrip_Master {
+  rankdir=LR;
+  labelloc="t"; label="BP_10_ParserRoundTrip_Master (EventGraph)";
+  node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Segoe UI"];
+
+  subgraph cluster_master {
+    label="Master regression entry: Spawn -> Cast -> Interface -> Enum branch -> Dispatch -> Log";
+    style="rounded"; color="#999999"; bgcolor="#fbfbf4";
+    n1 [label="Event BeginPlay", fillcolor="#ffe9c7"];
+    n2 [label="SpawnActor\nBP_BPParserTargetActor"];
+    n3 [label="Set TargetRef"];
+    n4 [label="Cast To\nBP_BPParserTargetActor", fillcolor="#ffe0e0"];
+    n5 [label="GetParserTestName\n(Interface Message)", fillcolor="#e6e0ff"];
+    n6 [label="Call OnMasterDone"];
+    n7 [label="Print String (Master done)", fillcolor="#d8f5d8"];
+    n8 [label="Make ST_BPParserTestData\nID=999"];
+    n9 [label="Get MasterState"];
+    n10 [label="Switch on Enum"];
+  }
+
+  // exec
+  n1 -> n2 [color=black]; n2 -> n3 [color=black]; n3 -> n4 [color=black];
+  n4 -> n5 [color=black, label="valid"]; n5 -> n6 [color=black]; n6 -> n7 [color=black];
+
+  // data
+  edge [style=dashed, color="#7a7a7a", fontsize=10];
+  n2 -> n3 [label="actor"];
+  n3 -> n4 [label="cast object input", color="#b04040"];
+  n4 -> n5 [label="interface message target", color="#6a40b0"];
+  n5 -> n6 [label="Name -> Result"];
+  n9 -> n10 [label="enum"];
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blueprint-analyse-tool/schemas/error_codes.schema.json",
+  "title": "Error code registry. Mirrors docs/agent_tools.md §4.",
+  "type": "object",
+  "required": ["codes"],
+  "properties": {
+    "codes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "category", "description"],
+        "properties": {
+          "name":        { "type": "string" },
+          "category":    { "type": "string", "enum": ["asset", "ir", "slice", "safety", "ue", "structural"] },
+          "description": { "type": "string" },
+          "agent_advice":{ "type": "string" }
+        }
+      }
+    }
+  },
+  "default": {
+    "codes": {
+      "E1001": { "name": "ASSET_NOT_FOUND",          "category": "asset", "description": "asset_path 不存在",                       "agent_advice": "list_blueprint_assets" },
+      "E1002": { "name": "IR_NOT_DUMPED",            "category": "ir",    "description": "缓存中无该蓝图 IR",                       "agent_advice": "fallback dump_blueprint" },
+      "E1003": { "name": "SCHEMA_VERSION_MISMATCH",  "category": "ir",    "description": "IR schema 版本与工具不匹配",              "agent_advice": "dump_blueprint --overwrite=overwrite" },
+      "E1101": { "name": "NODE_NOT_FOUND",           "category": "ir",    "description": "node_id 不在该蓝图",                      "agent_advice": "search_nodes" },
+      "E1102": { "name": "VARIABLE_NOT_FOUND",       "category": "ir",    "description": "变量名不在 manifest",                     "agent_advice": "list manifest.variables" },
+      "E1201": { "name": "SLICE_DEPTH_EXCEEDED",     "category": "slice", "description": "depth 超出上限",                          "agent_advice": "reduce depth" },
+      "E2001": { "name": "READ_ONLY_VIOLATION",      "category": "safety","description": "解析期间检测到写入",                      "agent_advice": "do not retry; manual review" },
+      "E2002": { "name": "OUTPUT_DIR_INSIDE_PROJECT","category": "safety","description": "OutputDir 在 ProjectPath 内",              "agent_advice": "use a path outside project" },
+      "E2003": { "name": "OVERWRITE_BLOCKED",        "category": "safety","description": "策略=fail 且输出冲突",                    "agent_advice": "skip or overwrite" },
+      "E5001": { "name": "UE_LAUNCH_FAILED",         "category": "ue",    "description": "UnrealEditor-Cmd 启动失败",                "agent_advice": "verify .uproject path" },
+      "E5002": { "name": "UE_TIMEOUT",               "category": "ue",    "description": "dump 超时",                                "agent_advice": "reduce batch size" }
+    }
+  }
+}

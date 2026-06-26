@@ -1,0 +1,56 @@
+%% BP_08_ComplexGameplayLikeGraph - EventGraph
+%% Edge style: solid=exec, dotted=data
+flowchart LR
+  n1["Event BeginPlay"]:::evt
+  n2["Sequence"]
+  subgraph C1["Init Test Data"]
+    n3["Make ST_BPParserTestData ID=100"]
+    n4["Get DataList :array&lt;struct&gt;"]
+    n5["Array Add"]
+  end
+  subgraph C2["Spawn Target"]
+    n6["SpawnActor BP_BPParserTargetActor"]
+    n7["Set TargetRef"]
+  end
+  subgraph C3["Validate Target"]
+    n8["Get TargetRef"]
+    n9["IsValid"]
+    n10["Branch"]
+  end
+  subgraph C4["Process State"]
+    n11["Cast To BP_BPParserTargetActor"]:::cast
+    n12["GetParserTestName (Interface Message)"]:::iface
+    n13["Get CurrentState"]
+    n14["Switch on Enum"]
+  end
+  subgraph C5["Dispatch Result"]
+    n15(("Reroute"))
+    n16["Call OnSummaryReady (Processed)"]
+  end
+  subgraph C6["Log Summary"]
+    n17["Print String (summary)"]:::impure
+  end
+
+  n1 --> n2
+  n2 -->|Then0| n5
+  n2 -->|Then1| n6
+  n6 --> n7
+  n2 -->|Then2| n10
+  n10 -->|True| n11
+  n11 -->|valid| n12
+  n10 -->|False| n15
+  n15 --> n16
+  n16 --> n17
+  n3 -.->|struct| n5
+  n4 -.->|array| n5
+  n6 -.->|actor| n7
+  n8 -.->|object ref| n9
+  n9 -.->|bool| n10
+  n8 -.->|cast object input| n11
+  n11 -.->|interface message target| n12
+  n13 -.->|enum| n14
+
+  classDef evt fill:#ffe9c7,stroke:#b8860b;
+  classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef cast fill:#ffe0e0,stroke:#b04040;
+  classDef iface fill:#e6e0ff,stroke:#6a40b0;
