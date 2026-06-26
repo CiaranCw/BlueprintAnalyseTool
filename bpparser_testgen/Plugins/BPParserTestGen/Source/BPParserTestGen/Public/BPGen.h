@@ -70,6 +70,10 @@ public:
 	                                  bool bPure = false);
 	static UEdGraph* AddMacroGraph(UBlueprint* BP, FName MacroName, const TArray<FBPGenParam>& Inputs,
 	                               const TArray<FBPGenParam>& Outputs);
+	/** Macro INPUT tunnel: exposes the macro's input params as OUTPUT pins inside the body. */
+	static UEdGraphNode* GetMacroInputTunnel(UEdGraph* MacroGraph);
+	/** Macro OUTPUT tunnel: collects the macro's output params as INPUT pins inside the body. */
+	static UEdGraphNode* GetMacroOutputTunnel(UEdGraph* MacroGraph);
 	static bool AddLocalVariable(UEdGraph* FunctionGraph, FName VarName, const FEdGraphPinType& Type,
 	                             const FString& DefaultValue = FString());
 	static bool ImplementInterface(UBlueprint* BP, const FString& InterfaceAssetPath);

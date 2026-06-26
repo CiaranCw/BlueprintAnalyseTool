@@ -33,8 +33,11 @@ digraph BP_05_Functions_Macros_LocalVariables {
     h2 -> h4 [style=dashed,color="#7a7a7a",label="Sum"]; h3 -> h4 [style=dashed,color="#7a7a7a",label="Product"];
   }
   subgraph cluster_macro {
-    label="Macro: Macro_LogWithPrefix (body = manual)"; style="rounded,dashed"; color="#b08a3a"; bgcolor="#fbf8f0";
-    m1 [label="Input Tunnel\n(Exec,Prefix,Message)"]; m2 [label="Output Tunnel\n(Exec)"];
-    m1 -> m2 [style=dotted,color="#b08a3a",label="manual body"];
+    label="Macro: Macro_LogWithPrefix (body auto-wired)"; style="rounded,dashed"; color="#b08a3a"; bgcolor="#fbf8f0";
+    m1 [label="Input Tunnel\n(Exec,Prefix,Message)"]; m2 [label="Output Tunnel\n(Out)"];
+    m3 [label="Append (Concat_StrStr)"]; m4 [label="Print String", fillcolor="#d8f5d8"];
+    m1 -> m4 [color=black,label="Exec"]; m4 -> m2 [color=black,label="then -> Out"];
+    m1 -> m3 [style=dashed,color="#7a7a7a",label="Prefix -> A"]; m1 -> m3 [style=dashed,color="#7a7a7a",label="Message -> B"];
+    m3 -> m4 [style=dashed,color="#7a7a7a",label="-> InString"];
   }
 }

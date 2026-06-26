@@ -163,6 +163,38 @@ which on multi-exec nodes is a case/loop-body pin, not the continuation. Also: a
 
 ---
 
+## P11: Macro graph created with empty body / duplicate exec pin name ("Exec 2")
+
+### Typical symptom
+- A user macro's Input and Output tunnel nodes are disconnected (macro does nothing); the output
+  exec pin shows "Exec 2" instead of the intended name.
+
+### Affected node families
+- Any generated macro graph (`AddMacroGraph`) and its `K2Node_Tunnel` input/output nodes; the
+  unique-name rule applies to ALL macro signature pins (exec + data).
+
+### Root cause
+- (1) The builder created only the macro signature (tunnels + user pins) and left the body unwired
+  (an earlier "tunnel wiring is fragile" decision) → coverage gap. (2) Macro signature pin names
+  must be unique across the whole instance; adding an input exec "Exec" AND an output exec "Exec"
+  makes UE auto-rename the second to "Exec 2".
+
+### Generalized fix
+- Reusable tunnel accessors `FBPGen::GetMacroInputTunnel` / `GetMacroOutputTunnel` (input tunnel =
+  `bCanHaveOutputs`, output tunnel = `bCanHaveInputs`) let builders wire macro bodies. Name input
+  and output exec distinctly (e.g. input "Exec", output "Out"). BP_05's `Macro_LogWithPrefix` body
+  is now auto-wired: Concat(Prefix,Message) -> PrintString.InString; In exec -> Print -> Out exec.
+  Files: `BPGen.cpp/.h`, `BPGenBuilders_A.cpp`.
+
+### Validation
+- `export_ir`; assert the macro graph has body nodes (Concat_StrStr, PrintString), 5 edges, and the
+  output exec pin is "Out" (not "Exec 2"). Blueprint compiles clean.
+
+### Regression assets
+- BP_05_Functions_Macros_LocalVariables (Macro_LogWithPrefix).
+
+---
+
 ## P9: Loop/value data output not wired to consumer (and int→string needs an autocast node)
 
 ### Typical symptom

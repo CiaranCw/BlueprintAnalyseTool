@@ -78,13 +78,23 @@
     },
     {
       "graph_name": "Macro_LogWithPrefix", "graph_type": "macro",
-      "signature": { "inputs": [ { "name": "Exec", "category": "exec" }, { "name": "Prefix", "category": "string" }, { "name": "Message", "category": "string" } ], "outputs": [ { "name": "Exec", "category": "exec" } ] },
+      "signature": { "inputs": [ { "name": "Exec", "category": "exec" }, { "name": "Prefix", "category": "string" }, { "name": "Message", "category": "string" } ], "outputs": [ { "name": "Out", "category": "exec" } ] },
       "nodes": [
-        { "node_id": "m1", "node_name": "Input (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel" },
-        { "node_id": "m2", "node_name": "Output (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel" }
+        { "node_id": "m1", "node_name": "Input (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel",
+          "note": "exposes macro inputs as OUTPUT pins: Exec(exec), Prefix(string), Message(string)" },
+        { "node_id": "m2", "node_name": "Output (Tunnel)", "node_class": "K2Node_Tunnel", "node_type_category": "tunnel",
+          "note": "collects macro output as INPUT pin: Out(exec). Named 'Out' (not 'Exec') so the macro signature has unique pin names" },
+        { "node_id": "m3", "node_name": "Append (Concat_StrStr)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Concat_StrStr", "member_parent": "/Script/Engine.KismetStringLibrary" }, "position": { "x": 360, "y": 180 } },
+        { "node_id": "m4", "node_name": "Print String", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "PrintString", "member_parent": "/Script/Engine.KismetSystemLibrary" }, "position": { "x": 680, "y": 0 } }
       ],
-      "edges": [],
-      "note": "MANUAL: macro body (Concat + PrintString) is intentionally not auto-wired; tunnel-pin body wiring is fragile to automate. Wire it in UE if needed."
+      "edges": [
+        { "edge_id": "mi1", "from_node": "m1", "from_pin": "Exec",        "to_node": "m4", "to_pin": "execute",  "edge_type": "exec", "note": "macro In exec -> PrintString" },
+        { "edge_id": "mi2", "from_node": "m4", "from_pin": "then",        "to_node": "m2", "to_pin": "Out",      "edge_type": "exec", "note": "PrintString.then -> macro Out exec" },
+        { "edge_id": "mi3", "from_node": "m1", "from_pin": "Prefix",      "to_node": "m3", "to_pin": "A",        "edge_type": "data" },
+        { "edge_id": "mi4", "from_node": "m1", "from_pin": "Message",     "to_node": "m3", "to_pin": "B",        "edge_type": "data" },
+        { "edge_id": "mi5", "from_node": "m3", "from_pin": "ReturnValue", "to_node": "m4", "to_pin": "InString", "edge_type": "data" }
+      ],
+      "note": "Macro body auto-wired by the generator: Concat(Prefix,Message) -> PrintString.InString; In exec -> Print -> Out exec."
     }
   ],
   "variables": [],
@@ -100,6 +110,7 @@
     "graph.event", "graph.function", "graph.macro",
     "func.impure", "func.pure", "func.multi_in_out", "func.return_value", "feature.local_variable",
     "node.function_entry", "node.function_result", "node.macro_tunnel", "node.function_call.self",
+    "macro.body_wired", "pin.tunnel.exec", "pin.tunnel.data", "node.macro.impure_body",
     "edge.exec", "edge.data"
   ]
 }

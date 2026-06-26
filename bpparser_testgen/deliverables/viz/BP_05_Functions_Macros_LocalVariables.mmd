@@ -37,10 +37,16 @@ flowchart LR
     h2 -.->|Sum| h4
     h3 -.->|Product| h4
   end
-  subgraph MAC["Macro Macro_LogWithPrefix (body = manual)"]
+  subgraph MAC["Macro Macro_LogWithPrefix (body auto-wired)"]
     m1["Input Tunnel (Exec,Prefix,Message)"]
-    m2["Output Tunnel (Exec)"]
-    m1 -.->|manual body| m2
+    m2["Output Tunnel (Out)"]
+    m3["Append (Concat_StrStr)"]
+    m4["Print String"]:::impure
+    m1 -->|Exec| m4
+    m4 -->|then to Out| m2
+    m1 -.->|Prefix to A| m3
+    m1 -.->|Message to B| m3
+    m3 -.->|to InString| m4
   end
 
   classDef evt fill:#ffe9c7,stroke:#b8860b;

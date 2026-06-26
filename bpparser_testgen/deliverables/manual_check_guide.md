@@ -27,7 +27,7 @@
 - **BP_02**：Make/Break 自定义 Struct；Switch on Enum 出 4 个枚举 case；Array/Set/Map 三类 wildcard 容器函数的容器 Pin 类型是否被正确推断（**易错点**）。
 - **BP_03**：SpawnActor 的 Class 默认指向 BP_BPParserTargetActor；Cast 的 Object 输入、valid/invalid exec；Interface Message 的 self（target）与返回 Name；Soft 引用默认值为空（**需要你手填一个软引用做完整测试**）。
 - **BP_04**：11 类控制流。**最易错/最需确认**：DoOnce/FlipFlop/Gate/ForLoop/ForLoopWithBreak/ForEachLoop 来自 `/Engine StandardMacros`，确认每个宏实例都成功解析（不是红色未知节点）；Branch 的 True+False 经 Reroute **汇合**到同一 Print；Switch String 的 case 字面值是引擎默认名（可改）。
-- **BP_05**：4 个图（EventGraph + 3 函数 + 1 宏）。确认 **NormalizeScore 是否为 Pure**（无 exec pin）；ComputeScore 有 Local Var TempSum；**Macro_LogWithPrefix 宏体是空的（仅 tunnel），需要你手动连 Concat+PrintString**。
+- **BP_05**：4 个图（EventGraph + 3 函数 + 1 宏）。确认 **NormalizeScore 是否为 Pure**（无 exec pin）；ComputeScore 有 Local Var TempSum；**Macro_LogWithPrefix 宏体已自动连线**：Input Tunnel(Exec/Prefix/Message) → Append(Concat_StrStr) → Print String → Output Tunnel(**Out**)；确认输出 exec 引脚名为 `Out`（不是 `Exec 2`），且两个 tunnel 之间不再是断开状态。
 - **BP_06**：**委托最易错**。确认 Create Event→Bind 的红色 delegate pin 是否真的连上、Bind 是否绑定 OnParserTestTriggered；Call/Clear 是否引用同一 dispatcher；CustomEvent 的 Message 参数是否传到 Print。
 - **BP_07**：Delay→SetTimerByFunctionName(OnTimerTick,0.5,Loop)→ClearTimer；OnTimerTick 自定义事件存在。**Timeline 与 Async 故意未生成**（见报告），如需补 Timeline：右键图 → Add Timeline → 加一条 Float Track。
 - **BP_08**：6 个区域注释（Init/Spawn/Validate/Process/Dispatch/Log）；含 Cast + Interface + Dispatcher + Reroute 汇合，结构最复杂，重点看整体连通性。

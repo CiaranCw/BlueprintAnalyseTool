@@ -267,6 +267,34 @@ UEdGraph* FBPGen::AddMacroGraph(UBlueprint* BP, FName MacroName, const TArray<FB
 	return MacroGraph;
 }
 
+UEdGraphNode* FBPGen::GetMacroInputTunnel(UEdGraph* MacroGraph)
+{
+	if (!MacroGraph) { return nullptr; }
+	for (UEdGraphNode* N : MacroGraph->Nodes)
+	{
+		// The input tunnel feeds the body: it can have OUTPUT pins.
+		if (UK2Node_Tunnel* T = Cast<UK2Node_Tunnel>(N))
+		{
+			if (T->bCanHaveOutputs && !T->bCanHaveInputs) { return T; }
+		}
+	}
+	return nullptr;
+}
+
+UEdGraphNode* FBPGen::GetMacroOutputTunnel(UEdGraph* MacroGraph)
+{
+	if (!MacroGraph) { return nullptr; }
+	for (UEdGraphNode* N : MacroGraph->Nodes)
+	{
+		// The output tunnel collects results: it can have INPUT pins.
+		if (UK2Node_Tunnel* T = Cast<UK2Node_Tunnel>(N))
+		{
+			if (T->bCanHaveInputs && !T->bCanHaveOutputs) { return T; }
+		}
+	}
+	return nullptr;
+}
+
 bool FBPGen::AddLocalVariable(UEdGraph* FunctionGraph, FName VarName, const FEdGraphPinType& Type, const FString& DefaultValue)
 {
 	if (!FunctionGraph) { return false; }

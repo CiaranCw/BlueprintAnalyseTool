@@ -600,17 +600,35 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP05_FunctionsMacrosLocals()
 		}
 	}
 
-	// --- Macro: Macro_LogWithPrefix(exec, Prefix:string, Message:string) -> exec ---
+	// --- Macro: Macro_LogWithPrefix(In exec, Prefix:string, Message:string) -> (Out exec) ---
+	// Body is auto-wired: Concat(Prefix, Message) -> PrintString.InString; In exec -> Print -> Out exec.
 	{
 		TArray<FBPGenParam> In;
 		In.Add({ "Exec",    FBPGen::PinExec(),   false });
 		In.Add({ "Prefix",  FBPGen::PinString(), false });
 		In.Add({ "Message", FBPGen::PinString(), false });
 		TArray<FBPGenParam> Out;
-		Out.Add({ "Exec", FBPGen::PinExec(), false });
+		// Output exec MUST differ from the input exec name; macro signature pin names are unique
+		// across the whole instance, so a second "Exec" would be auto-renamed to "Exec 2".
+		Out.Add({ "Out", FBPGen::PinExec(), false });
 		UEdGraph* MG = FBPGen::AddMacroGraph(BP, "Macro_LogWithPrefix", In, Out);
-		if (MG) R.Notes.Add(TEXT("Macro_LogWithPrefix created with exec + Prefix + Message inputs; body left for manual wiring of Concat+PrintString (tunnel pin wiring is fragile to automate)."));
-		else    R.Notes.Add(TEXT("Macro_LogWithPrefix creation failed."));
+		if (MG)
+		{
+			UEdGraphNode* InT  = FBPGen::GetMacroInputTunnel(MG);   // input params appear as OUTPUT pins here
+			UEdGraphNode* OutT = FBPGen::GetMacroOutputTunnel(MG);  // output params appear as INPUT pins here
+			UK2Node_CallFunction* Concat = FBPGen::SpawnCallFunc(MG, UKismetStringLibrary::StaticClass(), "Concat_StrStr", 360, 180);
+			UK2Node_CallFunction* Print  = FBPGen::SpawnCallFunc(MG, UKismetSystemLibrary::StaticClass(), "PrintString", 680, 0);
+			if (InT && Concat)
+			{
+				FBPGen::Connect(OutPin(InT, TEXT("Prefix")),  InPin(Concat, "A"));
+				FBPGen::Connect(OutPin(InT, TEXT("Message")), InPin(Concat, "B"));
+			}
+			if (Concat && Print) FBPGen::Connect(OutPin(Concat, "ReturnValue"), InPin(Print, "InString"));
+			if (InT && Print)  FBPGen::Connect(FBPGen::FindExecOut(InT), FBPGen::FindExecIn(Print));   // tunnel In exec -> Print
+			if (Print && OutT) FBPGen::Connect(FBPGen::FindExecOut(Print), FBPGen::FindExecIn(OutT));  // Print.then -> tunnel Out exec
+			R.Notes.Add(TEXT("Macro_LogWithPrefix body wired: Concat(Prefix,Message) -> PrintString; In exec -> Print -> Out exec (output exec named 'Out' to avoid 'Exec 2' collision)."));
+		}
+		else R.Notes.Add(TEXT("Macro_LogWithPrefix creation failed."));
 	}
 
 	// --- EventGraph: call function + macro ---
@@ -640,6 +658,6 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP05_FunctionsMacrosLocals()
 	}
 
 	R.CompileStatus = FBPGen::CompileBlueprint(BP);
-	R.Notes.Add(TEXT("Graphs: EventGraph + 3 Function graphs (ComputeScore impure+local var, NormalizeScore pure, ComputeStats multi-out) + 1 Macro graph. Macro body wiring is a manual step (see report)."));
+	R.Notes.Add(TEXT("Graphs: EventGraph + 3 Function graphs (ComputeScore impure+local var, NormalizeScore pure, ComputeStats multi-out) + 1 Macro graph (body auto-wired: Concat + PrintString)."));
 	return R;
 }

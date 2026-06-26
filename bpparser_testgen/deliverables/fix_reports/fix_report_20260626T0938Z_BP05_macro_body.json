@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "timestamp_utc": "2026-06-26T09:38:00Z",
+  "engine_version": "5.4",
+  "issue": {
+    "asset": "BP_05_Functions_Macros_LocalVariables",
+    "graph": "Macro_LogWithPrefix",
+    "node": "Input/Output Tunnel (K2Node_Tunnel)",
+    "pin": "output exec ('Exec' -> auto-renamed 'Exec 2')",
+    "symptom": "The macro's Input and Output tunnels were disconnected (empty body); the output exec pin showed 'Exec 2'.",
+    "ue_message": "no error; reported from UE editor screenshot"
+  },
+  "classification": [
+    "macro_graph_incomplete_body",
+    "macro_signature_pin_name_collision",
+    "coverage_gap"
+  ],
+  "root_cause": {
+    "direct": "Builder intentionally left the macro body unwired (documented 'manual' step); input exec 'Exec' + output exec 'Exec' collide because macro signature pin names must be unique, so UE renamed the output to 'Exec 2'.",
+    "generator_layer": "No reusable accessor to reach macro tunnels for body wiring; the earlier decision treated tunnel-pin wiring as too fragile to automate.",
+    "parser_layer": "n/a",
+    "ir_layer": "expected_ir declared the macro body as MANUAL/empty, diverging from a complete test asset.",
+    "version_compatibility": "n/a"
+  },
+  "affected_patterns": [
+    {
+      "pattern": "Generated macro graphs left with empty bodies / colliding exec pin names",
+      "affected_nodes": ["K2Node_Tunnel", "any AddMacroGraph caller"],
+      "risk": "medium"
+    }
+  ],
+  "fix": {
+    "strategy": "Add reusable FBPGen::GetMacroInputTunnel/GetMacroOutputTunnel; auto-wire BP_05 macro body (Concat(Prefix,Message) -> PrintString.InString; In exec -> Print -> Out exec); name the output exec 'Out' to avoid the 'Exec 2' collision.",
+    "modified_files": [
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Public/BPGen.h",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPGen.cpp",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPGenBuilders_A.cpp",
+      "bpparser_testgen/deliverables/expected_ir/BP_05_Functions_Macros_LocalVariables.json",
+      "bpparser_testgen/deliverables/viz/BP_05_Functions_Macros_LocalVariables.dot",
+      "bpparser_testgen/deliverables/viz/BP_05_Functions_Macros_LocalVariables.mmd",
+      "bpparser_testgen/deliverables/coverage_matrix.md",
+      "bpparser_testgen/deliverables/manual_check_guide.md",
+      "docs/issue_patterns.md"
+    ],
+    "new_files": ["bpparser_testgen/deliverables/fix_reports/fix_report_20260626T0938Z_BP05_macro_body.json"],
+    "deleted_files": [],
+    "generalized_components": ["GetMacroInputTunnel", "GetMacroOutputTunnel"],
+    "hardcoded_workarounds": []
+  },
+  "validation": {
+    "build_rerun": "success",
+    "generate_rerun": "success",
+    "json_validation": "success",
+    "ir_dump_assertions": {
+      "macro.nodes": 4,
+      "macro.edges": 5,
+      "macro.output_exec_pin_name": "Out",
+      "macro.body_nodes": ["Append (Concat_StrStr)", "Print String"],
+      "tunnel_pins_connected": true
+    },
+    "known_unrelated": "BP_05 compile_status=warnings due to a PRE-EXISTING 'ReturnNode Exec pin has no connections' warning in a function graph (present before this change); deferred per user (other tests later).",
+    "ue_manual_check_required": [
+      "BP_05: confirm Macro_LogWithPrefix body Input->Append/Print->Output and output exec named 'Out'"
+    ]
+  },
+  "next_user_action": ["Optionally instantiate Macro_LogWithPrefix in a graph for MacroInstance coverage"]
+}

@@ -158,7 +158,9 @@
 | 多输出参数函数 | 图 | BP_05 | ComputeStats→(Sum,Product) | Result 多 pin | 已覆盖 | |
 | By Reference 参数 | Pin | BP_11 | AccumulateByRef Entry | InOutValue (int&) | 已覆盖 | bIsReference=true |
 | Local Variable | 成员 | BP_05 | ComputeScore.TempSum | — | 已覆盖 | `AddLocalVariable` |
-| Macro | 图 | BP_05 | Macro_LogWithPrefix | 输入/输出 tunnel | 需要人工确认 | 宏外壳已建；**宏体连线为手动步骤** |
+| Macro | 图 | BP_05 | Macro_LogWithPrefix | 输入/输出 tunnel + 宏体 | 已覆盖 | 宏体已自动连线：Concat(Prefix,Message)→PrintString；In exec→Print→Out exec（输出 exec 命名为 `Out` 以避免 `Exec 2` 冲突） |
+| Macro Tunnel Pin 连线 | Pin | BP_05 | Input/Output Tunnel | exec/data tunnel pin | 已覆盖 | `GetMacroInputTunnel`/`GetMacroOutputTunnel` |
+| 宏体内 impure 节点 | 节点 | BP_05 | PrintString in macro | exec | 已覆盖 | 宏可含 impure 节点（编译时内联展开） |
 | Collapsed Graph | 图 | — | — | — | 无法自动覆盖 | 折叠图需选区操作，不自动生成；手动 |
 | Reroute Node | 节点 | BP_04/08/09/99 | K2Node_Knot | — | 已覆盖 | |
 | Comment Box | 注释 | 全部 BP | UEdGraphNode_Comment | text/bounds | 已覆盖 | BP_09 含空注释 |
@@ -175,7 +177,7 @@
 |---|---|---|---|---|
 | EventGraph (ubergraph) | Graph | 全部 BP | 已覆盖 | |
 | Function Graph | Graph | BP_05 / 支持component | 已覆盖 | |
-| Macro Graph | Graph | BP_05 | 需要人工确认 | 宏体手动 |
+| Macro Graph | Graph | BP_05 | 已覆盖 | 宏体已自动连线（tunnel pin + Concat + PrintString） |
 | Delegate Signature Graph | Graph | BP_06/08/10 | 需要人工确认 | 随 dispatcher 生成 |
 | Interface Function Graph | Graph | BPI_BPParserTest | 需要人工确认 | |
 | Anim/Widget Graph | Graph | — | 无法自动覆盖 | 不在本测试范围（解析器另有 partial 支持） |
