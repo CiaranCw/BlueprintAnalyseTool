@@ -11,24 +11,24 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$UE_ROOT = $env:UE_ROOT,
-  [string]$PROJECT_UPROJECT = $env:PROJECT_UPROJECT
+  [Alias('UE_ROOT')]          [string]$UERoot = $env:UE_ROOT,
+  [Alias('PROJECT_UPROJECT')] [string]$ProjectUProject = $env:PROJECT_UPROJECT
 )
 $ErrorActionPreference = 'Stop'
 function Fail($msg){ Write-Error $msg; exit 1 }
 
-if ([string]::IsNullOrWhiteSpace($UE_ROOT))         { Fail "UE_ROOT not set." }
-if ([string]::IsNullOrWhiteSpace($PROJECT_UPROJECT)) { Fail "PROJECT_UPROJECT not set." }
-if (-not (Test-Path $PROJECT_UPROJECT))             { Fail "Project not found: $PROJECT_UPROJECT" }
+if ([string]::IsNullOrWhiteSpace($UERoot))         { Fail "UERoot not set." }
+if ([string]::IsNullOrWhiteSpace($ProjectUProject)) { Fail "ProjectUProject not set." }
+if (-not (Test-Path $ProjectUProject))             { Fail "Project not found: $ProjectUProject" }
 
-$Cmd = Join-Path $UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+$Cmd = Join-Path $UERoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
 if (-not (Test-Path $Cmd)) { Fail "UnrealEditor-Cmd.exe not found: $Cmd" }
 
 Write-Host "Running BPParserTestGen commandlet ..." -ForegroundColor Cyan
-& $Cmd "$PROJECT_UPROJECT" -run=BPParserTestGen -stdout -unattended -nopause
+& $Cmd "$ProjectUProject" -run=BPParserTestGen -stdout -unattended -nopause
 $code = $LASTEXITCODE
 
-$Report = Join-Path (Split-Path $PROJECT_UPROJECT -Parent) 'Saved\BPParserTestReports\generation_log.json'
+$Report = Join-Path (Split-Path $ProjectUProject -Parent) 'Saved\BPParserTestReports\generation_log.json'
 if (Test-Path $Report) {
   Write-Host "generation_log.json -> $Report" -ForegroundColor Green
   Get-Content $Report -Raw | Write-Host

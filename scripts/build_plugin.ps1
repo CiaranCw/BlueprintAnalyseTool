@@ -11,27 +11,27 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$UE_ROOT = $env:UE_ROOT,
-  [string]$PROJECT_UPROJECT = $env:PROJECT_UPROJECT
+  [Alias('UE_ROOT')]          [string]$UERoot = $env:UE_ROOT,
+  [Alias('PROJECT_UPROJECT')] [string]$ProjectUProject = $env:PROJECT_UPROJECT
 )
 $ErrorActionPreference = 'Stop'
 
 function Fail($msg){ Write-Error $msg; exit 1 }
 
-if ([string]::IsNullOrWhiteSpace($UE_ROOT))         { Fail "UE_ROOT not set. Pass -UE_ROOT or set `$env:UE_ROOT (e.g. C:\Program Files\Epic Games\UE_5.4)." }
-if ([string]::IsNullOrWhiteSpace($PROJECT_UPROJECT)) { Fail "PROJECT_UPROJECT not set. Pass -PROJECT_UPROJECT (full path to .uproject)." }
-if (-not (Test-Path $PROJECT_UPROJECT))             { Fail "Project not found: $PROJECT_UPROJECT" }
+if ([string]::IsNullOrWhiteSpace($UERoot))         { Fail "UERoot not set. Pass -UERoot or set `$env:UE_ROOT (e.g. C:\Program Files\Epic Games\UE_5.4)." }
+if ([string]::IsNullOrWhiteSpace($ProjectUProject)) { Fail "ProjectUProject not set. Pass -ProjectUProject (full path to .uproject)." }
+if (-not (Test-Path $ProjectUProject))             { Fail "Project not found: $ProjectUProject" }
 
-$BuildBat = Join-Path $UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
-if (-not (Test-Path $BuildBat)) { Fail "Build.bat not found under UE_ROOT: $BuildBat" }
+$BuildBat = Join-Path $UERoot 'Engine\Build\BatchFiles\Build.bat'
+if (-not (Test-Path $BuildBat)) { Fail "Build.bat not found under UERoot: $BuildBat" }
 
-$ProjName = [IO.Path]::GetFileNameWithoutExtension($PROJECT_UPROJECT)
+$ProjName = [IO.Path]::GetFileNameWithoutExtension($ProjectUProject)
 $Target   = "${ProjName}Editor"
-$LogDir   = Join-Path (Split-Path $PROJECT_UPROJECT -Parent) 'Saved\Logs'
+$LogDir   = Join-Path (Split-Path $ProjectUProject -Parent) 'Saved\Logs'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
 Write-Host "Building $Target (Win64 Development) ..." -ForegroundColor Cyan
-& $BuildBat $Target Win64 Development -Project="$PROJECT_UPROJECT" -WaitMutex -FromMsBuild
+& $BuildBat $Target Win64 Development -Project="$ProjectUProject" -WaitMutex -FromMsBuild
 $code = $LASTEXITCODE
 if ($code -ne 0) { Fail "Build FAILED (exit $code). See logs in: $LogDir" }
 

@@ -1,6 +1,7 @@
 // Copyright BlueprintAnalyseTool. All Rights Reserved.
 #include "BPGen.h"
 #include "BPParserTestGenModule.h"
+#include "BPGenUECompat.h"
 
 #include "Engine/Blueprint.h"
 #include "Engine/BlueprintGeneratedClass.h"
@@ -847,20 +848,11 @@ bool FBPGen::SaveAsset(UObject* Asset)
 	if (!Asset) { return false; }
 	UPackage* Package = Asset->GetOutermost();
 	if (!Package) { return false; }
-	Package->SetDirtyFlag(true);
 
-	const FString PackageName = Package->GetName();
-	const FString FileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
-
-	FSavePackageArgs Args;
-	Args.TopLevelFlags = RF_Public | RF_Standalone;
-	Args.SaveFlags = SAVE_NoError;
-	Args.Error = GWarn;
-
-	const bool bSaved = UPackage::SavePackage(Package, Asset, *FileName, Args);
+	const bool bSaved = BPGenCompat::SavePackageCompat(Package, Asset);
 	if (!bSaved)
 	{
-		UE_LOG(LogBPParserTestGen, Warning, TEXT("SaveAsset failed: %s"), *PackageName);
+		UE_LOG(LogBPParserTestGen, Warning, TEXT("SaveAsset failed: %s"), *Package->GetName());
 	}
 	return bSaved;
 }
