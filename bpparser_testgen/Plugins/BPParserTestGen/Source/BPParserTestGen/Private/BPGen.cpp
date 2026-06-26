@@ -700,9 +700,30 @@ UEdGraphNode_Comment* FBPGen::AddComment(UEdGraph* G, const FString& Text, int32
 UEdGraphPin* FBPGen::FindPin(UEdGraphNode* Node, const FString& PinName, EEdGraphPinDirection Dir)
 {
 	if (!Node) { return nullptr; }
+
+	// Pass 1: exact (case-insensitive) match.
 	for (UEdGraphPin* P : Node->Pins)
 	{
 		if (P && P->Direction == Dir && P->PinName.ToString().Equals(PinName, ESearchCase::IgnoreCase))
+		{
+			return P;
+		}
+	}
+
+	// Pass 2: normalized fallback. Macro/engine pin names differ between the friendly
+	// display name and the internal name only by spaces or underscores, and the two are
+	// inconsistent even within a single node (e.g. ForLoop exposes "FirstIndex"/"LastIndex"/
+	// "Index" with no spaces, while ForEach exposes "Array Element"/"Array Index" WITH spaces,
+	// but "LoopBody" without). Strip spaces+underscores so callers can always pass the
+	// human-readable name. This also tolerates minor pin-name drift across UE 5.x versions.
+	auto Normalize = [](const FString& In) -> FString
+	{
+		return In.Replace(TEXT(" "), TEXT("")).Replace(TEXT("_"), TEXT("")).ToLower();
+	};
+	const FString Want = Normalize(PinName);
+	for (UEdGraphPin* P : Node->Pins)
+	{
+		if (P && P->Direction == Dir && Normalize(P->PinName.ToString()) == Want)
 		{
 			return P;
 		}
@@ -758,6 +779,33 @@ bool FBPGen::ConnectByName(UEdGraphNode* From, const FString& FromPin, UEdGraphN
 		return false;
 	}
 	return K2()->TryCreateConnection(A, B);
+}
+
+bool FBPGen::ConnectData(UEdGraphNode* From, const FString& FromPin, UEdGraphNode* To, const FString& ToPin)
+{
+	UEdGraphPin* A = FindPin(From, FromPin, EGPD_Output);
+	UEdGraphPin* B = FindPin(To, ToPin, EGPD_Input);
+	if (!A || !B)
+	{
+		UE_LOG(LogBPParserTestGen, Warning, TEXT("ConnectData: pin not found %s.%s(out=%d) -> %s.%s(in=%d)"),
+			From ? *From->GetClass()->GetName() : TEXT("?"), *FromPin, A != nullptr,
+			To ? *To->GetClass()->GetName() : TEXT("?"), *ToPin, B != nullptr);
+		return false;
+	}
+	// TryCreateConnection routes through the K2 schema, which auto-inserts an autocast /
+	// conversion node when the two data types differ but are convertible (e.g. int -> string,
+	// the exact behaviour the editor performs on a manual drag). After conversion, A links to
+	// the conversion node's input and B links to its output, so both endpoints become linked.
+	const bool bOk = Connect(A, B);
+	if (!bOk || A->LinkedTo.Num() == 0 || B->LinkedTo.Num() == 0)
+	{
+		UE_LOG(LogBPParserTestGen, Warning,
+			TEXT("ConnectData: link NOT established %s.%s[%s] -> %s.%s[%s] (incompatible types with no autocast?)"),
+			*From->GetClass()->GetName(), *FromPin, *A->PinType.PinCategory.ToString(),
+			*To->GetClass()->GetName(), *ToPin, *B->PinType.PinCategory.ToString());
+		return false;
+	}
+	return true;
 }
 
 bool FBPGen::ConnectExec(UEdGraphNode* From, UEdGraphNode* To)

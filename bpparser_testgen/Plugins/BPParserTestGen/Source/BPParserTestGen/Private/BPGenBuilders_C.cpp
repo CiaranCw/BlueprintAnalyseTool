@@ -187,7 +187,12 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP11_SupplementalCoverage()
 		UK2Node_VariableGet* GetArr2 = FBPGen::SpawnVarGet(G, "SupArray", 360, 900);
 		if (GetArr2) FBPGen::Connect(OutPin(GetArr2, "SupArray"), InPin(ForEachBreak, TEXT("Array")));
 		UK2Node_CallFunction* P = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 700, 800);
-		if (P) { FBPGen::SetPinDefault(P, TEXT("InString"), TEXT("elem")); FBPGen::ConnectExecFrom(ForEachBreak, TEXT("Loop Body"), P); }
+		if (P)
+		{
+			FBPGen::ConnectExecFrom(ForEachBreak, TEXT("Loop Body"), P);
+			// Print the element value: "Array Element"(int) -> InString(string) auto-casts via a conversion node.
+			FBPGen::ConnectData(ForEachBreak, TEXT("Array Element"), P, TEXT("InString"));
+		}
 	}
 	else R.Notes.Add(TEXT("ForEachLoopWithBreak macro not found."));
 

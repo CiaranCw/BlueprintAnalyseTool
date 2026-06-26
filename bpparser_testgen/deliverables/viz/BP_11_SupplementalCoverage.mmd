@@ -31,6 +31,7 @@ flowchart LR
     n23["For Each Loop With Break"]
     n24["Get SupArray (2)"]
     n25["Print (elem)"]:::impure
+    n30["To String (Integer) (autocast)"]:::cast
   end
   subgraph C4["Extra type pins"]
     n26["Get SupVector4"]
@@ -66,6 +67,9 @@ flowchart LR
   n13 -.->|map| n15
   n13 -.->|map| n16
   n24 -.->|array| n23
+  n23 -.->|Array Element int| n30
+  n30 -.->|to InString string| n25
 
   classDef evt fill:#ffe9c7,stroke:#b8860b;
   classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef cast fill:#f0e6ff,stroke:#7a4fbf;

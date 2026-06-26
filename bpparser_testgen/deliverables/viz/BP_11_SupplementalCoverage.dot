@@ -25,6 +25,7 @@ digraph BP_11_SupplementalCoverage {
     n18 [label="Sequence"]; n19 [label="Do N (N=3)"]; n20 [label="Print (DoN)", fillcolor="#d8f5d8"];
     n21 [label="While Loop (cond=false)"]; n22 [label="Print (While done)", fillcolor="#d8f5d8"];
     n23 [label="For Each Loop With Break"]; n24 [label="Get SupArray (2)"]; n25 [label="Print (elem)", fillcolor="#d8f5d8"];
+    n30 [label="To String (Integer)\n(autocast)", fillcolor="#f0e6ff"];
   }
   subgraph cluster_types {
     label="Extra type pins"; style="rounded"; color="#999999"; bgcolor="#fbf4f4";
@@ -50,4 +51,5 @@ digraph BP_11_SupplementalCoverage {
   n11 -> n12 [label="set"];
   n13 -> n14 [label="map"]; n13 -> n15 [label="map"]; n13 -> n16 [label="map"];
   n24 -> n23 [label="array -> Array"];
+  n23 -> n30 [label="Array Element (int)"]; n30 -> n25 [label="-> InString (string)"];
 }

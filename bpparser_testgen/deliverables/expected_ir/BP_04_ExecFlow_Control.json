@@ -47,7 +47,15 @@
         { "node_id": "n19", "node_name": "Switch on String", "node_class": "K2Node_SwitchString", "node_type_category": "switch", "position": { "x": 680, "y": 980 }, "note": "case literal values are engine-default (Case_0/Case_1); confirm/rename in UE if needed" },
         { "node_id": "n20", "node_name": "For Each Loop", "node_class": "K2Node_MacroInstance", "node_type_category": "macro_instance", "macro_reference": { "macro_graph": "ForEachLoop", "library": "/Engine/EditorBlueprintResources/StandardMacros" }, "position": { "x": 700, "y": 820 } },
         { "node_id": "n21", "node_name": "Get FlowArray", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 700, "y": 940 } },
-        { "node_id": "n22", "node_name": "Print String (FlowArray element)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1020, "y": 820 } }
+        { "node_id": "n22", "node_name": "Print String (FlowArray element)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "position": { "x": 1020, "y": 820 } },
+        { "node_id": "n23", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "note": "autocast node auto-inserted by the schema for ForLoop.Index(int) -> PrintString.InString(string)", "pins": [
+            { "pin_id": "n23_in",  "pin_name": "InInt",       "direction": "input",  "category": "int" },
+            { "pin_id": "n23_out", "pin_name": "ReturnValue", "direction": "output", "category": "string" }
+          ] },
+        { "node_id": "n24", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "note": "autocast node auto-inserted by the schema for ForEachLoop.'Array Element'(int) -> PrintString.InString(string)", "pins": [
+            { "pin_id": "n24_in",  "pin_name": "InInt",       "direction": "input",  "category": "int" },
+            { "pin_id": "n24_out", "pin_name": "ReturnValue", "direction": "output", "category": "string" }
+          ] }
       ],
       "edges": [
         { "edge_id": "e1",  "from_node": "n1",  "from_pin": "then",     "to_node": "n2",  "to_pin": "execute",     "edge_type": "exec" },
@@ -71,7 +79,11 @@
         { "edge_id": "e19", "from_node": "n15", "from_pin": "Completed","to_node": "n20", "to_pin": "execute",     "edge_type": "exec", "note": "ForLoopWithBreak completed -> ForEachLoop" },
         { "edge_id": "e20", "from_node": "n20", "from_pin": "Loop Body","to_node": "n22", "to_pin": "execute",     "edge_type": "exec" },
         { "edge_id": "e21", "from_node": "n21", "from_pin": "FlowArray","to_node": "n20", "to_pin": "Array",       "edge_type": "data" },
-        { "edge_id": "e22", "from_node": "n4",  "from_pin": "FlowBool", "to_node": "n3",  "to_pin": "Condition",   "edge_type": "data" }
+        { "edge_id": "e22", "from_node": "n4",  "from_pin": "FlowBool", "to_node": "n3",  "to_pin": "Condition",   "edge_type": "data" },
+        { "edge_id": "e23", "from_node": "n13", "from_pin": "Index",        "to_node": "n23", "to_pin": "InInt",     "edge_type": "data", "note": "ForLoop counter into autocast" },
+        { "edge_id": "e24", "from_node": "n23", "from_pin": "ReturnValue",  "to_node": "n14", "to_pin": "InString", "edge_type": "data", "note": "autocast result -> Print(index)" },
+        { "edge_id": "e25", "from_node": "n20", "from_pin": "Array Element", "to_node": "n24", "to_pin": "InInt",     "edge_type": "data", "note": "ForEach element into autocast" },
+        { "edge_id": "e26", "from_node": "n24", "from_pin": "ReturnValue",  "to_node": "n22", "to_pin": "InString", "edge_type": "data", "note": "autocast result -> Print(element)" }
       ],
       "comments": [
         { "comment_id": "c1", "text": "Sequence fan-out", "bounds": { "x": -80, "y": -200, "w": 360, "h": 1100 } },
@@ -93,7 +105,8 @@
   "coverage_tags": [
     "node.sequence", "node.branch", "node.do_once", "node.flipflop", "node.gate",
     "node.for_loop", "node.for_loop_with_break", "node.foreach", "node.switch_int", "node.switch_string", "node.reroute",
-    "node.delay.latent", "edge.exec", "edge.latent_continuation", "edge.converge",
-    "pin.exec.then", "pin.exec.loop_body", "pin.exec.completed", "feature.unconnected_pin_default"
+    "node.delay.latent", "node.autocast.int_to_string", "edge.exec", "edge.latent_continuation", "edge.converge",
+    "edge.data", "edge.data.autocast", "pin.exec.then", "pin.exec.loop_body", "pin.exec.completed",
+    "pin.data.loop_index", "pin.data.array_element", "feature.unconnected_pin_default", "feature.implicit_conversion_node"
   ]
 }

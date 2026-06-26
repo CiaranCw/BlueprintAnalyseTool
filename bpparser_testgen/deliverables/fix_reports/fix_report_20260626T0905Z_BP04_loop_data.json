@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "timestamp_utc": "2026-06-26T09:05:00Z",
+  "engine_version": "5.4",
+  "issue": {
+    "asset": "BP_04_ExecFlow_Control",
+    "graph": "EventGraph",
+    "node": "For Loop (macro) / For Each Loop (macro)",
+    "pin": "FirstIndex/LastIndex (default) ; Index / Array Element (data output)",
+    "symptom": "ForLoop showed First/Last = 0/0 (expected 0/3); ForLoop.Index and ForEach.'Array Element' had no outgoing wire, so the downstream Print String printed its default ('Hello') instead of the loop value.",
+    "ue_message": "no compile error; visual/structural mismatch reported from UE editor screenshots"
+  },
+  "classification": [
+    "missing_data_edge",
+    "pin_default_not_applied",
+    "pin_name_lookup_mismatch",
+    "implicit_type_conversion_required"
+  ],
+  "root_cause": {
+    "direct": "BP_04 builder only wired exec for the loop bodies and never created the data edge loop-value -> PrintString.InString; and SetPinDefault used spaced names ('First Index'/'Last Index') that do not equal the macro's internal pin names ('FirstIndex'/'LastIndex').",
+    "generator_layer": "FindPin matched pin names exactly (case-insensitive only), so display-vs-internal spacing differences silently failed; there was no checked data-connection helper, and builders relied on a non-existent assumption that exec wiring alone would surface values.",
+    "parser_layer": "n/a (IR dumper correct).",
+    "ir_layer": "expected_ir declared the intent (First=0,Last=3, Print(index)/Print(element)) but omitted the data edges and the engine-inserted autocast nodes, so it diverged from real generated structure.",
+    "version_compatibility": "Macro pin names are inconsistent even within UE 5.4 (ForLoop 'FirstIndex' no space vs ForEach 'Array Element' with space); the normalized FindPin fallback also tolerates 5.x drift."
+  },
+  "affected_patterns": [
+    {
+      "pattern": "Value output not wired to typed consumer; convertible types need an autocast node",
+      "affected_nodes": ["ForLoop.Index", "ForEach.Array Element", "ForEachLoopWithBreak.Array Element", "any int/float/byte->string into PrintString/Append/Format"],
+      "risk": "high"
+    },
+    {
+      "pattern": "Pin lookup/default by display name fails on spaced internal names",
+      "affected_nodes": ["ForLoop FirstIndex/LastIndex", "all StandardMacros exposed pins"],
+      "risk": "medium"
+    }
+  ],
+  "fix": {
+    "strategy": "Generalize at the helper layer: (1) FindPin gains a normalized (space/underscore-insensitive) fallback pass so all lookups/defaults tolerate display-vs-internal names; (2) new FBPGen::ConnectData wires data pins by name and relies on UEdGraphSchema_K2::TryCreateConnection -> CreateAutomaticConversionNodeAndConnections to auto-insert the int->string conversion node (the same behaviour the editor performs on a drag), then verifies both endpoints linked. Builders BP_02/04/11 now wire loop value -> Print via ConnectData.",
+    "modified_files": [
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPGen.cpp",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Public/BPGen.h",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPGenBuilders_A.cpp",
+      "bpparser_testgen/Plugins/BPParserTestGen/Source/BPParserTestGen/Private/BPGenBuilders_C.cpp",
+      "bpparser_testgen/deliverables/expected_ir/BP_04_ExecFlow_Control.json",
+      "bpparser_testgen/deliverables/expected_ir/BP_02_StructEnumContainers.json",
+      "bpparser_testgen/deliverables/expected_ir/BP_11_SupplementalCoverage.json",
+      "bpparser_testgen/deliverables/viz/BP_04_ExecFlow_Control.dot",
+      "bpparser_testgen/deliverables/viz/BP_04_ExecFlow_Control.mmd",
+      "bpparser_testgen/deliverables/viz/BP_02_StructEnumContainers.dot",
+      "bpparser_testgen/deliverables/viz/BP_02_StructEnumContainers.mmd",
+      "bpparser_testgen/deliverables/viz/BP_11_SupplementalCoverage.dot",
+      "bpparser_testgen/deliverables/viz/BP_11_SupplementalCoverage.mmd",
+      "docs/issue_patterns.md",
+      "bpparser_testgen/deliverables/coverage_matrix.md"
+    ],
+    "new_files": [
+      "bpparser_testgen/deliverables/fix_reports/fix_report_20260626T0905Z_BP04_loop_data.json"
+    ],
+    "deleted_files": [],
+    "generalized_components": [
+      "FindPin normalized fallback (space/underscore-insensitive)",
+      "FBPGen::ConnectData (auto-cast data connection + link verification)"
+    ],
+    "hardcoded_workarounds": []
+  },
+  "validation": {
+    "build_rerun": "success",
+    "generate_rerun": "success",
+    "json_validation": "success",
+    "ir_dump_assertions": {
+      "BP_04.ForLoop.LastIndex.default_value": "3",
+      "BP_04.to_string_nodes": 2,
+      "BP_04.ForLoop.Index.is_connected": true,
+      "BP_04.ForEach.Array Element.is_connected": true,
+      "BP_02.to_string_nodes": 1,
+      "BP_11.to_string_nodes": 1,
+      "compile_status": "up_to_date (BP_02/BP_04/BP_11)"
+    },
+    "viz_rerun": "success (Graphviz PNG/SVG); mermaid .mmd source updated (mmdc not installed)",
+    "ue_manual_check_required": [
+      "BP_04: confirm For Loop iterates 0..3 and Print prints the index via the inserted 'To String (Integer)' node",
+      "BP_04: confirm For Each Loop element feeds Print via its 'To String (Integer)' node",
+      "BP_02 / BP_11: confirm ForEach element printed via autocast"
+    ]
+  },
+  "next_user_action": [
+    "Open BP_04_ExecFlow_Control in UE and verify the two loop->print autocast paths and First/Last = 0/3",
+    "Spot-check BP_02 and BP_11 ForEach element prints"
+  ]
+}

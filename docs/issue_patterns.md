@@ -163,6 +163,71 @@ which on multi-exec nodes is a case/loop-body pin, not the continuation. Also: a
 
 ---
 
+## P9: Loop/value data output not wired to consumer (and int→string needs an autocast node)
+
+### Typical symptom
+- A loop prints a static placeholder ("Hello"/"Element"/"elem") instead of the live value:
+  `ForLoop.Index` / `ForEach."Array Element"` never reach `PrintString.InString`. The exec wire
+  exists but the **data** wire is missing, so the consumer falls back to its pin default.
+
+### Affected node families
+- Any value OUTPUT feeding a typed INPUT, especially loop counters/elements into PrintString,
+  Append, Format Text; and ANY connection where source/target categories differ but are
+  convertible (int/float/byte/name/bool → string, etc.).
+
+### Root cause
+- Two layers: (1) the builder only wired exec and forgot the data edge; (2) `Index`(int) and
+  `Array Element`(int) are not directly assignable to `InString`(string) — the editor inserts a
+  conversion ("To String (Integer)" = `Conv_IntToString`) on a manual drag. Programmatically the
+  data edge must be created AND the conversion handled.
+
+### Generalized fix
+- `FBPGen::ConnectData(From,"<outPin>",To,"<inPin>")` routes through `UEdGraphSchema_K2::TryCreateConnection`,
+  which the engine resolves via `CanCreateConnection` → `CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE`
+  → `CreateAutomaticConversionNodeAndConnections` (verified in `EdGraphSchema.cpp`). So no manual
+  Conv node is needed — the schema inserts it. `ConnectData` also VERIFIES both endpoints became
+  linked and warns otherwise. Files: `BPGen.cpp/.h`, builders BP_02/04/11.
+
+### Validation
+- `export_ir`; assert a `To String (Integer)` node exists between the loop value pin and the print,
+  and that the print's `InString.is_connected == true`. Confirm blueprint compiles clean.
+
+### Regression assets
+- BP_04 (ForLoop.Index→Print, ForEach."Array Element"→Print: 2 autocast nodes),
+  BP_02 / BP_11 (ForEach element→Print: 1 autocast node each).
+
+---
+
+## P10: Pin default / lookup silently fails on display-vs-internal name spacing
+
+### Typical symptom
+- `SetPinDefault(ForLoop,"Last Index","3")` has no effect — the pin still shows 0. The call
+  returned without error because `FindPin` found nothing and the default was never applied.
+
+### Affected node families
+- StandardMacros whose internal pin names drop spaces inconsistently: ForLoop `FirstIndex`/`LastIndex`/
+  `Index`, ForEach `LoopBody` (no space) vs `Array Element`/`Array Index` (with space). Also tolerates
+  minor pin-name drift across UE 5.x.
+
+### Root cause
+- `FindPin` matched the pin name exactly (case-insensitive). Callers passed the friendly display
+  name ("First Index") which does not equal the internal name ("FirstIndex"), so lookup—and the
+  dependent `SetPinDefault`—silently no-op'd.
+
+### Generalized fix
+- `FindPin` now does a second pass with a normalized comparison (strip spaces + underscores,
+  case-insensitive). Every lookup-based helper (`SetPinDefault`, `OutPin/InPin`, `ConnectData`)
+  inherits the tolerance. Files: `BPGen.cpp`.
+
+### Validation
+- `export_ir`; assert `ForLoop.LastIndex.default_value == "3"`. (`FirstIndex` stays empty = the
+  engine's "0" autodefault, which displays as 0.)
+
+### Regression assets
+- BP_04 (ForLoop First/Last Index defaults).
+
+---
+
 ## P6: MinimalAPI node methods not linkable cross-module
 
 ### Typical symptom

@@ -125,6 +125,10 @@ public:
 	static TArray<UEdGraphPin*> GetExecOutPins(UEdGraphNode* Node);  // all output exec pins (e.g. Sequence Then 0..N)
 	static bool Connect(UEdGraphPin* A, UEdGraphPin* B);
 	static bool ConnectByName(UEdGraphNode* From, const FString& FromPin, UEdGraphNode* To, const FString& ToPin);
+	/** Connect a DATA output pin to a DATA input pin BY NAME, auto-inserting a conversion/autocast
+	 *  node when the types differ but are convertible (e.g. loop Index:int -> PrintString.InString:string).
+	 *  Verifies the link was actually established and warns otherwise. Use for value wiring. */
+	static bool ConnectData(UEdGraphNode* From, const FString& FromPin, UEdGraphNode* To, const FString& ToPin);
 	/** Connects From's single continuation exec ("then" or the only exec-out) to To's input-exec.
 	 *  REFUSES (warns) if From has multiple exec outputs and no "then" — use ConnectExecFrom for those. */
 	static bool ConnectExec(UEdGraphNode* From, UEdGraphNode* To);

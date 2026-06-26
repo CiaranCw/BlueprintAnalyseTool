@@ -263,7 +263,12 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP02_StructEnumContainers()
 		if (ArrAdd) FBPGen::ConnectExec(ArrAdd, ForEach);   // Array Add.then -> ForEach
 		if (GetArr) FBPGen::Connect(OutPin(GetArr, "IntArray"), InPin(ForEach, TEXT("Array")));
 		UK2Node_CallFunction* PrintElem = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 760, 460);
-		if (PrintElem) { FBPGen::SetPinDefault(PrintElem, TEXT("InString"), TEXT("Element")); FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), PrintElem); }
+		if (PrintElem)
+		{
+			FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), PrintElem);
+			// Print the element value: "Array Element"(int) -> InString(string) auto-casts via a conversion node.
+			FBPGen::ConnectData(ForEach, TEXT("Array Element"), PrintElem, TEXT("InString"));
+		}
 		if (SetAdd) FBPGen::ConnectExecFrom(ForEach, TEXT("Completed"), SetAdd);
 	}
 	else
@@ -457,10 +462,17 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 	if (UK2Node_MacroInstance* ForLoop = FBPGen::SpawnStdMacro(G, TEXT("ForLoop"), 700, 580))
 	{
 		if (Gate && OutPin(Gate, TEXT("Exit"))) FBPGen::Connect(OutPin(Gate, TEXT("Exit")), FBPGen::FindExecIn(ForLoop));
+		// ForLoop exposes "FirstIndex"/"LastIndex" (no spaces); friendly names resolve via FindPin's
+		// normalized fallback. Iterate 0..3 inclusive.
 		FBPGen::SetPinDefault(ForLoop, TEXT("First Index"), TEXT("0"));
 		FBPGen::SetPinDefault(ForLoop, TEXT("Last Index"),  TEXT("3"));
 		UK2Node_CallFunction* P = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 1020, 560);
-		if (P) FBPGen::ConnectExecFrom(ForLoop, TEXT("Loop Body"), P);
+		if (P)
+		{
+			FBPGen::ConnectExecFrom(ForLoop, TEXT("Loop Body"), P);
+			// Print the loop counter: Index(int) -> InString(string) auto-casts via an inserted conversion node.
+			FBPGen::ConnectData(ForLoop, TEXT("Index"), P, TEXT("InString"));
+		}
 		// ForLoopWithBreak after completed, then ForEachLoop over FlowArray
 		if (UK2Node_MacroInstance* ForBreak = FBPGen::SpawnStdMacro(G, TEXT("ForLoopWithBreak"), 700, 700))
 		{
@@ -472,7 +484,12 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 				UK2Node_VariableGet* GetArr = FBPGen::SpawnVarGet(G, "FlowArray", 700, 940);
 				if (GetArr) FBPGen::Connect(OutPin(GetArr, "FlowArray"), InPin(ForEach, TEXT("Array")));
 				UK2Node_CallFunction* Pe = FBPGen::SpawnCallFunc(G, UKismetSystemLibrary::StaticClass(), "PrintString", 1020, 820);
-				if (Pe) FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), Pe);
+				if (Pe)
+				{
+					FBPGen::ConnectExecFrom(ForEach, TEXT("Loop Body"), Pe);
+					// Print each element: "Array Element"(int) -> InString(string) auto-casts via a conversion node.
+					FBPGen::ConnectData(ForEach, TEXT("Array Element"), Pe, TEXT("InString"));
+				}
 			}
 			else R.Notes.Add(TEXT("ForEachLoop macro not found."));
 		}
@@ -498,7 +515,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 	}
 
 	R.CompileStatus = FBPGen::CompileBlueprint(BP);
-	R.Notes.Add(TEXT("Covers Sequence, Branch (+converge via Reroute), DoOnce, FlipFlop, Gate, ForLoop, ForLoopWithBreak, ForEachLoop, Switch Int, Switch String, Delay (latent). Control-flow macros come from /Engine StandardMacros; verify each resolved in UE. Switch-String case literals are engine-default names."));
+	R.Notes.Add(TEXT("Covers Sequence, Branch (+converge via Reroute), DoOnce, FlipFlop, Gate, ForLoop (0..3, Index->Print via int->string autocast), ForLoopWithBreak, ForEachLoop (Array Element->Print via autocast), Switch Int, Switch String, Delay (latent). Control-flow macros come from /Engine StandardMacros; verify each resolved in UE. Switch-String case literals are engine-default names."));
 	return R;
 }
 

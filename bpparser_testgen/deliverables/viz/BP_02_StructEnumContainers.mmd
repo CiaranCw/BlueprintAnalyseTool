@@ -20,6 +20,7 @@ flowchart LR
     n11["Array Length"]
     n12["For Each Loop (macro)"]
     n13["Print (element)"]:::impure
+    n21["To String (Integer) (autocast)"]:::cast
     n14["Get NameSet :set&lt;name&gt;"]
     n15["Set Add (Alpha)"]
     n16["Set Contains (Alpha)"]
@@ -47,6 +48,9 @@ flowchart LR
   n14 -.->|set| n16
   n17 -.->|map| n18
   n17 -.->|map| n19
+  n12 -.->|Array Element int| n21
+  n21 -.->|to InString string| n13
 
   classDef evt fill:#ffe9c7,stroke:#b8860b;
   classDef impure fill:#d8f5d8,stroke:#3a7d3a;
+  classDef cast fill:#f0e6ff,stroke:#7a4fbf;

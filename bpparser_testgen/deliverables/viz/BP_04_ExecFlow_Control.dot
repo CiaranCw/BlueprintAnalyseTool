@@ -22,6 +22,7 @@ digraph BP_04_ExecFlow_Control {
     label="ForLoop / ForLoopWithBreak / ForEachLoop"; style="rounded"; color="#999999"; bgcolor="#f6f4fb";
     n13 [label="For Loop (macro)\nFirst=0,Last=3"]; n14 [label="Print (index)", fillcolor="#d8f5d8"]; n15 [label="For Loop With Break (macro)"];
     n20 [label="For Each Loop (macro)"]; n21 [label="Get FlowArray"]; n22 [label="Print (element)", fillcolor="#d8f5d8"];
+    n23 [label="To String (Integer)\n(autocast)", fillcolor="#f0e6ff"]; n24 [label="To String (Integer)\n(autocast)", fillcolor="#f0e6ff"];
   }
   subgraph cluster_switch {
     label="Switch Int / Switch String / Delay (latent)"; style="rounded"; color="#999999"; bgcolor="#fbf4f4";
@@ -44,4 +45,6 @@ digraph BP_04_ExecFlow_Control {
   edge [style=dashed, color="#7a7a7a", fontsize=10];
   n4 -> n3 [label="bool -> Condition"];
   n21 -> n20 [label="array -> Array"];
+  n13 -> n23 [label="Index (int)"]; n23 -> n14 [label="-> InString (string)"];
+  n20 -> n24 [label="Array Element (int)"]; n24 -> n22 [label="-> InString (string)"];
 }

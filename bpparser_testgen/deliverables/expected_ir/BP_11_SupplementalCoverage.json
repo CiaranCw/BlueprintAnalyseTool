@@ -47,7 +47,12 @@
         { "node_id": "n26", "node_name": "Get SupVector4", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 540 } },
         { "node_id": "n27", "node_name": "Get SupColor", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 640 } },
         { "node_id": "n28", "node_name": "Get SupDateTime (if resolved)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 740 }, "conditional": true },
-        { "node_id": "n29", "node_name": "Get SupTimespan (if resolved)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 840 }, "conditional": true }
+        { "node_id": "n29", "node_name": "Get SupTimespan (if resolved)", "node_class": "K2Node_VariableGet", "node_type_category": "variable_get", "position": { "x": 1600, "y": 840 }, "conditional": true },
+        { "node_id": "n30", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "note": "autocast node auto-inserted for ForEachLoopWithBreak.'Array Element'(int) -> PrintString.InString(string)", "position": { "x": 560, "y": 880 },
+          "pins": [
+            { "pin_id": "n30_in",  "pin_name": "InInt",       "direction": "input",  "category": "int" },
+            { "pin_id": "n30_out", "pin_name": "ReturnValue", "direction": "output", "category": "string" }
+          ] }
       ],
       "edges": [
         { "edge_id": "e1",  "from_node": "n1",  "from_pin": "then", "to_node": "n3",  "to_pin": "execute", "edge_type": "exec" },
@@ -73,7 +78,9 @@
         { "edge_id": "e21", "from_node": "n13", "from_pin": "SupMap", "to_node": "n14", "to_pin": "TargetMap", "edge_type": "data" },
         { "edge_id": "e22", "from_node": "n13", "from_pin": "SupMap", "to_node": "n15", "to_pin": "TargetMap", "edge_type": "data" },
         { "edge_id": "e23", "from_node": "n13", "from_pin": "SupMap", "to_node": "n16", "to_pin": "TargetMap", "edge_type": "data" },
-        { "edge_id": "e24", "from_node": "n24", "from_pin": "SupArray", "to_node": "n23", "to_pin": "Array", "edge_type": "data" }
+        { "edge_id": "e24", "from_node": "n24", "from_pin": "SupArray", "to_node": "n23", "to_pin": "Array", "edge_type": "data" },
+        { "edge_id": "e25", "from_node": "n23", "from_pin": "Array Element", "to_node": "n30", "to_pin": "InInt",     "edge_type": "data", "note": "ForEachWithBreak element into autocast" },
+        { "edge_id": "e26", "from_node": "n30", "from_pin": "ReturnValue",  "to_node": "n25", "to_pin": "InString", "edge_type": "data", "note": "autocast result -> Print(elem)" }
       ],
       "comments": [
         { "comment_id": "c1", "text": "Make Containers (Array/Set/Map) -> store into variables", "bounds": { "x": -80, "y": -200, "w": 1100, "h": 420 } },

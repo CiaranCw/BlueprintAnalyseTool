@@ -28,6 +28,7 @@ digraph BP_02_StructEnumContainers {
     n11 [label="Array Length"];
     n12 [label="For Each Loop (macro)"];
     n13 [label="Print String (element)", fillcolor="#d8f5d8"];
+    n21 [label="To String (Integer)\n(autocast)", fillcolor="#f0e6ff"];
     n14 [label="Get NameSet (set<name>)"];
     n15 [label="Set Add (Alpha)"];
     n16 [label="Set Contains (Alpha)"];
@@ -55,4 +56,5 @@ digraph BP_02_StructEnumContainers {
   n9 -> n10 [label="array"]; n9 -> n11 [label="array"]; n9 -> n12 [label="array"];
   n14 -> n15 [label="set"]; n14 -> n16 [label="set"];
   n17 -> n18 [label="map"]; n17 -> n19 [label="map"];
+  n12 -> n21 [label="Array Element (int)"]; n21 -> n13 [label="-> InString (string)"];
 }

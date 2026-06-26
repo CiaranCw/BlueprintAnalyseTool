@@ -46,7 +46,7 @@
             { "pin_id": "n12_exec", "pin_name": "execute", "direction": "input", "category": "exec", "is_connected": true },
             { "pin_id": "n12_arr", "pin_name": "Array", "direction": "input", "category": "int", "container_type": "array", "is_connected": true },
             { "pin_id": "n12_body", "pin_name": "Loop Body", "direction": "output", "category": "exec", "is_connected": true },
-            { "pin_id": "n12_elem", "pin_name": "Array Element", "direction": "output", "category": "int", "is_connected": false },
+            { "pin_id": "n12_elem", "pin_name": "Array Element", "direction": "output", "category": "int", "is_connected": true },
             { "pin_id": "n12_idx", "pin_name": "Array Index", "direction": "output", "category": "int", "is_connected": false },
             { "pin_id": "n12_done", "pin_name": "Completed", "direction": "output", "category": "exec", "is_connected": false }
           ] },
@@ -73,6 +73,11 @@
             { "pin_id": "n20_exec", "pin_name": "execute", "direction": "input", "category": "exec" },
             { "pin_id": "n20_then0", "pin_name": "then_0", "direction": "output", "category": "exec" },
             { "pin_id": "n20_then1", "pin_name": "then_1", "direction": "output", "category": "exec" }
+          ] },
+        { "node_id": "n21", "node_name": "To String (Integer)", "node_class": "K2Node_CallFunction", "node_type_category": "function_call", "function_reference": { "member_name": "Conv_IntToString", "member_parent": "/Script/Engine.KismetStringLibrary" }, "note": "autocast node auto-inserted for ForEach.'Array Element'(int) -> PrintString.InString(string)", "position": { "x": 600, "y": 560 },
+          "pins": [
+            { "pin_id": "n21_in",  "pin_name": "InInt",       "direction": "input",  "category": "int" },
+            { "pin_id": "n21_out", "pin_name": "ReturnValue", "direction": "output", "category": "string" }
           ] }
       ],
       "edges": [
@@ -94,7 +99,9 @@
         { "edge_id": "e15", "from_node": "n14", "from_pin": "n14_v", "to_node": "n15", "to_pin": "n15_set", "edge_type": "data" },
         { "edge_id": "e16", "from_node": "n14", "from_pin": "n14_v", "to_node": "n16", "to_pin": "TargetSet", "edge_type": "data" },
         { "edge_id": "e17", "from_node": "n17", "from_pin": "n17_v", "to_node": "n18", "to_pin": "n18_map", "edge_type": "data" },
-        { "edge_id": "e18", "from_node": "n17", "from_pin": "n17_v", "to_node": "n19", "to_pin": "TargetMap", "edge_type": "data" }
+        { "edge_id": "e18", "from_node": "n17", "from_pin": "n17_v", "to_node": "n19", "to_pin": "TargetMap", "edge_type": "data" },
+        { "edge_id": "e19", "from_node": "n12", "from_pin": "Array Element", "to_node": "n21", "to_pin": "InInt",     "edge_type": "data", "note": "ForEach element into autocast" },
+        { "edge_id": "e20", "from_node": "n21", "from_pin": "ReturnValue",  "to_node": "n13", "to_pin": "InString", "edge_type": "data", "note": "autocast result -> Print(element)" }
       ],
       "comments": [
         { "comment_id": "c1", "text": "Make/Break Struct", "bounds": { "x": -80, "y": -160, "w": 760, "h": 520 } },

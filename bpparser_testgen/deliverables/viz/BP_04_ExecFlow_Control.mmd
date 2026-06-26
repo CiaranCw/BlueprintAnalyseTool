@@ -24,6 +24,8 @@ flowchart LR
     n20["For Each Loop (macro)"]
     n21["Get FlowArray"]
     n22["Print (element)"]:::impure
+    n23["To String (Integer) (autocast)"]:::cast
+    n24["To String (Integer) (autocast)"]:::cast
   end
   subgraph C4["Switch Int / Switch String / Delay (latent)"]
     n16["Switch on Int"]
@@ -54,7 +56,12 @@ flowchart LR
   n17 --> n18
   n4 -.->|bool to Condition| n3
   n21 -.->|array to Array| n20
+  n13 -.->|Index int| n23
+  n23 -.->|to InString string| n14
+  n20 -.->|Array Element int| n24
+  n24 -.->|to InString string| n22
 
   classDef evt fill:#ffe9c7,stroke:#b8860b;
   classDef impure fill:#d8f5d8,stroke:#3a7d3a;
   classDef latent fill:#ffeccc,stroke:#cc7a00;
+  classDef cast fill:#f0e6ff,stroke:#7a4fbf;

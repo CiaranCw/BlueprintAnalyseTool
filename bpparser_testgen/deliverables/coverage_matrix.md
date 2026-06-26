@@ -20,11 +20,11 @@
 | DoN | 节点 | BP_11_SupplementalCoverage | K2Node_MacroInstance(DoN) | N/Exit | 需要人工确认 | StandardMacros 宏，需 UE 确认解析 |
 | FlipFlop | 节点 | BP_04 | K2Node_MacroInstance(FlipFlop) | A/B | 需要人工确认 | 同上 |
 | Gate | 节点 | BP_04 | K2Node_MacroInstance(Gate) | Enter/Exit | 需要人工确认 | 多个 exec 输入，连 Enter |
-| ForLoop | 节点 | BP_04 | K2Node_MacroInstance(ForLoop) | First/Last/Loop Body/Completed | 需要人工确认 | |
+| ForLoop | 节点 | BP_04 | K2Node_MacroInstance(ForLoop) | First/Last/Loop Body/Index/Completed | 需要人工确认 | First=0/Last=3；Index→Print 经 To String 自动转换（已 IR 验证） |
 | ForLoopWithBreak | 节点 | BP_04 | K2Node_MacroInstance(ForLoopWithBreak) | Loop Body/Break/Completed | 需要人工确认 | |
 | WhileLoop | 节点 | BP_11 | K2Node_MacroInstance(WhileLoop) | Condition/Loop Body/Completed | 需要人工确认 | 条件默认 false（防死循环）；需 UE 确认 |
-| ForEachLoop | 节点 | BP_02 / BP_04 / BP_08 | K2Node_MacroInstance(ForEachLoop) | Array/Loop Body/Array Element/Completed | 需要人工确认 | |
-| ForEachLoopWithBreak | 节点 | BP_11 | K2Node_MacroInstance(ForEachLoopWithBreak) | Array/Loop Body/Break/Completed | 需要人工确认 | StandardMacros 宏，需 UE 确认 |
+| ForEachLoop | 节点 | BP_02 / BP_04 / BP_08 | K2Node_MacroInstance(ForEachLoop) | Array/Loop Body/Array Element/Completed | 需要人工确认 | Array Element→Print 经 To String 自动转换（已 IR 验证） |
+| ForEachLoopWithBreak | 节点 | BP_11 | K2Node_MacroInstance(ForEachLoopWithBreak) | Array/Loop Body/Array Element/Break/Completed | 需要人工确认 | Array Element→Print 经 To String 自动转换；StandardMacros 宏需 UE 确认 |
 | Switch on Int | 节点 | BP_04 | K2Node_SwitchInteger | Selection/Default/case | 已覆盖 | case pin 由 AddPinToSwitchNode 生成 |
 | Switch on String | 节点 | BP_04 | K2Node_SwitchString | Selection/Default/case | 需要人工确认 | case 字面值为引擎默认名 |
 | Switch on Enum | 节点 | BP_02 / BP_08 / BP_10 | K2Node_SwitchEnum | Selection/Idle.. | 已覆盖 | |
@@ -35,6 +35,8 @@
 | Completed/Then/Loop Body/Break/Finished 等特殊 exec 输出 | Pin | BP_04 | 各宏 | Completed/Loop Body/Exit | 已覆盖 | |
 | Reroute 中转 exec | 节点 | BP_04 / BP_08 / BP_09 | K2Node_Knot | Input/Output | 已覆盖 | BP_09 长链双 reroute |
 | 多 exec 汇合到同一节点 | 连线 | BP_04 / BP_08 | Branch True+False → 同一 Reroute | converge | 已覆盖 | |
+| 隐式类型转换（Autocast 节点） | 节点 | BP_02 / BP_04 / BP_11 | K2Node_CallFunction(Conv_IntToString)「To String (Integer)」 | InInt/ReturnValue | 已覆盖 | int→string 由 Schema 自动插入（TryCreateConnection→CreateAutomaticConversionNodeAndConnections） |
+| Data 连线（循环值→消费者） | 连线 | BP_02 / BP_04 / BP_11 | Index/Array Element → To String → PrintString.InString | data | 已覆盖 | 经 FBPGen::ConnectData 建立并校验链接 |
 
 ---
 
