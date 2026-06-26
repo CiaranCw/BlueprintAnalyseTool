@@ -160,7 +160,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP11_SupplementalCoverage()
 	// --- Boundary loops ---
 	UK2Node_ExecutionSequence* Seq = FBPGen::SpawnSequence(G, 3, 80, 560);
 	if (Seq && Print) FBPGen::ConnectExec(Print, Seq);
-	TArray<UEdGraphPin*> Then = Seq ? Seq->GetThenPins() : TArray<UEdGraphPin*>();
+	TArray<UEdGraphPin*> Then = FBPGen::GetExecOutPins(Seq);
 	auto SeqThen = [&](int32 i) -> UEdGraphPin* { return Then.IsValidIndex(i) ? Then[i] : nullptr; };
 
 	if (UK2Node_MacroInstance* DoN = FBPGen::SpawnStdMacro(G, TEXT("DoN"), 360, 540))

@@ -14,6 +14,7 @@
 #include "Kismet2/EnumEditorUtils.h"
 #include "Kismet2/StructureEditorUtils.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "UserDefinedStructure/UserDefinedStructEditorData.h"  // full FStructVariableDescription definition
 
 #include "AssetToolsModule.h"
 #include "IAssetTools.h"

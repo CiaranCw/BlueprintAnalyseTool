@@ -225,7 +225,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP08_ComplexGameplay()
 	UK2Node_Event* Begin = FBPGen::SpawnEvent(G, "ReceiveBeginPlay", AActor::StaticClass(), -40, 0);
 	UK2Node_ExecutionSequence* Seq = FBPGen::SpawnSequence(G, 4, 80, 0);
 	FBPGen::ConnectExec(Begin, Seq);
-	TArray<UEdGraphPin*> Then = Seq ? Seq->GetThenPins() : TArray<UEdGraphPin*>();
+	TArray<UEdGraphPin*> Then = FBPGen::GetExecOutPins(Seq);
 	auto SeqThen = [&](int32 i) -> UEdGraphPin* { return Then.IsValidIndex(i) ? Then[i] : nullptr; };
 
 	// Init Test Data: MakeStruct -> Array Add to DataList
@@ -244,7 +244,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP08_ComplexGameplay()
 	}
 
 	// Spawn Target
-	UK2Node_CallFunction* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 420, 60);
+	UK2Node_SpawnActorFromClass* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 420, 60);
 	UK2Node_VariableSet* SetTarget = FBPGen::SpawnVarSet(G, "TargetRef", 620, 60);
 	if (Spawn && SetTarget)
 	{
@@ -402,7 +402,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP10_RoundTripMaster()
 
 	UK2Node_Event* Begin = FBPGen::SpawnEvent(G, "ReceiveBeginPlay", AActor::StaticClass(), 0, 0);
 
-	UK2Node_CallFunction* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 240, 0);
+	UK2Node_SpawnActorFromClass* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 240, 0);
 	FBPGen::ConnectExec(Begin, Spawn);
 	UK2Node_VariableSet* SetTarget = FBPGen::SpawnVarSet(G, "TargetRef", 520, 0);
 	if (Spawn && SetTarget)

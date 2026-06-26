@@ -120,6 +120,7 @@ public:
 	static UEdGraphPin* FindPin(UEdGraphNode* Node, const FString& PinName, EEdGraphPinDirection Dir);
 	static UEdGraphPin* FindExecOut(UEdGraphNode* Node);     // first output exec
 	static UEdGraphPin* FindExecIn(UEdGraphNode* Node);      // first input exec
+	static TArray<UEdGraphPin*> GetExecOutPins(UEdGraphNode* Node);  // all output exec pins (e.g. Sequence Then 0..N)
 	static bool Connect(UEdGraphPin* A, UEdGraphPin* B);
 	static bool ConnectByName(UEdGraphNode* From, const FString& FromPin, UEdGraphNode* To, const FString& ToPin);
 	/** Connects From's first output-exec to To's first input-exec. */

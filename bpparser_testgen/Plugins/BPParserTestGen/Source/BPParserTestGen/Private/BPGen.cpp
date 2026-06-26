@@ -414,9 +414,9 @@ UK2Node_ExecutionSequence* FBPGen::SpawnSequence(UEdGraph* G, int32 NumOutputs, 
 	UK2Node_ExecutionSequence* N = BeginNode<UK2Node_ExecutionSequence>(G);
 	if (!N) { return nullptr; }
 	FinalizeNode(N, X, Y);
-	while (N->GetThenPins().Num() < FMath::Max(2, NumOutputs))
+	while (GetExecOutPins(N).Num() < FMath::Max(2, NumOutputs))
 	{
-		N->AddPinToExecutionNode();
+		N->AddInputPin();   // IK2Node_AddPinInterface: adds another "Then" output
 	}
 	return N;
 }
@@ -450,7 +450,9 @@ UK2Node_SwitchEnum* FBPGen::SpawnSwitchEnum(UEdGraph* G, UEnum* Enum, int32 X, i
 	if (!Enum) { UE_LOG(LogBPParserTestGen, Warning, TEXT("SpawnSwitchEnum: null enum")); return nullptr; }
 	UK2Node_SwitchEnum* N = BeginNode<UK2Node_SwitchEnum>(G);
 	if (!N) { return nullptr; }
-	N->SetEnum(Enum);
+	// SetEnum() is not exported (UCLASS MinimalAPI). Set the public Enum field directly;
+	// AllocateDefaultPins -> CreateCasePins() calls SetEnum(Enum) internally to build case pins.
+	N->Enum = Enum;
 	FinalizeNode(N, X, Y);
 	return N;
 }
@@ -686,6 +688,17 @@ UEdGraphPin* FBPGen::FindExecIn(UEdGraphNode* Node)
 		if (P && P->Direction == EGPD_Input && P->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { return P; }
 	}
 	return nullptr;
+}
+
+TArray<UEdGraphPin*> FBPGen::GetExecOutPins(UEdGraphNode* Node)
+{
+	TArray<UEdGraphPin*> Out;
+	if (!Node) { return Out; }
+	for (UEdGraphPin* P : Node->Pins)
+	{
+		if (P && P->Direction == EGPD_Output && P->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { Out.Add(P); }
+	}
+	return Out;
 }
 
 bool FBPGen::Connect(UEdGraphPin* A, UEdGraphPin* B)

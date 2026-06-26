@@ -324,7 +324,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP03_ObjectRefCastInterface()
 
 	UK2Node_Event* Begin = FBPGen::SpawnEvent(G, "ReceiveBeginPlay", AActor::StaticClass(), 0, 0);
 
-	UK2Node_CallFunction* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 260, 0);
+	UK2Node_SpawnActorFromClass* Spawn = FBPGen::SpawnActorNode(G, TargetClass, 260, 0);
 	FBPGen::ConnectExec(Begin, Spawn);
 
 	UK2Node_DynamicCast* Cast = nullptr;
@@ -399,7 +399,7 @@ FBPGenAssetResult FBPGenTestBlueprints::Build_BP04_ExecFlowControl()
 	UK2Node_Event* Begin = FBPGen::SpawnEvent(G, "ReceiveBeginPlay", AActor::StaticClass(), -40, 0);
 	UK2Node_ExecutionSequence* Seq = FBPGen::SpawnSequence(G, 5, 80, 0);
 	FBPGen::ConnectExec(Begin, Seq);
-	TArray<UEdGraphPin*> Then = Seq ? Seq->GetThenPins() : TArray<UEdGraphPin*>();
+	TArray<UEdGraphPin*> Then = FBPGen::GetExecOutPins(Seq);
 
 	auto SeqThen = [&](int32 i) -> UEdGraphPin* { return Then.IsValidIndex(i) ? Then[i] : nullptr; };
 
