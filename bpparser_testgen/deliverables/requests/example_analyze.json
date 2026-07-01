@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "task_type": "analyze",
+  "project": {
+    "ue_root": "",
+    "uproject": "<PATH>/YourProject.uproject",
+    "output_dir": "<PATH>/YourProject/Saved/BPParserAgentReports",
+    "engine_policy": { "allow_project_plugin_install": false, "allow_incremental_compile": false, "allow_python_fallback": true, "allow_offline_fallback": true }
+  },
+  "execution": { "mode": "auto", "strict": false, "read_only": true, "render_preview": true },
+  "request": {
+    "asset_paths": [ "/Game/UI/WBP_MainMenu" ],
+    "include": { "graphs": true, "nodes": true, "pins": true, "edges": true, "variables": true, "functions": true, "macros": true, "event_dispatchers": true, "components": true, "interfaces": true, "dependencies": true, "timelines": true, "comments": true, "metadata": true },
+    "visualization": { "generate_dot": true, "generate_mermaid": true, "generate_png": true, "generate_svg": true, "split_large_graphs": true, "max_nodes_per_graph_image": 80 }
+  }
+}

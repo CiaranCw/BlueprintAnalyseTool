@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "task_type": "edit",
+  "project": {
+    "uproject": "<PATH>/YourProject.uproject",
+    "output_dir": "<PATH>/YourProject/Saved/BPParserAgentReports"
+  },
+  "execution": { "create_backup": true, "allow_destructive_edit": false },
+  "request": {
+    "asset_path": "/Game/Blueprints/BP_PlayerCharacter",
+    "intent": "Insert a Branch after BeginPlay (preview only).",
+    "mode": "plan-only",
+    "operations": [
+      {
+        "op_id": "op_001",
+        "operation": "insert_node_between",
+        "graph": "EventGraph",
+        "from_node": { "node_class": "K2Node_Event", "node_title_contains": "BeginPlay", "exec_out_connected": true },
+        "to_node": { "node_class": "K2Node_CallFunction", "function_name": "PrintString" },
+        "new_node": { "node_class": "K2Node_IfThenElse" }
+      }
+    ]
+  }
+}

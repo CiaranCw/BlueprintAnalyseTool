@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "task_type": "create",
+  "project": {
+    "uproject": "<PATH>/YourProject.uproject",
+    "output_dir": "<PATH>/YourProject/Saved/BPParserAgentReports"
+  },
+  "execution": { "mode": "native_full", "render_preview": true },
+  "request": {
+    "asset": { "asset_path": "/Game/Generated/BP_AgentCreatedExample", "blueprint_type": "Actor", "parent_class": "/Script/Engine.Actor", "overwrite_policy": "create_unique_name" },
+    "components": [ { "name": "SceneRoot", "class": "/Script/Engine.SceneComponent", "attach_to": null } ],
+    "variables": [ { "name": "Health", "type": { "category": "int", "container_type": "none" }, "default_value": "100", "editable": true } ],
+    "event_dispatchers": [ { "name": "OnHealthChanged", "parameters": [ { "name": "NewHealth", "type": { "category": "int" } } ] } ],
+    "graphs": [
+      {
+        "graph_name": "EventGraph", "graph_type": "event",
+        "nodes": [
+          { "local_id": "begin", "node_type": "event", "event_name": "ReceiveBeginPlay", "position": { "x": 0, "y": 0 } },
+          { "local_id": "print", "node_type": "call_function", "function": "/Script/Engine.KismetSystemLibrary.PrintString", "position": { "x": 350, "y": 0 }, "defaults": { "InString": "Created by BlueprintAgent" } }
+        ],
+        "edges": [ { "from": "begin.then", "to": "print.execute", "edge_type": "exec" } ],
+        "comments": [ { "text": "Created by BlueprintAgent", "bounds": { "x": -100, "y": -100, "w": 800, "h": 300 } } ]
+      }
+    ],
+    "visualization": { "generate_preview": true }
+  }
+}
