@@ -7,10 +7,13 @@ Other AIs call the agent with a single `request.json` via `scripts/blueprint_age
 ```
 
 ## Envelope (all task types)
+> First-time on a new project? Call `task_type=status` (read-only, no UE) to learn the stage and whether
+> a one-time `warmup` is needed, then proceed. See `docs/warmup_and_capability_state.md`.
+
 ```json
 {
   "schema_version": "1.0",
-  "task_type": "analyze|edit|create|validate",
+  "task_type": "status|warmup|analyze|edit|create|validate",
   "project": {
     "ue_root": "D:/AEngine",
     "uproject": "D:/AClient/AClient.uproject",
@@ -33,6 +36,22 @@ Other AIs call the agent with a single `request.json` via `scripts/blueprint_age
 - `project.ue_root` may be omitted → auto-resolved from `.uproject` EngineAssociation (version → launcher; GUID → source/custom build registry).
 - `engine_policy.allow_project_plugin_install`/`allow_incremental_compile` gate native_full's invasive steps (analyze/create need native for full graph).
 - Dispatcher writes `<output_dir>/<task_type>/dispatch_manifest.json`; the specialized tool writes the detailed `manifest.json`/`edit_result.json` under `sub_output_dir`.
+
+## task_type = status  →  scripts/agent_status.ps1  (READ-ONLY, no UE launch, always safe first call)
+```json
+"request": {}
+```
+Emits `capability_state.json`: `stage` (offline_only|python_only|needs_install|needs_build|native_ready),
+`available_modes`, `capabilities{understand_full,edit,create}`, `warmup_required`, `recommended_action`,
+`next_calls`. Use it to decide whether to warmup or go straight to work.
+
+## task_type = warmup  →  scripts/warmup_project.ps1  (one-time; needs consent)
+Requires `project.engine_policy.allow_incremental_compile=true`. Installs the read-only source plugin +
+incrementally builds the project's Editor target, enabling native_full. Optional:
+```json
+"request": { "smoke_asset_path": "/Game/Some/Blueprint" }
+```
+Emits `warmup_state.json` (`native_full_ready`). Never modifies blueprint assets. See `docs/warmup_and_capability_state.md`.
 
 ## task_type = analyze  →  scripts/analyze_blueprint.ps1
 ```json

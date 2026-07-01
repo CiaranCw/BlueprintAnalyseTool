@@ -26,7 +26,7 @@ if (-not (Test-Path $RequestJson)) { Fail "Request not found: $RequestJson" 30 }
 try { $req = Get-Content $RequestJson -Raw | ConvertFrom-Json } catch { Fail "request.json is not valid JSON: $_" 30 }
 
 $taskType = "$($req.task_type)".ToLower()
-if ($taskType -notin @('analyze','edit','create','validate')) { Fail "task_type must be analyze|edit|create|validate (got '$taskType')" 30 }
+if ($taskType -notin @('status','warmup','analyze','edit','create','validate')) { Fail "task_type must be status|warmup|analyze|edit|create|validate (got '$taskType')" 30 }
 
 # resolve project/exec (param overrides win)
 $proj = if ($ProjectUProject) { $ProjectUProject } else { "$($req.project.uproject)" }
@@ -45,6 +45,23 @@ $scripts = $PSScriptRoot
 $rc = 0; $subOut = ""; $reqId = ""
 
 switch ($taskType) {
+  'status' {
+    # read-only capability probe: which stage is the project at, what can we do now.
+    $taskOut = Join-Path $outBase 'status'
+    $args = @{ ProjectUProject=$proj; OutputDir=$taskOut }
+    if ($ue) { $args.UERoot=$ue }
+    & (Join-Path $scripts 'agent_status.ps1') @args
+    $rc=$LASTEXITCODE; $subOut=$taskOut
+  }
+  'warmup' {
+    # one-time per-project setup (install read-only plugin + incremental build) -> enables native_full.
+    if (-not ($pol.allow_incremental_compile)) { Fail "warmup requires project.engine_policy.allow_incremental_compile=true (adds a plugin + builds the editor). Denied." 30 }
+    $args = @{ ProjectUProject=$proj }
+    if ($ue) { $args.UERoot=$ue }
+    if ($req.request.smoke_asset_path) { $args.SmokeAssetPath="$($req.request.smoke_asset_path)" }
+    & (Join-Path $scripts 'warmup_project.ps1') @args
+    $rc=$LASTEXITCODE; $subOut=(Join-Path (Split-Path $proj -Parent) 'Saved\BPParserAgentReports\warmup')
+  }
   'analyze' {
     $assets = @($req.request.asset_paths); if (-not $assets -or $assets.Count -eq 0) { Fail "analyze: request.asset_paths is empty" 30 }
     $amode = switch ($mode) { 'native_full'{'native-full'} 'python_partial'{'python-partial'} 'offline_asset_scan'{'offline'} default {'auto'} }
