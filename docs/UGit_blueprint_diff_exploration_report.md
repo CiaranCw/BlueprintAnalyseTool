@@ -1,4 +1,4 @@
-# UGit 集成 UE 蓝图结构可视化 Diff 可行性探索报告
+# UGit 集成 UE 蓝图结构可视化 Diff 可行性探索报告（插件化 / 按需启用）
 
 > 本报告基于**本地实际源码/文件**调查，不是凭空假设。UE 源码路径以 `D:\software\UE\UE_5.4\Engine\Source` 为准；UGit 以本地安装目录 `C:\Users\test\AppData\Local\UGit`（Electron 打包产物，`app-5.50.0\resources\app` 为**已解包**的应用代码，含 source map，可读）为准。凡引用均给出文件与行号/类名。
 >
@@ -9,7 +9,8 @@
 ## 1. 结论摘要
 
 - **能不能做：能。** 技术上完全可行，且比预期更顺——UE 与 UGit 两侧都已具备关键基础设施。
-- **推荐主线：路线 A（UGit 调用 UE Worker 导出 IR + Diff，UGit 内 WebView 可视化）。**
+- **推荐主线：路线 A（UE Worker 导出 IR + Diff，宿主内 WebView / 独立 Viewer 可视化）。**
+- **形态定位（核心约束）：本能力必须做成"可选插件 / 按需启用"，不是 diff 主流程的必经环节。** 仅当仓库被识别为 UE/蓝图仓库、且插件处于启用状态时才介入；用户可用开关按需触发；未启用时 UGit 行为与现状完全一致（回退到二进制/包级 diff）。核心能力（UE Worker + IR/Diff + Viewer）设计为**宿主无关（host-agnostic）**的独立组件，UGit 只是第一个宿主，后续可低成本扩展到其他仓库/其他 Git 工具。详见 §4。
 - **强力增强：路线 D（UE 侧原生截图）**作为"像素级参照图"叠加，可选后置。
 - **不推荐主线：路线 B（UGit 直接链接 UE Editor 模块）**、**路线 C（完全外部解析 .uasset 做图结构 Diff）**。
 - **PoC 优先级：高。技术阻塞：无。** 最大风险是**工程/引擎环境依赖**（需要可用的 UE 工程 + 引擎来加载资产），而非算法或 UI。
@@ -18,8 +19,8 @@
   - `FGraphDiffControl::DiffGraphs / FindNodeMatch / IsNodeMatch / FNodeMatch::Diff`（`Editor/GraphEditor/Public/GraphDiffControl.h`）——**无 UI 依赖**的图级 Diff + 节点匹配，正是蓝图 Diff 工具背后的逻辑。
   - `FDiffSingleResult` / `EDiffType`（`Runtime/Engine/Public/DiffResults.h`）——现成的 Diff 语义模型（`NODE_ADDED/REMOVED/MOVED`、`NODE_COMMENT`、`PIN_DEFAULT_VALUE`、`PIN_TYPE_*`、`PIN_LINKEDTO_*`、`NODE_PIN_COUNT`…）。
   - 本仓库已验证可用的 `FBPGenIRDumper`（`bpparser_testgen/.../BPGenIRDumper.cpp`）——已在 headless commandlet 中稳定导出 NodeGuid/pins/edges/comments/positions 的 IR JSON。
-- **必须自研的能力**：稳定 `stable_id` 生成、IR↔Diff 的对齐与序列化、UGit 侧 `DiffType.Blueprint` 视图与画布渲染、blob→临时文件→Worker 的编排与缓存。
-- **UGit 侧接入点（关键）**：`DiffType` 枚举 + 按扩展名构造 diff 对象的分发点（`renderer.js` 约 L193273 处 `imageFileExtensions.has(extension)` → `kind: DiffType.Image` 的同类分支），新增 `.uasset → DiffType.Blueprint` 分支 + 对应 React 视图组件；外部 Worker 复用其已有的 `UExcelDiff.exe` 模式。
+- **必须自研的能力**：稳定 `stable_id` 生成、IR↔Diff 的对齐与序列化、独立的蓝图 Diff Viewer（宿主无关）、blob→临时文件→Worker 的编排与缓存、以及**插件启用/仓库识别/开关**逻辑。
+- **UGit 侧接入点（作为可选插件适配层，不改核心 diff 流程）**：只挂一个**可开关的旁路适配器**——仅当"蓝图 Diff 插件"启用且当前仓库匹配时，才在按扩展名构造 diff 对象的分发点（`renderer.js` 约 L193273 处 `imageFileExtensions.has(extension)` → `kind: DiffType.Image` 的同类分支）旁，增加"若插件启用且为 `.uasset` → 走 `DiffType.Blueprint`（插件视图）"的分支；未启用时不介入。外部 Worker 复用其已有的 `UExcelDiff.exe` 部署模式。
 
 ---
 
@@ -104,35 +105,45 @@
 
 ---
 
-## 4. 推荐总体架构
+## 4. 推荐总体架构（插件化）
+
+**核心原则：本功能是"可选插件"，不是主流程必经环节。** 分三层，层间用稳定契约（JSON/CLI）解耦，宿主可插拔、可扩展到其他仓库/工具：
+
+- **L1 宿主适配层（thin / 可选 / 每宿主一份）**：UGit 侧一个**可开关的旁路适配器**。不改核心 diff 流程；只有当插件启用且仓库匹配、且文件为 `.uasset` 时，才把该文件的 diff 路由到插件视图；否则完全不介入（回退现状）。将来接其他 Git 工具时，只需再写一个 L1 适配器。
+- **L2 插件核心（host-agnostic / 复用）**：`bp-diff-core`——独立组件（Node 包 + 独立 Viewer）。职责：取 old/new blob→临时文件、缓存、调 L3 Worker、加载 `diff.json`/`ir.json`、渲染三视图。既能被 UGit 以 WebView 嵌入，也能作为**独立网页/CLI** 单独运行（这正是"宿主无关"的体现，也让无宿主时可独立演示）。
+- **L3 UE Worker（复用引擎）**：`UnrealEditor-Cmd -run=BPBlueprintDiff`，产出 `old.ir.json / new.ir.json / diff.json`（+ 可选截图）。与宿主完全无关，任何宿主共用。
 
 ```text
-┌────────────────────────── UGit (Electron/React) ──────────────────────────┐
-│  文件变更列表 (.uasset)                                                     │
-│      │  按扩展名分发: 命中 .uasset → kind: DiffType.Blueprint               │
-│      ▼                                                                      │
-│  BlueprintDiffProvider (新增, 渲染进程/主进程)                              │
-│      │ 1) git cat-file 取 old blob、取 working/new blob → 落临时文件         │
-│      │ 2) 查缓存(按 blobSha+extractorVer+engineVer) 命中则跳过 Worker        │
-│      │ 3) IPC 调 main 进程 spawn UE Worker                                   │
-│      ▼                                                                      │
-│  BlueprintDiffViewer (新增 React 组件, SVG/Canvas)                          │
-│      - 三视图: 变更列表 / Overlay / 左右对比 ; 点击定位                       │
-└───────────────▲───────────────────────────────────────────┬───────────────┘
-                │ diff.json / old.ir.json / new.ir.json       │ spawn
-                │                                             ▼
-        ┌───────┴──────────────── UE Worker (UnrealEditor-Cmd -run=BPBlueprintDiff) ───────┐
-        │  DiffUtils::LoadPackageForDiff(old 临时包)  +  Load(new /Game 或临时包)           │
-        │      (LOAD_ForDiff | LOAD_DisableCompileOnLoad | LOAD_DisableEngineVersionChecks) │
-        │  → 取两个 UBlueprint 的各 Graph                                                   │
-        │  → FBPGenIRDumper 导出 old.ir.json / new.ir.json (供 Viewer 画布)                 │
-        │  → FGraphDiffControl::DiffGraphs 每对 Graph → FDiffSingleResult[]                 │
-        │  → 归一化为 diff.json (逻辑/视觉分类 + 置信度)                                    │
-        │  → (可选 路线D) GraphEditor/WidgetRenderer 截图 old.png/new.png                    │
-        └──────────────────────────────────────────────────────────────────────────────────┘
+        ┌─────────────── L1 宿主适配层 (可选/可开关, 每宿主一份) ───────────────┐
+UGit ──▶│  EnableGate: [插件总开关] ∧ [仓库识别=UE/蓝图仓库] ∧ [ext==.uasset]    │
+(其他工具future)│  命中 → 路由到插件; 未命中 → 不介入(回退二进制/包级 diff)          │
+        └───────────────────────────────┬──────────────────────────────────────┘
+                                         │ (blobOld, blobNew, repoCtx)
+                                         ▼
+        ┌─────────────── L2 插件核心 bp-diff-core (host-agnostic) ──────────────┐
+        │  blob→临时文件 │ 缓存(blobSha+engineVer+extractorVer) │ 调 L3 │ 读 JSON │
+        │  BlueprintDiffViewer(SVG/Canvas): 变更列表 / Overlay / 左右对比 / 定位 │
+        │  （可 WebView 内嵌 UGit，也可独立网页/CLI 运行）                        │
+        └───────────────────────────────┬──────────────────────────────────────┘
+                                         │ spawn (缓存未命中时)
+                                         ▼
+        ┌─────────────── L3 UE Worker (-run=BPBlueprintDiff) ───────────────────┐
+        │  DiffUtils::LoadPackageForDiff(old→临时包) + Load(new: /Game 或临时包) │
+        │     (LOAD_ForDiff | LOAD_DisableCompileOnLoad | LOAD_DisableEngineVersionChecks) │
+        │  → FBPGenIRDumper 出 old.ir.json/new.ir.json                           │
+        │  → FGraphDiffControl::DiffGraphs 每对 Graph → 归一化 diff.json         │
+        │  → (可选 路线D) 截图 old.png/new.png                                    │
+        └───────────────────────────────────────────────────────────────────────┘
 ```
 
-抽象命名建议（UGit 侧）：`DiffProvider`(通用) → `BlueprintDiffProvider`；`DiffType.Blueprint`；`BlueprintDiffViewer`；`UEWorkerClient`（封装 spawn/超时/降级/缓存）。
+**启用/开关逻辑（EnableGate）**——三重条件，缺一不介入：
+1. **插件总开关**：用户在设置里开启"蓝图结构 Diff 插件"（默认关，或首次识别到 UE 仓库时提示开启）。
+2. **仓库识别**：该仓库是否 UE/蓝图仓库（判据：存在 `*.uproject`、或 `.gitattributes` 含 UE LFS 规则、或历史含 `.uasset`）。识别结果按仓库持久化（可手动覆盖），支持"后续扩展到其他仓库"。
+3. **按需触发**：即便前两者满足，也可做成"文件行上出现『蓝图结构 Diff』按钮，点击才起 Worker"，避免对每个 `.uasset` 都自动跑（省资源）。
+
+**可扩展性**：L2/L3 契约与宿主无关；新增其他仓库/工具只写新的 L1 适配器；新增其他资产类型（如 Material/Widget Graph）时，L3 换/加 Extractor、L2 复用画布即可。
+
+命名建议：L1 `UGitBlueprintDiffAdapter`（可开关）；L2 `bp-diff-core` / `BlueprintDiffViewer` / `UEWorkerClient`（spawn/超时/缓存/降级）；L3 `-run=BPBlueprintDiff`。
 
 ---
 
@@ -241,7 +252,7 @@ Pin 匹配：
 
 ## 9. PoC 实施方案
 
-**目标**：对一个 UE 工程内单个 Blueprint 的 EventGraph，在 UGit 中显示结构化 Diff（节点增删、连线增删、Pin 默认值变化、节点移动），支持"变更列表 + 单图 Overlay + 点击定位"。
+**目标**：先把**宿主无关的插件核心**跑通——对一个 UE 工程内单个 Blueprint 的 EventGraph 产出结构化 Diff（节点增删、连线增删、Pin 默认值变化、节点移动），并在**独立 Viewer**中显示"变更列表 + 单图 Overlay + 点击定位"；UGit 适配仅作为**可选、可开关的薄旁路**最后接入。分阶段：**P1 = L3 UE Worker（CLI 可验证）→ P2 = L2 独立 Viewer（吃 diff.json）→ P3 = L1 UGit 可开关适配器**。P1/P2 不依赖 UGit 源码。
 
 **输入/输出**：
 - 输入：`old.uasset`(git blob 落临时文件) + `new.uasset`(工作区) + UERoot + ProjectUProject。
@@ -255,11 +266,14 @@ Pin 匹配：
   - Build.cs 增 `GraphEditor` 依赖（`FGraphDiffControl`）。
 - 参数：`-OldFile= -NewFile= -OldAssetPath= -OutputDir=`。
 
-**UGit 侧改动（源码工程内）**：
-- `binary`/扩展名表新增 `.uasset` → 在 diff 构造分发点（`renderer.js` 同 `imageFileExtensions.has` 处）产出 `kind: DiffType.Blueprint`；
-- 新增 `BlueprintDiffProvider`（取 blob→临时文件→缓存→IPC spawn Worker→读 JSON）；
-- 新增 `BlueprintDiffViewer` React 组件（SVG 画布 + 列表 + 定位）；
-- 主进程新增 IPC handler：spawn `UnrealEditor-Cmd -run=BPBlueprintDiff ...`，超时/失败降级。
+**L2 插件核心（host-agnostic，P2，不依赖 UGit）**：
+- `bp-diff-core`：取 blob→临时文件→缓存→spawn Worker→读 JSON；
+- `BlueprintDiffViewer`（SVG 画布 + 变更列表 + 点击定位），先做成**独立网页**（`index.html` + JS，直接吃 `diff.json/ir.json`）便于脱离宿主验证。
+
+**L1 UGit 适配（可选、可开关的薄旁路，P3，需 UGit 源码工程；本次仅有解包产物→先做技术验证/patch 演示）**：
+- `EnableGate`：插件总开关 ∧ 仓库识别(UE/蓝图) ∧ `ext==.uasset`，命中才介入；未启用完全不改现状；
+- 在 diff 构造分发点（`renderer.js` 同 `imageFileExtensions.has` 处）旁增加"若 Gate 命中 → `kind: DiffType.Blueprint`（内嵌 L2 Viewer 的 WebView）"分支；
+- 主进程 IPC handler 复用 L2 的 `UEWorkerClient` spawn `-run=BPBlueprintDiff`，超时/失败降级到二进制/包级 diff。
 
 **命令行示例**：
 ```powershell
@@ -323,7 +337,7 @@ UnrealEditor-Cmd.exe "E:\BPTestProject\BPTest\BPTest.uproject" -run=BPBlueprintD
 2. **在本仓库 `BPParserTestGen` 插件加 `-run=BPBlueprintDiff` commandlet**：复用 `LoadPackageForDiff` + `FBPGenIRDumper` + `FGraphDiffControl::DiffGraphs`，先产出 `old.ir.json/new.ir.json/diff.json`（不碰 UGit，先把 UE 侧闭环跑通、可 CLI 验证）。
 3. **定义并冻结 IR/diff JSON schema v1** + `stable_id` 规则，作为 UE↔UGit 契约。
 4. **做一个独立 HTML/SVG 原型 Viewer**（脱离 UGit 先验证可视化），吃 `diff.json` 显示"列表 + Overlay + 定位"。
-5. **再把 2/4 接入 UGit 的 `DiffType.Blueprint`**，完成端到端 PoC，并按 §9 验证标准比对 UE 编辑器内蓝图 Diff。
+5. **（可选/需 UGit 源码）把 2/4 作为可开关的 L1 旁路适配器接入 UGit（`DiffType.Blueprint`）**，完成端到端 PoC，并按 §9 验证标准比对 UE 编辑器内蓝图 Diff。无 UGit 源码时，L2 独立 Viewer 即可作为可演示版本。
 
 ---
 
@@ -331,20 +345,21 @@ UnrealEditor-Cmd.exe "E:\BPTestProject\BPTest\BPTest.uproject" -run=BPBlueprintD
 
 ```text
 1. 能不能做：能
-2. 最推荐主线：A（UE Worker + IR/Diff + UGit WebView Viewer）
+2. 最推荐主线：A，且以"可选插件/按需启用、宿主无关"的三层形态实现（L1 宿主适配 / L2 插件核心+Viewer / L3 UE Worker）
 3. 不推荐主线：B（直链 UE GraphEditor）、C（纯外部解析做图 Diff）
-4. PoC 第一阶段：UE 侧 -run=BPBlueprintDiff 产出 old/new IR + diff.json（CLI 可验证）
+4. PoC 第一阶段(P1)：UE 侧 -run=BPBlueprintDiff 产出 old/new IR + diff.json（CLI 可验证，不依赖 UGit）
 5. 可复用 UE 能力：DiffUtils::LoadPackageForDiff、FGraphDiffControl::DiffGraphs/FindNodeMatch、FDiffSingleResult/EDiffType、本仓库 FBPGenIRDumper
-6. 必须自研：stable_id 与置信度、IR/diff schema 与序列化、UGit DiffType.Blueprint 视图与 SVG 画布、blob→临时文件→Worker 编排与缓存
-7. UGit 接入点：DiffType 枚举 + 按扩展名构造 diff 对象的分发处(renderer.js ~L193273 同类分支) + 复用 UExcelDiff 式外部 Worker 部署
-8. 最大风险：运行环境依赖（需可加载资产的 UE 工程/引擎）；其次是能否拿到 UGit 源码工程
-9. 两周可演示需砍：左右对比视图、自动合并、常驻 Worker、路线D截图、非 EventGraph 图、跨平台——只留"EventGraph + 列表 + Overlay + 4 类变更 + 按需起 Worker+缓存"
-10. 产品化补齐：常驻 Worker 池、全图类型(Function/Macro/Anim 等)支持、更强匹配与置信度、增量/批处理、跨平台、LFS 未拉取处理、UI 皮肤与大图性能优化
+6. 必须自研：stable_id 与置信度、IR/diff schema 与序列化、宿主无关 Viewer(SVG 画布)、blob→临时文件→Worker 编排与缓存、插件 EnableGate(总开关∧仓库识别∧按需触发)
+7. UGit 接入点：**可开关的薄旁路适配器**——DiffType 枚举 + 分发处(renderer.js ~L193273 同类分支)旁挂 Gate 命中→DiffType.Blueprint；复用 UExcelDiff 式外部 Worker 部署；未启用不改现状
+8. 最大风险：运行环境依赖（需可加载资产的 UE 工程/引擎）；其次是能否拿到 UGit 源码工程（仅影响 L1，不影响 L2/L3）
+9. 两周可演示需砍：UGit 深度集成(先用独立 Viewer)、左右对比、自动合并、常驻 Worker、路线D截图、非 EventGraph 图、跨平台——只留"L3 Worker + L2 独立 Viewer + EventGraph + 列表/Overlay + 4 类变更 + 按需起 Worker+缓存"
+10. 产品化补齐：L1 多宿主适配、常驻 Worker 池、全图类型支持、更强匹配与置信度、增量/批处理、跨平台、LFS 未拉取处理、大图性能优化
 
+形态定位：可选插件 / 按需启用 / 宿主无关（UGit 为首个宿主，可扩展到其他仓库与工具）
 推荐主线：A
 不推荐主线：B、C
-PoC 优先级：高
+PoC 优先级：高（P1/P2 不依赖 UGit 源码，可立即推进）
 技术阻塞：无（工程/源码可得性为环境前提，非技术阻塞）
-最大风险：运行环境依赖 + UGit 源码可得性
-最小可演示版本：单 Blueprint EventGraph 的结构化 Diff（节点/连线增删 + Pin 默认值 + 移动），UGit 内"变更列表 + 单图 Overlay + 点击定位"，UE 侧按需起 Worker 并按 blob 缓存
+最大风险：运行环境依赖 + UGit 源码可得性（仅制约 L1）
+最小可演示版本：L3 UE Worker + L2 独立 Viewer 呈现单 Blueprint EventGraph 的结构化 Diff（节点/连线增删 + Pin 默认值 + 移动：变更列表 + 单图 Overlay + 点击定位），按 blob 缓存、按需起 Worker；UGit 内嵌为可选后续
 ```
