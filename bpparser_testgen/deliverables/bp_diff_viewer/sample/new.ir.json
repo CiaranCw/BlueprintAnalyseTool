@@ -1,0 +1,3108 @@
+{
+	"schema_version": "bpat-ir-dump-1.0",
+	"dumper_engine_version": "5.4.4-35576357+++UE5+Release-5.4",
+	"asset_name": "BP04_diff_20260701110724",
+	"asset_path": "/Game/BPParserScratch/BP04_diff_20260701110724.BP04_diff_20260701110724",
+	"blueprint_class": "Blueprint",
+	"parent_class": "/Script/Engine.Actor",
+	"graphs": [
+		{
+			"graph_name": "EventGraph",
+			"graph_type": "ubergraph",
+			"nodes": [
+				{
+					"node_id": "90B49DBE435A84793E9EDA867D840119",
+					"node_class": "K2Node_Event",
+					"node_title": "Event BeginPlay",
+					"node_comment": "This node is disabled and will not be called.\nDrag off pins to build functionality.",
+					"position":
+					{
+						"x": 0,
+						"y": 0
+					},
+					"pins": [
+						{
+							"pin_id": "445ACEBC433E83257E2569B281440675",
+							"pin_name": "OutputDelegate",
+							"direction": "output",
+							"category": "delegate",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "AD6C06724D59C4D37B9D3186EF2C1CDF",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "441D04444186AA28D10BC6AE640722D6",
+					"node_class": "K2Node_Event",
+					"node_title": "Event ActorBeginOverlap",
+					"node_comment": "This node is disabled and will not be called.\nDrag off pins to build functionality.",
+					"position":
+					{
+						"x": 0,
+						"y": 208
+					},
+					"pins": [
+						{
+							"pin_id": "5584D66E457DBF1BA793CD8CB444583E",
+							"pin_name": "OutputDelegate",
+							"direction": "output",
+							"category": "delegate",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "0FD76DA746D79224DA1372B0E2A58A67",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "1133F3694A291E30B117CAA15B8C5E2A",
+							"pin_name": "OtherActor",
+							"direction": "output",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.Actor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "8175DAED4D3967B1CD7047AAAF6E3336",
+					"node_class": "K2Node_Event",
+					"node_title": "Event Tick",
+					"node_comment": "This node is disabled and will not be called.\nDrag off pins to build functionality.",
+					"position":
+					{
+						"x": 0,
+						"y": 416
+					},
+					"pins": [
+						{
+							"pin_id": "F48B931A488222E75F0860AACF00BC6E",
+							"pin_name": "OutputDelegate",
+							"direction": "output",
+							"category": "delegate",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "7A4FEE2F48B3AB32C4A9B4BEC05D3064",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "4B796E774277D88E43D6749C8E8DBDDA",
+							"pin_name": "DeltaSeconds",
+							"direction": "output",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "0.0",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "7DA3AEC0417078BF44DC2DBCF6C70C46",
+					"node_class": "K2Node_Event",
+					"node_title": "Event BeginPlay",
+					"node_comment": "",
+					"position":
+					{
+						"x": -40,
+						"y": 0
+					},
+					"pins": [
+						{
+							"pin_id": "7BEEF8B14C68F7571CEA4E844ED6F1A9",
+							"pin_name": "OutputDelegate",
+							"direction": "output",
+							"category": "delegate",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "63FAD7C04145B4F58600CB86863DD27F",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "5FF7EDA144531D72D790E3B2B8B2C891"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "757099B742CEFA63D2086A920F4D4A56",
+					"node_class": "K2Node_ExecutionSequence",
+					"node_title": "Sequence",
+					"node_comment": "",
+					"position":
+					{
+						"x": 80,
+						"y": 0
+					},
+					"pins": [
+						{
+							"pin_id": "5FF7EDA144531D72D790E3B2B8B2C891",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "7DA3AEC0417078BF44DC2DBCF6C70C46",
+									"pin_id": "63FAD7C04145B4F58600CB86863DD27F"
+								}
+							]
+						},
+						{
+							"pin_id": "1FEA42484046AB0A4CFC009DE636D049",
+							"pin_name": "then_0",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+									"pin_id": "2CE6AA3443FBAFD506465AB4C401F8F5"
+								}
+							]
+						},
+						{
+							"pin_id": "25CB6C10486FAE5CF963CBB463DD90B7",
+							"pin_name": "then_1",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "F38838E84FCE6E58501C158E1ED3BB72",
+									"pin_id": "935C32C64093742DED35BCB5FB5C40E9"
+								}
+							]
+						},
+						{
+							"pin_id": "01DB5C27494BDD0030D15DAB45F2E6C7",
+							"pin_name": "then_2",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "CAB96C4540AA58DBF60DCBBB3AB12735",
+									"pin_id": "70D25D0F41AAF32D4F3C5CB39557FCB3"
+								}
+							]
+						},
+						{
+							"pin_id": "810DDF614F921C59B76B91B2264A5E99",
+							"pin_name": "then_3",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "DD5115034D8EDBB57B734E97481EDAEB",
+									"pin_id": "8B92FF58412A1FC5CB0BCEB075281F48"
+								}
+							]
+						},
+						{
+							"pin_id": "F8A2390A4C0E47940E7749B29D8954D6",
+							"pin_name": "then_4",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "FABC918941DE6B7631028BA3ECFF1203",
+									"pin_id": "C9B79A0C41008D636EA6798629750AFD"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+					"node_class": "K2Node_IfThenElse",
+					"node_title": "Branch",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": -120
+					},
+					"pins": [
+						{
+							"pin_id": "2CE6AA3443FBAFD506465AB4C401F8F5",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "1FEA42484046AB0A4CFC009DE636D049"
+								}
+							]
+						},
+						{
+							"pin_id": "63EB8EEC418D1583EF0B9B86ADE0402B",
+							"pin_name": "Condition",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "66C16B9749C0FB800B0548BF0689C150",
+									"pin_id": "32F243C94AE4579D3CAC1485B3FDE3C2"
+								}
+							]
+						},
+						{
+							"pin_id": "AF6ACF4B415465356179628B4C3F316B",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "FE43796B4C5FE7DC0807D49A56C04BC5",
+									"pin_id": "ABF89F6D4F45EFE7DAEB548DD95F6331"
+								}
+							]
+						},
+						{
+							"pin_id": "2E36C935470B6715B976BB8BC991C863",
+							"pin_name": "else",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "FE43796B4C5FE7DC0807D49A56C04BC5",
+									"pin_id": "ABF89F6D4F45EFE7DAEB548DD95F6331"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "66C16B9749C0FB800B0548BF0689C150",
+					"node_class": "K2Node_VariableGet",
+					"node_title": "Get FlowBool",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": -220
+					},
+					"pins": [
+						{
+							"pin_id": "32F243C94AE4579D3CAC1485B3FDE3C2",
+							"pin_name": "FlowBool",
+							"direction": "output",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "false",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+									"pin_id": "63EB8EEC418D1583EF0B9B86ADE0402B"
+								}
+							]
+						},
+						{
+							"pin_id": "10A3C33B4743B387F19435BB9021EED8",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Game/BPParserScratch/BP04_diff_20260701110724.BP04_diff_20260701110724_C",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "FE43796B4C5FE7DC0807D49A56C04BC5",
+					"node_class": "K2Node_Knot",
+					"node_title": "Reroute Node",
+					"node_comment": "",
+					"position":
+					{
+						"x": 760,
+						"y": -60
+					},
+					"pins": [
+						{
+							"pin_id": "ABF89F6D4F45EFE7DAEB548DD95F6331",
+							"pin_name": "InputPin",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+									"pin_id": "AF6ACF4B415465356179628B4C3F316B"
+								},
+								{
+									"node_id": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+									"pin_id": "2E36C935470B6715B976BB8BC991C863"
+								}
+							]
+						},
+						{
+							"pin_id": "A79EE8504567A602A060D6899220185D",
+							"pin_name": "OutputPin",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "C57329A04433D8E51FA1B08155942F69",
+									"pin_id": "6C6CE60A4E1EDFC9C97C9C90C74E1034"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "C57329A04433D8E51FA1B08155942F69",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 900,
+						"y": -120
+					},
+					"pins": [
+						{
+							"pin_id": "6C6CE60A4E1EDFC9C97C9C90C74E1034",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "FE43796B4C5FE7DC0807D49A56C04BC5",
+									"pin_id": "A79EE8504567A602A060D6899220185D"
+								}
+							]
+						},
+						{
+							"pin_id": "95DFB193467FE838F60E2099B7895895",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "21F2D1124BF4E11740944694B896FA5A",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "B36D53164782D3789F509986BC4F6A8D",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "6C951BB24D3B419C689AE095089EC8BD",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Branch converge",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "F370EB0F4BFE114E1C5EB89AA30E44EF",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "4D4E9CCE4957BAB1BF4D228D4DC44E56",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "829A901E4315D6454AE650BCF1F43FE5",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "4C08CD344E38C0F1ADA6A2A36D1EB0EA",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "A601665943402001502CD593A6888489",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "F38838E84FCE6E58501C158E1ED3BB72",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "Do Once",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": 220
+					},
+					"pins": [
+						{
+							"pin_id": "935C32C64093742DED35BCB5FB5C40E9",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "25CB6C10486FAE5CF963CBB463DD90B7"
+								}
+							]
+						},
+						{
+							"pin_id": "EBD03E7F45C1A32B103A24A8A948027B",
+							"pin_name": "Reset",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "EA3C7F8246EA40772F4950AA50DEAB92",
+							"pin_name": "Start Closed",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "6BE3381F4631433A580589AE7AE76B84",
+							"pin_name": "Completed",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "003E4EC944A7F734320EE78F1A661080",
+									"pin_id": "425055B941C84E70BB886F8E05E56798"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "003E4EC944A7F734320EE78F1A661080",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 720,
+						"y": 220
+					},
+					"pins": [
+						{
+							"pin_id": "425055B941C84E70BB886F8E05E56798",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "F38838E84FCE6E58501C158E1ED3BB72",
+									"pin_id": "6BE3381F4631433A580589AE7AE76B84"
+								}
+							]
+						},
+						{
+							"pin_id": "97E8D8A84B2D7AF40CA62CA1EBC32971",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "6FF353D24DCB8750F4911EB40243E7A4",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "063689654E163236521F8097952FDEEE",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "2BA03ACC4A027807EE88E1A09799F13B",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "DoOnce",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "525BE6834E39BA8E356537B6E6EB6B6E",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "A90D25DC490A14B9424405B9A442D3C4",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "329F5735480D53A374E957A11C95EF87",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "B0287B764B404CCA92FFCFA715D7BE29",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "705978B644DED553ADE19297B9343C66",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "CAB96C4540AA58DBF60DCBBB3AB12735",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "Flip Flop",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": 340
+					},
+					"pins": [
+						{
+							"pin_id": "70D25D0F41AAF32D4F3C5CB39557FCB3",
+							"pin_name": "None",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "01DB5C27494BDD0030D15DAB45F2E6C7"
+								}
+							]
+						},
+						{
+							"pin_id": "9321AE064986171BE7A67DA71849AE59",
+							"pin_name": "A",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "28097CA14B80428A454A4AACD369EF80",
+									"pin_id": "C30882224B651DDA1B37DD8D18E1DA1A"
+								}
+							]
+						},
+						{
+							"pin_id": "06D1F91A400E0971AC46A0854164A795",
+							"pin_name": "B",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "B09BB701438F8C03154AD6AF3369D0FF",
+									"pin_id": "598E85154D9B483269E897859A988FD5"
+								}
+							]
+						},
+						{
+							"pin_id": "847079A641DA888F71E1938172DB0528",
+							"pin_name": "IsA",
+							"direction": "output",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "28097CA14B80428A454A4AACD369EF80",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 720,
+						"y": 320
+					},
+					"pins": [
+						{
+							"pin_id": "C30882224B651DDA1B37DD8D18E1DA1A",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "CAB96C4540AA58DBF60DCBBB3AB12735",
+									"pin_id": "9321AE064986171BE7A67DA71849AE59"
+								}
+							]
+						},
+						{
+							"pin_id": "3B3819A6486B5066E10370A3A7A77374",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D8085A2B4E994BB9ED17D6A0848360D5",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "E65DD3B64A41C3B454A9DE9A88421A05",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "A82F943142562A5D03B748B40EC3E557",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Flip A",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "BEA410ED48B5F51E0F0CA09504EB8F30",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "080AB270499F34589AB4ABA478D9D8CE",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "FB69CC82414287C1C86ABFB7B9A355DF",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "EAC9614F470D4362BF7057A93E11512E",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "916D28EC4DEEC934F7DCD6B7AF8A556D",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "B09BB701438F8C03154AD6AF3369D0FF",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 720,
+						"y": 400
+					},
+					"pins": [
+						{
+							"pin_id": "598E85154D9B483269E897859A988FD5",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "CAB96C4540AA58DBF60DCBBB3AB12735",
+									"pin_id": "06D1F91A400E0971AC46A0854164A795"
+								}
+							]
+						},
+						{
+							"pin_id": "7CC6D865455F5FBB15308AADF82611B8",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "F4FDAE0D4837C520D4F6DBB2B38A63A0",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "C05377B74D2CE5C2D3E5BC94687BCC01",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "114AFE164DE5481D8B2ADF8CDDF88A33",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Flip B",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "0ABD72164047FEF20443C7BFD4480DCF",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "9BA1322942A94295F36E1E80A232220A",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "BD18CD424BCF851060CFEA97A3472618",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D87DE3264EFC41773457578C3FD5D496",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "C07E798C431BA22FA0E644B22E29412E",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "DD5115034D8EDBB57B734E97481EDAEB",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "Gate",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": 580
+					},
+					"pins": [
+						{
+							"pin_id": "8B92FF58412A1FC5CB0BCEB075281F48",
+							"pin_name": "Enter",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "810DDF614F921C59B76B91B2264A5E99"
+								}
+							]
+						},
+						{
+							"pin_id": "FDD21E2D44C362ACC05A33B6B5A95C3A",
+							"pin_name": "Open",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "27F1DCF84D09C860CAD9618A3EF2677D",
+							"pin_name": "Close",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "AACB40854CD642642827AD806FDE34BD",
+							"pin_name": "Toggle",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "84E249C54383B8F43B7628A33665E35F",
+							"pin_name": "bStartClosed",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D35E31404FBF4063161C8EA9C6827EFD",
+							"pin_name": "Exit",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "96047C0C45822D0C57A8328D2337955B",
+									"pin_id": "DC672EC746B3935A237B2B9A4DED516D"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "96047C0C45822D0C57A8328D2337955B",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "For Loop",
+					"node_comment": "",
+					"position":
+					{
+						"x": 700,
+						"y": 580
+					},
+					"pins": [
+						{
+							"pin_id": "DC672EC746B3935A237B2B9A4DED516D",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "DD5115034D8EDBB57B734E97481EDAEB",
+									"pin_id": "D35E31404FBF4063161C8EA9C6827EFD"
+								}
+							]
+						},
+						{
+							"pin_id": "7574A1C041710C80E3CE8986E526B86E",
+							"pin_name": "FirstIndex",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "3393B05B4A071800E6DE34AB64A2447C",
+							"pin_name": "LastIndex",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "3",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "34E3D50D4C6F8BAE93C606A7C8E501FD",
+							"pin_name": "LoopBody",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "ED50A80B4130ED65980F559C7655D0AD",
+									"pin_id": "9ACC9C4148E679CBF2A954ADDBB751CF"
+								}
+							]
+						},
+						{
+							"pin_id": "570C95A9498DB38020CFACA29CB57F61",
+							"pin_name": "Index",
+							"direction": "output",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "A71990B24F033F87CCB6A69F6F87A29D",
+									"pin_id": "F2C30AD240283B7926D3998035FE67B1"
+								}
+							]
+						},
+						{
+							"pin_id": "61262BD6426F115FD55C8FBA64973863",
+							"pin_name": "Completed",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "3F587F0C439F4BA97A47E2A4A69523CD",
+									"pin_id": "9F8116714D4AA3E09B1E69880A4C344F"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "ED50A80B4130ED65980F559C7655D0AD",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 1020,
+						"y": 560
+					},
+					"pins": [
+						{
+							"pin_id": "9ACC9C4148E679CBF2A954ADDBB751CF",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "96047C0C45822D0C57A8328D2337955B",
+									"pin_id": "34E3D50D4C6F8BAE93C606A7C8E501FD"
+								}
+							]
+						},
+						{
+							"pin_id": "228B97BB4D44B5FEECE9D5AB8F9F82BF",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "3D1405174F8CE515E8B73E964B46F69B",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "6E3034C74553FA856D697A9BA0B85E08",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "E04052DA48020F7467E062A8B8F7CE65",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Hello",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "A71990B24F033F87CCB6A69F6F87A29D",
+									"pin_id": "F7CCE0BC4C5CDF25605E9B91A126A231"
+								}
+							]
+						},
+						{
+							"pin_id": "BC93D4134A5069C725ABFFBAF88521DD",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "3585C31F4F7A106FD3975F996B76D69B",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "F0A2E5844F4558E017E948BD523ECAC6",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "2D51A2054CAD772977A727B3FD19D3D4",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "92143E7146EC9045836B869BAC2C442E",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "A71990B24F033F87CCB6A69F6F87A29D",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "To String (Integer)",
+					"node_comment": "",
+					"position":
+					{
+						"x": 848,
+						"y": 560
+					},
+					"pins": [
+						{
+							"pin_id": "225D9FD844FBB7EB1BD03E90F10BBBB8",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetStringLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetStringLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "F2C30AD240283B7926D3998035FE67B1",
+							"pin_name": "InInt",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "0",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "96047C0C45822D0C57A8328D2337955B",
+									"pin_id": "570C95A9498DB38020CFACA29CB57F61"
+								}
+							]
+						},
+						{
+							"pin_id": "F7CCE0BC4C5CDF25605E9B91A126A231",
+							"pin_name": "ReturnValue",
+							"direction": "output",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "ED50A80B4130ED65980F559C7655D0AD",
+									"pin_id": "E04052DA48020F7467E062A8B8F7CE65"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "3F587F0C439F4BA97A47E2A4A69523CD",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "For Loop with Break",
+					"node_comment": "",
+					"position":
+					{
+						"x": 700,
+						"y": 700
+					},
+					"pins": [
+						{
+							"pin_id": "9F8116714D4AA3E09B1E69880A4C344F",
+							"pin_name": "Execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "96047C0C45822D0C57A8328D2337955B",
+									"pin_id": "61262BD6426F115FD55C8FBA64973863"
+								}
+							]
+						},
+						{
+							"pin_id": "67DB9C2943761BB3EBB959BAE65CEA91",
+							"pin_name": "FirstIndex",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "8523AE0B42CA3CDB28110AA7F875D57A",
+							"pin_name": "LastIndex",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "018FA3A549397711A1750A9290090594",
+							"pin_name": "Break",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "1B23299D453837237D0C3A9A098ABC02",
+							"pin_name": "LoopBody",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D6B979164CBF0A3A5BB1E781A428BE68",
+							"pin_name": "Index",
+							"direction": "output",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "97FE4BD24966FDEC0F8AA7801735D770",
+							"pin_name": "Completed",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "881C21F84385109C7668CD8654D14F35",
+									"pin_id": "9C9E3ED74514D2A4D4F47DA6848E7B9B"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "881C21F84385109C7668CD8654D14F35",
+					"node_class": "K2Node_MacroInstance",
+					"node_title": "For Each Loop",
+					"node_comment": "",
+					"position":
+					{
+						"x": 700,
+						"y": 820
+					},
+					"pins": [
+						{
+							"pin_id": "9C9E3ED74514D2A4D4F47DA6848E7B9B",
+							"pin_name": "Exec",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "3F587F0C439F4BA97A47E2A4A69523CD",
+									"pin_id": "97FE4BD24966FDEC0F8AA7801735D770"
+								}
+							]
+						},
+						{
+							"pin_id": "4338BC34453CFD7B9E32718E7746D062",
+							"pin_name": "Array",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "array",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "EDB4C5974D73A825B72C9AB20704A8B5",
+									"pin_id": "242431CE4FC59DDBB13CA9B65E5BE6AE"
+								}
+							]
+						},
+						{
+							"pin_id": "BEEA72544138DC2D0350778103C9EAF0",
+							"pin_name": "LoopBody",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "067DF620403E3D3EBF0F6CBAB9DEF6E5",
+									"pin_id": "8CD323B2477C8A7DE686F89D05D295E1"
+								}
+							]
+						},
+						{
+							"pin_id": "8FD5F4E04C2F8B2CEBBA5A8211E3F6A8",
+							"pin_name": "Array Element",
+							"direction": "output",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "CDA9AF214AEF4CFADDC1599F62046C04",
+									"pin_id": "06E5A473444C714DF2C484860F8FDD32"
+								}
+							]
+						},
+						{
+							"pin_id": "6B13960945721184C4C20999652F7BE5",
+							"pin_name": "Array Index",
+							"direction": "output",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "AD22127D45D8E2EFABD11C95E14F8FF3",
+							"pin_name": "Completed",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "EDB4C5974D73A825B72C9AB20704A8B5",
+					"node_class": "K2Node_VariableGet",
+					"node_title": "Get FlowArray",
+					"node_comment": "",
+					"position":
+					{
+						"x": 700,
+						"y": 940
+					},
+					"pins": [
+						{
+							"pin_id": "242431CE4FC59DDBB13CA9B65E5BE6AE",
+							"pin_name": "FlowArray",
+							"direction": "output",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "array",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "881C21F84385109C7668CD8654D14F35",
+									"pin_id": "4338BC34453CFD7B9E32718E7746D062"
+								}
+							]
+						},
+						{
+							"pin_id": "50EA6ECD4BDBC326BA78B9978C3BCC2C",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Game/BPParserScratch/BP04_diff_20260701110724.BP04_diff_20260701110724_C",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "067DF620403E3D3EBF0F6CBAB9DEF6E5",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 1020,
+						"y": 820
+					},
+					"pins": [
+						{
+							"pin_id": "8CD323B2477C8A7DE686F89D05D295E1",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "881C21F84385109C7668CD8654D14F35",
+									"pin_id": "BEEA72544138DC2D0350778103C9EAF0"
+								}
+							]
+						},
+						{
+							"pin_id": "065790964091FBE5396866856C051A73",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "C8E1E6024DC17B26340D1992CED51E03",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "42C6066D4A9D681E32BFA8AAC21E7716",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "ECC7DC8748724ED997C61C8C8128EF8B",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Hello",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "CDA9AF214AEF4CFADDC1599F62046C04",
+									"pin_id": "11DC0F444B64DD2FC79554A0C8CB8CB8"
+								}
+							]
+						},
+						{
+							"pin_id": "81AEEBE54492F3D38A7C3C82FEFB4325",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "B941942B41A67005F50BC794138D5566",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "74FE9BFB4CC07ABF1ADEFCBA70B36CD4",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "362065694DDF7086E5C32CBDD2BA0AD7",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "9D06B95346D8D9165BBB12A6790259BC",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "CDA9AF214AEF4CFADDC1599F62046C04",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "To String (Integer)",
+					"node_comment": "",
+					"position":
+					{
+						"x": 848,
+						"y": 816
+					},
+					"pins": [
+						{
+							"pin_id": "728C8297471401F54E3AD88E4C09C633",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetStringLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetStringLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "06E5A473444C714DF2C484860F8FDD32",
+							"pin_name": "InInt",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "0",
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "881C21F84385109C7668CD8654D14F35",
+									"pin_id": "8FD5F4E04C2F8B2CEBBA5A8211E3F6A8"
+								}
+							]
+						},
+						{
+							"pin_id": "11DC0F444B64DD2FC79554A0C8CB8CB8",
+							"pin_name": "ReturnValue",
+							"direction": "output",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "067DF620403E3D3EBF0F6CBAB9DEF6E5",
+									"pin_id": "ECC7DC8748724ED997C61C8C8128EF8B"
+								}
+							]
+						}
+					]
+				},
+				{
+					"node_id": "FABC918941DE6B7631028BA3ECFF1203",
+					"node_class": "K2Node_SwitchInteger",
+					"node_title": "Switch on Int",
+					"node_comment": "",
+					"position":
+					{
+						"x": 380,
+						"y": 980
+					},
+					"pins": [
+						{
+							"pin_id": "F61636EB4EDE16F4476DDF89E80919B9",
+							"pin_name": "Default",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "DD08A775407F71C100037A88090B4BDB",
+									"pin_id": "BDD955214E66A668CDAB7B8461F48FDF"
+								}
+							]
+						},
+						{
+							"pin_id": "C9B79A0C41008D636EA6798629750AFD",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "757099B742CEFA63D2086A920F4D4A56",
+									"pin_id": "F8A2390A4C0E47940E7749B29D8954D6"
+								}
+							]
+						},
+						{
+							"pin_id": "3BA4D13E4B88CE5070E331B7A53C934D",
+							"pin_name": "Selection",
+							"direction": "input",
+							"category": "int",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "0",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "84CEFAC24B064E6E785359B5D66C4984",
+							"pin_name": "NotEqual_IntInt",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetMathLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetMathLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "1A14761F4D528699A03D0DAA62041931",
+							"pin_name": "0",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "ED5D01604299DA7AA8C15ABD0E4A03F4",
+							"pin_name": "1",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "17B0343644A12D4B6E65B18B5A7DF898",
+							"pin_name": "2",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "DD08A775407F71C100037A88090B4BDB",
+					"node_class": "K2Node_SwitchString",
+					"node_title": "Switch on String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 680,
+						"y": 980
+					},
+					"pins": [
+						{
+							"pin_id": "98DBE2754EF9AEEEFFA105AFC164EBBD",
+							"pin_name": "Default",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "6A28A8654ED28CA6877E45992590CA47",
+									"pin_id": "4792EFCC49A7C4767632CE942DF6C24B"
+								}
+							]
+						},
+						{
+							"pin_id": "BDD955214E66A668CDAB7B8461F48FDF",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "FABC918941DE6B7631028BA3ECFF1203",
+									"pin_id": "F61636EB4EDE16F4476DDF89E80919B9"
+								}
+							]
+						},
+						{
+							"pin_id": "776F79D64285924AB7B6F98084674C58",
+							"pin_name": "Selection",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "CAAC6D5C4090F5D35528CC848ED98D9C",
+							"pin_name": "NotEqual_StriStri",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetStringLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetStringLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "B03980FD4ED18205C5C845BC9DDBA74F",
+							"pin_name": "Case_0",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "31AFA4984F9712394F9C098BFDA08E71",
+							"pin_name": "Case_1",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "6A28A8654ED28CA6877E45992590CA47",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Delay",
+					"node_comment": "",
+					"position":
+					{
+						"x": 980,
+						"y": 980
+					},
+					"pins": [
+						{
+							"pin_id": "4792EFCC49A7C4767632CE942DF6C24B",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "DD08A775407F71C100037A88090B4BDB",
+									"pin_id": "98DBE2754EF9AEEEFFA105AFC164EBBD"
+								}
+							]
+						},
+						{
+							"pin_id": "2BCC0F9641119DCC33422FB9DAB2D099",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "30BE12CD46241B84E44C0AAC78231040",
+									"pin_id": "289A969F458869B2AF58F287E06E85D5"
+								}
+							]
+						},
+						{
+							"pin_id": "E3D4431A4686DCF4959DD88CA1260729",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "C14E6F584D7C4990291890B762CDBC3F",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "BAD9D1774A2716EC6FE4098EFC361466",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "0.5",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "8CE7F54648A3F8B8DB35F8A400DDFBAB",
+							"pin_name": "LatentInfo",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.LatentActionInfo",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(Linkage=-1,UUID=-1,ExecutionFunction=\"\",CallbackTarget=None)",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "30BE12CD46241B84E44C0AAC78231040",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 1280,
+						"y": 980
+					},
+					"pins": [
+						{
+							"pin_id": "289A969F458869B2AF58F287E06E85D5",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": true,
+							"linked_to": [
+								{
+									"node_id": "6A28A8654ED28CA6877E45992590CA47",
+									"pin_id": "2BCC0F9641119DCC33422FB9DAB2D099"
+								}
+							]
+						},
+						{
+							"pin_id": "1F69D0B4499DE44114EB3FB7CA077BEC",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "E3ED9FE249DBD5857EF213928D231363",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "F3BA4FDE40B505BA772E809F06EB9DE2",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D9F858184BEB4EC81563A9B09955D5D7",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "after delay",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "0886000B4FD7A107B8F6F4812C7AA5BD",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "613722BB43CBA59AA4C29F97A203F157",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "2712099345D2549877D15299AB7AC616",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "9BAEB93F43066B59CE2D82B5BB5E4C2B",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "1A2A2E3A4B2E4C683B0AB7B0C890DBC6",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				},
+				{
+					"node_id": "282973404EC09848F64E1DA349171BA3",
+					"node_class": "K2Node_CallFunction",
+					"node_title": "Print String",
+					"node_comment": "",
+					"position":
+					{
+						"x": 1700,
+						"y": 120
+					},
+					"pins": [
+						{
+							"pin_id": "532EF6984BE72275083CB9A4112DB2C8",
+							"pin_name": "execute",
+							"direction": "input",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "B396B8264925FC842AC74597F929C660",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "CC429FF546E75DE3CADCFA863E7B2C7C",
+							"pin_name": "self",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/Engine.KismetSystemLibrary",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"default_object": "/Script/Engine.Default__KismetSystemLibrary",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "0D8DB4BD4D41EE5E36C37EB430EE8199",
+							"pin_name": "WorldContextObject",
+							"direction": "input",
+							"category": "object",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.Object",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "D96CCAB14388EB1CA00E0CAA0B8D2588",
+							"pin_name": "InString",
+							"direction": "input",
+							"category": "string",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "Hello",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "9D2BFF234FCF968EE65E3D8A74642A6F",
+							"pin_name": "bPrintToScreen",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "20797993423E63743F5C74A3E2152F2B",
+							"pin_name": "bPrintToLog",
+							"direction": "input",
+							"category": "bool",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "true",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "C800D6F24B41161C5DB03CB33C7ABADB",
+							"pin_name": "TextColor",
+							"direction": "input",
+							"category": "struct",
+							"sub_category": "None",
+							"object_type": "/Script/CoreUObject.LinearColor",
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "(R=0.000000,G=0.660000,B=1.000000,A=1.000000)",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "4B8DAA3446302A16916F9E9D1B82B1CF",
+							"pin_name": "Duration",
+							"direction": "input",
+							"category": "real",
+							"sub_category": "float",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "2.000000",
+							"is_connected": false,
+							"linked_to": []
+						},
+						{
+							"pin_id": "ED2C5B45463612379EA9DCACF9237F43",
+							"pin_name": "Key",
+							"direction": "input",
+							"category": "name",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": false,
+							"default_value": "None",
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				}
+			],
+			"edges": [
+				{
+					"edge_id": "e1",
+					"from_node": "7DA3AEC0417078BF44DC2DBCF6C70C46",
+					"from_pin": "63FAD7C04145B4F58600CB86863DD27F",
+					"to_node": "757099B742CEFA63D2086A920F4D4A56",
+					"to_pin": "5FF7EDA144531D72D790E3B2B8B2C891",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e2",
+					"from_node": "757099B742CEFA63D2086A920F4D4A56",
+					"from_pin": "1FEA42484046AB0A4CFC009DE636D049",
+					"to_node": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+					"to_pin": "2CE6AA3443FBAFD506465AB4C401F8F5",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e3",
+					"from_node": "757099B742CEFA63D2086A920F4D4A56",
+					"from_pin": "25CB6C10486FAE5CF963CBB463DD90B7",
+					"to_node": "F38838E84FCE6E58501C158E1ED3BB72",
+					"to_pin": "935C32C64093742DED35BCB5FB5C40E9",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e4",
+					"from_node": "757099B742CEFA63D2086A920F4D4A56",
+					"from_pin": "01DB5C27494BDD0030D15DAB45F2E6C7",
+					"to_node": "CAB96C4540AA58DBF60DCBBB3AB12735",
+					"to_pin": "70D25D0F41AAF32D4F3C5CB39557FCB3",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e5",
+					"from_node": "757099B742CEFA63D2086A920F4D4A56",
+					"from_pin": "810DDF614F921C59B76B91B2264A5E99",
+					"to_node": "DD5115034D8EDBB57B734E97481EDAEB",
+					"to_pin": "8B92FF58412A1FC5CB0BCEB075281F48",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e6",
+					"from_node": "757099B742CEFA63D2086A920F4D4A56",
+					"from_pin": "F8A2390A4C0E47940E7749B29D8954D6",
+					"to_node": "FABC918941DE6B7631028BA3ECFF1203",
+					"to_pin": "C9B79A0C41008D636EA6798629750AFD",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e7",
+					"from_node": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+					"from_pin": "AF6ACF4B415465356179628B4C3F316B",
+					"to_node": "FE43796B4C5FE7DC0807D49A56C04BC5",
+					"to_pin": "ABF89F6D4F45EFE7DAEB548DD95F6331",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e8",
+					"from_node": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+					"from_pin": "2E36C935470B6715B976BB8BC991C863",
+					"to_node": "FE43796B4C5FE7DC0807D49A56C04BC5",
+					"to_pin": "ABF89F6D4F45EFE7DAEB548DD95F6331",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e9",
+					"from_node": "66C16B9749C0FB800B0548BF0689C150",
+					"from_pin": "32F243C94AE4579D3CAC1485B3FDE3C2",
+					"to_node": "33BA8E1B4EF8C2B8BEF989AB40D15D56",
+					"to_pin": "63EB8EEC418D1583EF0B9B86ADE0402B",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e10",
+					"from_node": "FE43796B4C5FE7DC0807D49A56C04BC5",
+					"from_pin": "A79EE8504567A602A060D6899220185D",
+					"to_node": "C57329A04433D8E51FA1B08155942F69",
+					"to_pin": "6C6CE60A4E1EDFC9C97C9C90C74E1034",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e11",
+					"from_node": "F38838E84FCE6E58501C158E1ED3BB72",
+					"from_pin": "6BE3381F4631433A580589AE7AE76B84",
+					"to_node": "003E4EC944A7F734320EE78F1A661080",
+					"to_pin": "425055B941C84E70BB886F8E05E56798",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e12",
+					"from_node": "CAB96C4540AA58DBF60DCBBB3AB12735",
+					"from_pin": "9321AE064986171BE7A67DA71849AE59",
+					"to_node": "28097CA14B80428A454A4AACD369EF80",
+					"to_pin": "C30882224B651DDA1B37DD8D18E1DA1A",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e13",
+					"from_node": "CAB96C4540AA58DBF60DCBBB3AB12735",
+					"from_pin": "06D1F91A400E0971AC46A0854164A795",
+					"to_node": "B09BB701438F8C03154AD6AF3369D0FF",
+					"to_pin": "598E85154D9B483269E897859A988FD5",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e14",
+					"from_node": "DD5115034D8EDBB57B734E97481EDAEB",
+					"from_pin": "D35E31404FBF4063161C8EA9C6827EFD",
+					"to_node": "96047C0C45822D0C57A8328D2337955B",
+					"to_pin": "DC672EC746B3935A237B2B9A4DED516D",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e15",
+					"from_node": "96047C0C45822D0C57A8328D2337955B",
+					"from_pin": "34E3D50D4C6F8BAE93C606A7C8E501FD",
+					"to_node": "ED50A80B4130ED65980F559C7655D0AD",
+					"to_pin": "9ACC9C4148E679CBF2A954ADDBB751CF",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e16",
+					"from_node": "96047C0C45822D0C57A8328D2337955B",
+					"from_pin": "570C95A9498DB38020CFACA29CB57F61",
+					"to_node": "A71990B24F033F87CCB6A69F6F87A29D",
+					"to_pin": "F2C30AD240283B7926D3998035FE67B1",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e17",
+					"from_node": "96047C0C45822D0C57A8328D2337955B",
+					"from_pin": "61262BD6426F115FD55C8FBA64973863",
+					"to_node": "3F587F0C439F4BA97A47E2A4A69523CD",
+					"to_pin": "9F8116714D4AA3E09B1E69880A4C344F",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e18",
+					"from_node": "A71990B24F033F87CCB6A69F6F87A29D",
+					"from_pin": "F7CCE0BC4C5CDF25605E9B91A126A231",
+					"to_node": "ED50A80B4130ED65980F559C7655D0AD",
+					"to_pin": "E04052DA48020F7467E062A8B8F7CE65",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e19",
+					"from_node": "3F587F0C439F4BA97A47E2A4A69523CD",
+					"from_pin": "97FE4BD24966FDEC0F8AA7801735D770",
+					"to_node": "881C21F84385109C7668CD8654D14F35",
+					"to_pin": "9C9E3ED74514D2A4D4F47DA6848E7B9B",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e20",
+					"from_node": "881C21F84385109C7668CD8654D14F35",
+					"from_pin": "BEEA72544138DC2D0350778103C9EAF0",
+					"to_node": "067DF620403E3D3EBF0F6CBAB9DEF6E5",
+					"to_pin": "8CD323B2477C8A7DE686F89D05D295E1",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e21",
+					"from_node": "881C21F84385109C7668CD8654D14F35",
+					"from_pin": "8FD5F4E04C2F8B2CEBBA5A8211E3F6A8",
+					"to_node": "CDA9AF214AEF4CFADDC1599F62046C04",
+					"to_pin": "06E5A473444C714DF2C484860F8FDD32",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e22",
+					"from_node": "EDB4C5974D73A825B72C9AB20704A8B5",
+					"from_pin": "242431CE4FC59DDBB13CA9B65E5BE6AE",
+					"to_node": "881C21F84385109C7668CD8654D14F35",
+					"to_pin": "4338BC34453CFD7B9E32718E7746D062",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e23",
+					"from_node": "CDA9AF214AEF4CFADDC1599F62046C04",
+					"from_pin": "11DC0F444B64DD2FC79554A0C8CB8CB8",
+					"to_node": "067DF620403E3D3EBF0F6CBAB9DEF6E5",
+					"to_pin": "ECC7DC8748724ED997C61C8C8128EF8B",
+					"edge_type": "data"
+				},
+				{
+					"edge_id": "e24",
+					"from_node": "FABC918941DE6B7631028BA3ECFF1203",
+					"from_pin": "F61636EB4EDE16F4476DDF89E80919B9",
+					"to_node": "DD08A775407F71C100037A88090B4BDB",
+					"to_pin": "BDD955214E66A668CDAB7B8461F48FDF",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e25",
+					"from_node": "DD08A775407F71C100037A88090B4BDB",
+					"from_pin": "98DBE2754EF9AEEEFFA105AFC164EBBD",
+					"to_node": "6A28A8654ED28CA6877E45992590CA47",
+					"to_pin": "4792EFCC49A7C4767632CE942DF6C24B",
+					"edge_type": "exec"
+				},
+				{
+					"edge_id": "e26",
+					"from_node": "6A28A8654ED28CA6877E45992590CA47",
+					"from_pin": "2BCC0F9641119DCC33422FB9DAB2D099",
+					"to_node": "30BE12CD46241B84E44C0AAC78231040",
+					"to_pin": "289A969F458869B2AF58F287E06E85D5",
+					"edge_type": "exec"
+				}
+			],
+			"comments": [
+				{
+					"comment_id": "B6A39F2F444212CD243AB49C7C59C402",
+					"text": "Sequence fan-out",
+					"bounds":
+					{
+						"x": -80,
+						"y": -200,
+						"w": 360,
+						"h": 1100
+					}
+				},
+				{
+					"comment_id": "BEA3A9F8445357D7204DD6B1DCE09143",
+					"text": "Branch + converge (Reroute)",
+					"bounds":
+					{
+						"x": 320,
+						"y": -200,
+						"w": 760,
+						"h": 320
+					}
+				},
+				{
+					"comment_id": "8D3C510C493225FBF6F950B04469BD81",
+					"text": "DoOnce / FlipFlop / Gate",
+					"bounds":
+					{
+						"x": 320,
+						"y": 160,
+						"w": 760,
+						"h": 360
+					}
+				},
+				{
+					"comment_id": "079545054E1F9315D241AF9486DE9D2C",
+					"text": "ForLoop / ForLoopWithBreak / ForEachLoop",
+					"bounds":
+					{
+						"x": 320,
+						"y": 540,
+						"w": 900,
+						"h": 360
+					}
+				},
+				{
+					"comment_id": "46249D104366A9937AF967BEE74082FF",
+					"text": "Switch Int / Switch String / Delay (latent)",
+					"bounds":
+					{
+						"x": 320,
+						"y": 920,
+						"w": 900,
+						"h": 360
+					}
+				}
+			]
+		},
+		{
+			"graph_name": "UserConstructionScript",
+			"graph_type": "function",
+			"nodes": [
+				{
+					"node_id": "85CDFC1143FABE56345751916D2F5CE7",
+					"node_class": "K2Node_FunctionEntry",
+					"node_title": "Construction Script",
+					"node_comment": "",
+					"position":
+					{
+						"x": 0,
+						"y": 0
+					},
+					"pins": [
+						{
+							"pin_id": "6DB2089C45127F88B3EE499D7EAED2C9",
+							"pin_name": "then",
+							"direction": "output",
+							"category": "exec",
+							"sub_category": "None",
+							"object_type": null,
+							"container_type": "none",
+							"is_exec": true,
+							"default_value": null,
+							"is_connected": false,
+							"linked_to": []
+						}
+					]
+				}
+			],
+			"edges": [],
+			"comments": []
+		}
+	],
+	"variables": [
+		{
+			"name": "FlowBool",
+			"category": "bool",
+			"sub_category": "None",
+			"container_type": "none",
+			"default_value": ""
+		},
+		{
+			"name": "FlowArray",
+			"category": "int",
+			"sub_category": "None",
+			"container_type": "array",
+			"default_value": ""
+		}
+	],
+	"functions": [
+		"UserConstructionScript"
+	],
+	"macros": [],
+	"event_dispatchers": [],
+	"interfaces": [],
+	"side": "new"
+}

@@ -27,7 +27,8 @@ public class BPParserTestGen : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"UnrealEd",            // FKismetEditorUtilities, FBlueprintEditorUtils, FStructureEditorUtils,
-			                       // FEnumEditorUtils, UEnumFactory, UEdGraphNode_Comment, save utils
+			                       // FEnumEditorUtils, UEnumFactory, UEdGraphNode_Comment, save utils, DiffUtils::LoadPackageForDiff
+			"GraphEditor",         // FGraphDiffControl::DiffGraphs (headless structural blueprint diff)
 			"BlueprintGraph",      // UK2Node_* node classes, UEdGraphSchema_K2
 			"KismetCompiler",      // defensive (CompileBlueprint path)
 			"AssetTools",          // IAssetTools / FAssetToolsModule (enum asset creation)

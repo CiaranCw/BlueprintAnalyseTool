@@ -1,0 +1,54 @@
+{
+	"schema_version": "bp-diff-1.0",
+	"engine_version": "5.4.4-35576357+++UE5+Release-5.4",
+	"asset_old": "/Game/BPParserTest/BP_04_ExecFlow_Control.BP_04_ExecFlow_Control",
+	"asset_new": "/Game/BPParserScratch/BP04_diff_20260701110724.BP04_diff_20260701110724",
+	"summary":
+	{
+		"total": 2,
+		"logical": 2,
+		"visual": 0,
+		"by_type":
+		{
+			"PinDefaultValueChanged": 1,
+			"NodeAdded": 1
+		}
+	},
+	"graphs": [
+		{
+			"graph": "EventGraph",
+			"graph_type": "ubergraph",
+			"changes": [
+				{
+					"type": "PinDefaultValueChanged",
+					"raw_diff_type": "PIN_DEFAULT_VALUE",
+					"category": "modification",
+					"change_class": "logical",
+					"severity": "major",
+					"node1_guid": "D64C66C54E5D943DF2D9F49CA8457E84",
+					"node1_title": "Delay",
+					"node2_guid": "6A28A8654ED28CA6877E45992590CA47",
+					"node2_title": "Delay",
+					"pin1": "Duration",
+					"pin2": "Duration",
+					"message": "Pin Default 'Duration' '0.2' -> '0.5']"
+				},
+				{
+					"type": "NodeAdded",
+					"raw_diff_type": "NODE_ADDED",
+					"category": "addition",
+					"change_class": "logical",
+					"severity": "major",
+					"node1_guid": "282973404EC09848F64E1DA349171BA3",
+					"node1_title": "Print String",
+					"message": "Added Node 'Print String'"
+				}
+			]
+		},
+		{
+			"graph": "UserConstructionScript",
+			"graph_type": "function",
+			"changes": []
+		}
+	]
+}

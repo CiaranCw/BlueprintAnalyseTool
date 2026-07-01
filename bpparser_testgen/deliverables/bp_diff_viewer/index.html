@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Blueprint 结构 Diff Viewer (PoC)</title>
+<style>
+  :root { --add:#2e7d32; --rem:#c62828; --mod:#f9a825; --move:#1565c0; --same:#9e9e9e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:#1e1e1e; color:#ddd; height:100vh; display:flex; flex-direction:column; }
+  header { padding:8px 12px; background:#252526; border-bottom:1px solid #333; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:14px; margin:0 8px 0 0; font-weight:600; }
+  header label { font-size:12px; color:#bbb; }
+  .legend { display:flex; gap:10px; margin-left:auto; font-size:12px; }
+  .legend span { display:inline-flex; align-items:center; gap:4px; }
+  .swatch { width:12px; height:12px; border-radius:2px; display:inline-block; }
+  main { flex:1; display:flex; min-height:0; }
+  #sidebar { width:320px; background:#252526; border-right:1px solid #333; overflow:auto; padding:6px; }
+  #sidebar h2 { font-size:12px; color:#8fbcff; margin:8px 4px 4px; }
+  .summary { font-size:12px; color:#bbb; padding:4px; }
+  .change { padding:5px 6px; border-radius:4px; cursor:pointer; font-size:12px; border-left:4px solid var(--same); margin:2px 0; background:#2d2d2d; }
+  .change:hover { background:#37373d; }
+  .change .t { font-weight:600; }
+  .change small { color:#999; }
+  .filters { display:flex; gap:8px; padding:4px; font-size:12px; flex-wrap:wrap; }
+  #canvasWrap { flex:1; overflow:hidden; position:relative; background:#1b1b1b; }
+  svg { width:100%; height:100%; cursor:grab; }
+  svg:active { cursor:grabbing; }
+  .node rect { stroke:#111; stroke-width:1.5; }
+  .node .title { font-size:12px; fill:#fff; font-weight:600; }
+  .node .pin { font-size:10px; fill:#ccc; }
+  .edge { stroke:#888; stroke-width:1.5; fill:none; }
+  .edge.exec { stroke:#ddd; stroke-width:2; }
+  .hl { outline:2px solid #fff; }
+  .drop { color:#e0a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blueprint 结构 Diff Viewer <small style="color:#777">(PoC)</small></h1>
+  <label>old.ir.json <input type="file" id="fOld" accept=".json"></label>
+  <label>new.ir.json <input type="file" id="fNew" accept=".json"></label>
+  <label>diff.json <input type="file" id="fDiff" accept=".json"></label>
+  <label>或整目录 <input type="file" id="fDir" webkitdirectory directory multiple></label>
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--add)"></i>新增</span>
+    <span><i class="swatch" style="background:var(--rem)"></i>删除</span>
+    <span><i class="swatch" style="background:var(--mod)"></i>修改</span>
+    <span><i class="swatch" style="background:var(--move)"></i>移动</span>
+    <span><i class="swatch" style="background:var(--same)"></i>未变</span>
+  </div>
+</header>
+<main>
+  <div id="sidebar">
+    <div class="summary" id="summary">拖入或选择 old.ir.json / new.ir.json / diff.json（或直接选择输出目录）。</div>
+    <div class="filters" id="filters"></div>
+    <div id="changeList"></div>
+  </div>
+  <div id="canvasWrap">
+    <svg id="svg"><g id="viewport"></g></svg>
+  </div>
+</main>
+<script>
+const NODE_W = 200, PIN_H = 16, HEAD_H = 24, PAD = 8;
+let state = { old:null, "new":null, diff:null, nodes:new Map(), showVisual:true };
+
+function readJson(file){ return file.text().then(t=>JSON.parse(t)); }
+
+// ---- geometry helpers ----
+function nodeHeight(n){ const pins=(n.pins||[]).length; return HEAD_H + Math.max(1,pins)*PIN_H + PAD; }
+function collectNodes(ir, side){
+  const m=[];
+  (ir.graphs||[]).forEach(g=>(g.nodes||[]).forEach(n=>m.push({...n, graph:g.graph_name, side})));
+  return m;
+}
+function guidColorMap(diff){
+  // guid -> {color, type}
+  const map=new Map();
+  (diff.graphs||[]).forEach(g=>(g.changes||[]).forEach(c=>{
+    let color=null;
+    if(c.type==='NodeAdded') color='add';
+    else if(c.type==='NodeRemoved') color='rem';
+    else if(c.type==='NodeMoved') color='move';
+    else color='mod';
+    [c.node1_guid,c.node2_guid].filter(Boolean).forEach(gd=>{
+      const prev=map.get(gd);
+      // priority: add/rem > mod > move
+      const rank={add:3,rem:3,mod:2,move:1};
+      if(!prev || rank[color]>rank[prev.color]) map.set(gd,{color,type:c.type});
+    });
+  }));
+  return map;
+}
+const CSSVAR={add:'--add',rem:'--rem',mod:'--mod',move:'--move',same:'--same'};
+function col(k){ return getComputedStyle(document.documentElement).getPropertyValue(CSSVAR[k]).trim(); }
+
+function render(){
+  const vp=document.getElementById('viewport'); vp.innerHTML='';
+  if(!state.new){ return; }
+  const cmap = state.diff ? guidColorMap(state.diff) : new Map();
+  // base = new graph nodes; plus removed nodes from old
+  const newNodes = collectNodes(state.new,'new');
+  const newGuids = new Set(newNodes.map(n=>n.node_id));
+  let nodes = newNodes.slice();
+  if(state.old){
+    collectNodes(state.old,'old').forEach(n=>{
+      const info=cmap.get(n.node_id);
+      if(info && info.color==='rem' && !newGuids.has(n.node_id)) nodes.push(n); // show removed
+    });
+  }
+  state.nodes = new Map();
+  // edges first (under nodes) — from new IR
+  const posOf = n => ({x:(n.position&&n.position.x)||0, y:(n.position&&n.position.y)||0});
+  const byId = new Map(nodes.map(n=>[n.node_id,n]));
+  (state.new.graphs||[]).forEach(g=>(g.edges||[]).forEach(e=>{
+    const a=byId.get(e.from_node), b=byId.get(e.to_node); if(!a||!b) return;
+    const pa=posOf(a), pb=posOf(b);
+    const x1=pa.x+NODE_W, y1=pa.y+HEAD_H, x2=pb.x, y2=pb.y+HEAD_H;
+    const mx=(x1+x2)/2;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    path.setAttribute('class','edge '+(e.edge_type||''));
+    vp.appendChild(path);
+  }));
+  // nodes
+  nodes.forEach(n=>{
+    const p=posOf(n); const h=nodeHeight(n);
+    const info=cmap.get(n.node_id);
+    const fill = info ? col(info.color) : col('same');
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node'); g.setAttribute('transform',`translate(${p.x},${p.y})`);
+    g.dataset.guid=n.node_id;
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('width',NODE_W); rect.setAttribute('height',h); rect.setAttribute('rx',6);
+    rect.setAttribute('fill','#2b2b2b'); rect.setAttribute('stroke',fill); rect.setAttribute('stroke-width', info?3:1.5);
+    if(info && info.color==='move') rect.setAttribute('stroke-dasharray','5,4');
+    g.appendChild(rect);
+    const head=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    head.setAttribute('width',NODE_W); head.setAttribute('height',HEAD_H); head.setAttribute('rx',6);
+    head.setAttribute('fill',fill); head.setAttribute('opacity', info?0.85:0.4);
+    g.appendChild(head);
+    const title=document.createElementNS('http://www.w3.org/2000/svg','text');
+    title.setAttribute('class','title'); title.setAttribute('x',8); title.setAttribute('y',16);
+    title.textContent=(n.node_title||n.node_class||'').slice(0,26);
+    g.appendChild(title);
+    (n.pins||[]).forEach((pin,i)=>{
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('class','pin');
+      const y=HEAD_H+14+i*PIN_H;
+      if(pin.direction==='input'){ t.setAttribute('x',8); t.setAttribute('y',y); t.textContent='● '+pin.pin_name; }
+      else { t.setAttribute('x',NODE_W-8); t.setAttribute('y',y); t.setAttribute('text-anchor','end'); t.textContent=pin.pin_name+' ●'; }
+      g.appendChild(t);
+    });
+    vp.appendChild(g);
+    state.nodes.set(n.node_id, {el:g, x:p.x, y:p.y});
+  });
+  fitView();
+}
+
+// ---- change list ----
+function renderList(){
+  const list=document.getElementById('changeList'); list.innerHTML='';
+  const sum=document.getElementById('summary');
+  if(!state.diff){ return; }
+  const s=state.diff.summary||{};
+  sum.innerHTML=`<b>${state.diff.asset_new||''}</b><br>共 <b>${s.total||0}</b> 处变化（逻辑 ${s.logical||0} / 视觉 ${s.visual||0}）`;
+  (state.diff.graphs||[]).forEach(g=>{
+    const changes=(g.changes||[]).filter(c=> state.showVisual || c.change_class!=='visual');
+    if(!changes.length) return;
+    const h=document.createElement('h2'); h.textContent=g.graph+' ('+changes.length+')'; list.appendChild(h);
+    changes.forEach(c=>{
+      const d=document.createElement('div'); d.className='change';
+      const color = c.type==='NodeAdded'?'add':c.type==='NodeRemoved'?'rem':c.type==='NodeMoved'?'move':'mod';
+      d.style.borderLeftColor=col(color);
+      const who=c.node2_title||c.node1_title||c.pin2||c.pin1||'';
+      d.innerHTML=`<span class="t">${c.type}</span> <small>${c.change_class}/${c.severity}</small><br><small>${(who||'').slice(0,40)}</small>`;
+      d.onclick=()=>focusNode(c.node2_guid||c.node1_guid);
+      list.appendChild(d);
+    });
+  });
+}
+function focusNode(guid){
+  document.querySelectorAll('.node.hl').forEach(e=>e.classList.remove('hl'));
+  const rec=state.nodes.get(guid); if(!rec) return;
+  rec.el.classList.add('hl');
+  view.tx = -rec.x*view.scale + document.getElementById('canvasWrap').clientWidth/2 - NODE_W;
+  view.ty = -rec.y*view.scale + document.getElementById('canvasWrap').clientHeight/2;
+  applyView();
+}
+
+// ---- pan/zoom ----
+let view={scale:0.8,tx:60,ty:60};
+function applyView(){ document.getElementById('viewport').setAttribute('transform',`translate(${view.tx},${view.ty}) scale(${view.scale})`); }
+function fitView(){
+  const pts=[...state.nodes.values()]; if(!pts.length){applyView();return;}
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  const minx=Math.min(...xs), miny=Math.min(...ys), maxx=Math.max(...xs)+NODE_W, maxy=Math.max(...ys)+120;
+  const w=document.getElementById('canvasWrap').clientWidth, h=document.getElementById('canvasWrap').clientHeight;
+  view.scale=Math.min(1, Math.min(w/(maxx-minx+80), h/(maxy-miny+80)));
+  view.tx=-minx*view.scale+40; view.ty=-miny*view.scale+40; applyView();
+}
+(function(){
+  const svg=document.getElementById('svg'); let drag=null;
+  svg.addEventListener('mousedown',e=>drag={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty});
+  window.addEventListener('mouseup',()=>drag=null);
+  window.addEventListener('mousemove',e=>{ if(!drag)return; view.tx=drag.tx+(e.clientX-drag.x); view.ty=drag.ty+(e.clientY-drag.y); applyView(); });
+  svg.addEventListener('wheel',e=>{ e.preventDefault(); const f=e.deltaY<0?1.1:0.9; view.scale=Math.max(0.1,Math.min(3,view.scale*f)); applyView(); },{passive:false});
+})();
+
+// ---- inputs ----
+function maybeRender(){ render(); renderList(); }
+document.getElementById('fOld').onchange=e=>readJson(e.target.files[0]).then(j=>{state.old=j;maybeRender();});
+document.getElementById('fNew').onchange=e=>readJson(e.target.files[0]).then(j=>{state.new=j;maybeRender();});
+document.getElementById('fDiff').onchange=e=>readJson(e.target.files[0]).then(j=>{state.diff=j;maybeRender();});
+document.getElementById('fDir').onchange=e=>{
+  const files=[...e.target.files];
+  const find=n=>files.find(f=>f.name===n);
+  const jobs=[];
+  if(find('old.ir.json')) jobs.push(readJson(find('old.ir.json')).then(j=>state.old=j));
+  if(find('new.ir.json')) jobs.push(readJson(find('new.ir.json')).then(j=>state.new=j));
+  if(find('diff.json')) jobs.push(readJson(find('diff.json')).then(j=>state.diff=j));
+  Promise.all(jobs).then(maybeRender);
+};
+// filters
+(function(){
+  const f=document.getElementById('filters');
+  const cb=document.createElement('label'); cb.innerHTML='<input type="checkbox" id="cbV" checked> 显示视觉/布局变化';
+  f.appendChild(cb);
+  document.body.addEventListener('change',e=>{ if(e.target.id==='cbV'){ state.showVisual=e.target.checked; renderList(); }});
+})();
+// auto-load bundled sample when served over http (file:// falls back to manual pickers)
+(function(){
+  Promise.all([
+    fetch('./sample/old.ir.json').then(r=>r.ok?r.json():null).catch(()=>null),
+    fetch('./sample/new.ir.json').then(r=>r.ok?r.json():null).catch(()=>null),
+    fetch('./sample/diff.json').then(r=>r.ok?r.json():null).catch(()=>null),
+  ]).then(([o,n,d])=>{ if(o)state.old=o; if(n)state.new=n; if(d)state.diff=d; if(n||d) maybeRender(); });
+})();
+</script>
+</body>
+</html>
