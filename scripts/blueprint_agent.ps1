@@ -58,6 +58,7 @@ switch ($taskType) {
     if (-not ($pol.allow_incremental_compile)) { Fail "warmup requires project.engine_policy.allow_incremental_compile=true (adds a plugin + builds the editor). Denied." 30 }
     $args = @{ ProjectUProject=$proj }
     if ($ue) { $args.UERoot=$ue }
+    if ($req.project.plugin_source) { $args.PluginSource="$($req.project.plugin_source)" }
     if ($req.request.smoke_asset_path) { $args.SmokeAssetPath="$($req.request.smoke_asset_path)" }
     & (Join-Path $scripts 'warmup_project.ps1') @args
     $rc=$LASTEXITCODE; $subOut=(Join-Path (Split-Path $proj -Parent) 'Saved\BPParserAgentReports\warmup')

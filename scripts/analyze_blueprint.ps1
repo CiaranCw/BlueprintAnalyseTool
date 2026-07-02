@@ -274,7 +274,7 @@ function Run-Python {
   $env:BPAT_ASSET=$pkgPath; $env:BPAT_OUT=$raw; $env:BPAT_LOG=(Join-Path $OutDir 'logs\python_log.txt')
   New-Item -ItemType Directory -Force -Path (Join-Path $OutDir 'logs') | Out-Null
   Info "python-partial: launching $cmdExe (this loads the target project; may take a while)..."
-  & $cmdExe "$ProjectUProject" -run=pythonscript -script="$py" -unattended -nopause -nosplash -nullrhi -stdout *> (Join-Path $OutDir 'logs\python_run.txt')
+  & $cmdExe "$ProjectUProject" -run=pythonscript -script="$py" -unattended -nopause -nosplash -nullrhi -stdout *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\python_run.txt')
   if (-not (Test-Path $raw)) { [void]$err.Add("python-partial: no output produced (see logs/python_run.txt)"); return $null }
   $ir = Get-Content $raw -Raw | ConvertFrom-Json
   foreach($w in @($ir.warnings)){ [void]$warn.Add("python: $w") }
@@ -293,14 +293,14 @@ function Run-Native {
   }
   # ensure built (heuristic: editor DLL for the plugin present) — else build if allowed
   if ($AllowBuild) {
-    & (Join-Path $PSScriptRoot 'build_project_plugin.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject *> (Join-Path $OutDir 'logs\native_build.txt')
+    & (Join-Path $PSScriptRoot 'build_project_plugin.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject -PluginName 'BPParserTestGen' *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\native_build.txt')
     if ($LASTEXITCODE -ne 0) { [void]$err.Add("native-full: build failed (see logs/native_build.txt)"); return $null }
   }
   $meta.plugin_built = $true
   $rawDir = Join-Path $OutDir 'native_raw'
   New-Item -ItemType Directory -Force -Path $rawDir,(Join-Path $OutDir 'logs') | Out-Null
   Info "native-full: running BPParserTestDump commandlet..."
-  & $cmdExe "$ProjectUProject" -run=BPParserTestDump -AssetPath="$pkgPath" -OutputDir="$rawDir" -unattended -nopause -stdout *> (Join-Path $OutDir 'logs\native_run.txt')
+  & $cmdExe "$ProjectUProject" -run=BPParserTestDump -AssetPath="$pkgPath" -OutputDir="$rawDir" -unattended -nopause -stdout *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\native_run.txt')
   $short = ($pkgPath -replace '.*/','')
   $irFile = Join-Path $rawDir "$short.ir.json"
   if (-not (Test-Path $irFile)) { [void]$err.Add("native-full: dumper produced no IR (see logs/native_run.txt)"); return $null }

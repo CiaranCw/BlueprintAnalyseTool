@@ -76,6 +76,17 @@ clearest sequence for an orchestrating AI.
   "capability_state":"capability_state.json" }
 ```
 
+## Source of truth & re-entrancy
+- **`capability_state.json` is the single authoritative state** (produced by the read-only probe). If you
+  ever fixed something by hand, re-run `agent_status` (or `task_type=status`) to get the true state.
+- `warmup_state.json` reflects the outcome of the last full `warmup_project.ps1` run. If a warmup partially
+  failed and you fixed it manually, **re-run warmup** (it is idempotent: reinstall + rebuild + reprobe) so
+  `warmup_state.json` and `capability_state.json` agree. Do not trust a stale `warmup_state.json` over the
+  live probe.
+- `warmup` now (a) enables the plugin in the `.uproject` on install, and (b) asserts the module DLL exists
+  after build — so a "Build OK" that produced no DLL (plugin not enabled) now fails loudly instead of a
+  false success.
+
 ## Safety / consent
 - `status` is strictly read-only (no UE launch, no changes) — always safe to call first.
 - `warmup` is invasive to the **project/toolchain** (adds a source plugin + one incremental build); it never

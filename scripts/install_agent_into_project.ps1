@@ -31,6 +31,15 @@ if ([string]::IsNullOrWhiteSpace($ProjectUProject)) {
   if ($up) { $ProjectUProject = $up.FullName }
 }
 $uprojForDoc = if ($ProjectUProject) { $ProjectUProject } else { "<PATH>/YourProject.uproject" }
+# JSON forbids single backslashes; UE accepts forward slashes on all platforms. Normalize so every
+# generated example/doc path is valid JSON out of the box (fixes the "unrecognized escape" trap).
+$uprojForDoc = $uprojForDoc -replace '\\','/'
+
+# Write UTF-8 WITHOUT BOM so .md/.mdc/.json are clean for every downstream tool/AI (no mojibake, no BOM).
+function Write-Utf8NoBom([string]$path,[string]$text){
+  $dir = Split-Path $path -Parent; if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  [IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false)))
+}
 
 # ---- resolve entry + plugin-source paths (copy vs reference) ----
 $toolsDir = Join-Path $TargetDir 'Tools\BlueprintAgent'
@@ -53,11 +62,11 @@ function Expand([string]$t){ return $t.Replace('{{ENTRY}}',$entry).Replace('{{DO
 # ---- managed block (shared by AGENTS.md and CLAUDE.md) ----
 $blockTmpl = @'
 <!-- BEGIN BLUEPRINT-AGENT (managed by install_agent_into_project.ps1; do not edit between markers) -->
-## Blueprint Agent — understand / edit / create UE Blueprints (AI-callable)
+## Blueprint Agent - understand / edit / create UE Blueprints (AI-callable)
 
 This project ships a **Blueprint Agent**: a tool to analyze, modify, and create Unreal Engine Blueprints
 and Widget Blueprints. When you (an AI) are asked to understand a Blueprint's structure (graphs, nodes,
-pins, connections, variables, functions), to modify one, or to create one, USE THIS AGENT — do not
+pins, connections, variables, functions), to modify one, or to create one, USE THIS AGENT - do not
 hand-parse `.uasset` or guess from names.
 
 ### One entry point (PowerShell)
@@ -77,8 +86,8 @@ Then read `capability_state.json` (under `<project>/Saved/BPParserAgentReports/s
 `capabilities{understand_full,edit,create}`, `warmup_required`, `recommended_action`, `next_calls`.
 
 ### Decide
-- `capabilities.understand_full == true` → go straight to analyze/edit/create with `execution.mode:"auto"`.
-- `warmup_required == true` AND the user permits a one-time build → run `task_type:"warmup"` with
+- `capabilities.understand_full == true` -> go straight to analyze/edit/create with `execution.mode:"auto"`.
+- `warmup_required == true` AND the user permits a one-time build -> run `task_type:"warmup"` with
   `project.engine_policy.allow_incremental_compile:true` (installs a read-only plugin + incrementally
   builds the Editor against this project's engine; it NEVER modifies assets). Then proceed.
 - Otherwise use `execution.mode:"python_partial"` or `"offline"` for PARTIAL understanding (no full
@@ -105,17 +114,16 @@ function Upsert-ManagedBlock([string]$file,[string]$block){
   $begin='<!-- BEGIN BLUEPRINT-AGENT'; $end='<!-- END BLUEPRINT-AGENT (managed) -->'
   if (Test-Path $file) {
     $txt = Get-Content $file -Raw
-    $bi = $txt.IndexOf($begin); 
+    $bi = $txt.IndexOf($begin)
     if ($bi -ge 0) {
       $ei = $txt.IndexOf($end); if ($ei -ge 0) { $ei += $end.Length
-        $new = $txt.Substring(0,$bi) + $block + $txt.Substring($ei)
-        Set-Content -Encoding UTF8 $file $new; return 'replaced'
+        Write-Utf8NoBom $file ($txt.Substring(0,$bi) + $block + $txt.Substring($ei)); return 'replaced'
       }
     }
-    Add-Content -Encoding UTF8 $file ("`r`n`r`n" + $block); return 'appended'
+    Write-Utf8NoBom $file ($txt.TrimEnd() + "`r`n`r`n" + $block + "`r`n"); return 'appended'
   } else {
     $hdr = "# " + [IO.Path]::GetFileNameWithoutExtension($file) + "`r`n`r`n"
-    Set-Content -Encoding UTF8 $file ($hdr + $block); return 'created'
+    Write-Utf8NoBom $file ($hdr + $block + "`r`n"); return 'created'
   }
 }
 
@@ -142,7 +150,7 @@ Schemas: `{{DOCS}}/request_schemas.md`. Descriptor: `Tools/BlueprintAgent/bluepr
 Safety: status/analyze read-only; warmup builds (consent); edit needs allow_destructive_edit + has rollback; create obeys overwrite_policy.
 '@
 $cursorDir = Join-Path $TargetDir '.cursor\rules'; New-Item -ItemType Directory -Force -Path $cursorDir | Out-Null
-Set-Content -Encoding UTF8 (Join-Path $cursorDir 'blueprint-agent.mdc') $mdc
+Write-Utf8NoBom (Join-Path $cursorDir 'blueprint-agent.mdc') $mdc
 [void]$written.Add(@{ file='.cursor/rules/blueprint-agent.mdc'; action='written' })
 
 # ---- Claude Code slash command ----
@@ -162,7 +170,7 @@ Do NOT hand-parse .uasset or guess. Follow this flow:
 Never present partial results as full; respect safety (read-only status/analyze; consent for warmup; allow_destructive_edit for destructive edits; overwrite_policy for create).
 '@
 $claudeDir = Join-Path $TargetDir '.claude\commands'; New-Item -ItemType Directory -Force -Path $claudeDir | Out-Null
-Set-Content -Encoding UTF8 (Join-Path $claudeDir 'blueprint.md') $cmd
+Write-Utf8NoBom (Join-Path $claudeDir 'blueprint.md') $cmd
 [void]$written.Add(@{ file='.claude/commands/blueprint.md'; action='written' })
 
 # ---- machine-readable descriptor ----
@@ -181,12 +189,12 @@ $descriptor = [ordered]@{
   plugin_source=$pluginSrc
   safety='status/analyze read-only; warmup builds (consent); edit needs allow_destructive_edit + rollback; create obeys overwrite_policy; blueprint assets never modified without an explicit edit/create task.'
 }
-($descriptor | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 (Join-Path $toolsDir 'blueprint_agent.manifest.json')
+Write-Utf8NoBom (Join-Path $toolsDir 'blueprint_agent.manifest.json') ($descriptor | ConvertTo-Json -Depth 8)
 [void]$written.Add(@{ file='Tools/BlueprintAgent/blueprint_agent.manifest.json'; action='written' })
 
 # ---- example requests (with the resolved uproject) ----
 $reqDir = Join-Path $toolsDir 'requests'; New-Item -ItemType Directory -Force -Path $reqDir | Out-Null
-$mk = { param($obj,$name) ($obj | ConvertTo-Json -Depth 20) | Set-Content -Encoding UTF8 (Join-Path $reqDir $name) }
+$mk = { param($obj,$name) Write-Utf8NoBom (Join-Path $reqDir $name) ($obj | ConvertTo-Json -Depth 20) }
 & $mk (@{ schema_version='1.0'; task_type='status'; project=@{ uproject=$uprojForDoc } }) 'status.json'
 & $mk (@{ schema_version='1.0'; task_type='warmup'; project=@{ uproject=$uprojForDoc; engine_policy=@{ allow_incremental_compile=$true } }; request=@{ smoke_asset_path='/Game/...' } }) 'warmup.json'
 & $mk (@{ schema_version='1.0'; task_type='analyze'; project=@{ uproject=$uprojForDoc }; execution=@{ mode='auto' }; request=@{ asset_paths=@('/Game/UI/WBP_Example') } }) 'analyze.json'
@@ -196,7 +204,7 @@ $mk = { param($obj,$name) ($obj | ConvertTo-Json -Depth 20) | Set-Content -Encod
 $summary = [ordered]@{ schema_version='1.0'; installed_at=(Get-Date).ToUniversalTime().ToString('o');
   target_dir=$TargetDir; agent_root=$AgentRoot; mode=$(if($Reference){'reference'}else{'copy'});
   entry=$entry; uproject=$ProjectUProject; files=@($written) }
-($summary | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 (Join-Path $toolsDir 'onboarding_install.json')
+Write-Utf8NoBom (Join-Path $toolsDir 'onboarding_install.json') ($summary | ConvertTo-Json -Depth 8)
 
 Write-Host "== Blueprint Agent onboarding installed ==" -ForegroundColor Green
 $written | ForEach-Object { Write-Host ("  {0,-10} {1}" -f $_.action,$_.file) }

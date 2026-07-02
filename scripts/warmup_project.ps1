@@ -25,7 +25,9 @@ $ErrorActionPreference='Continue'
 $scripts = $PSScriptRoot
 $RepoRoot = Split-Path $scripts -Parent
 if (-not (Test-Path $ProjectUProject)) { Write-Error "Project not found: $ProjectUProject"; exit 30 }
-if ([string]::IsNullOrWhiteSpace($PluginSource)) { $PluginSource = Join-Path $RepoRoot 'bpparser_testgen\Plugins\BPParserTestGen' }
+# NOTE: do NOT force a default PluginSource here (the dev-repo path is wrong in the distributed
+# Tools\BlueprintAgent layout). Leave it empty and let install_project_plugin.ps1 resolve the correct
+# source for whichever layout we're in (single source of truth).
 $ProjectDir = Split-Path $ProjectUProject -Parent
 $OutDir = Join-Path $ProjectDir 'Saved\BPParserAgentReports\warmup'
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -44,20 +46,21 @@ function Step($n,$ok,$detail){ [void]$steps.Add([ordered]@{ step=$n; status=$(if
 
 Write-Host "== warmup_project == $ProjectUProject (engine: $UERoot)" -ForegroundColor Cyan
 
-# 1) install (source)
-& (Join-Path $scripts 'install_project_plugin.ps1') -ProjectUProject $ProjectUProject -PluginSource $PluginSource *> (Join-Path $OutDir 'install_log.txt')
+# 1) install (source) + enable in .uproject. Pass -PluginSource only if the caller set it.
+$instArgs = @{ ProjectUProject=$ProjectUProject }; if (-not [string]::IsNullOrWhiteSpace($PluginSource)) { $instArgs.PluginSource=$PluginSource }
+& (Join-Path $scripts 'install_project_plugin.ps1') @instArgs *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'install_log.txt')
 $instOk = ($LASTEXITCODE -eq 0); Step 'install_plugin' $instOk "see install_log.txt"
 if (-not $instOk) { Write-Error "install failed"; & (Join-Path $scripts 'agent_status.ps1') -ProjectUProject $ProjectUProject -UERoot $UERoot -OutputDir $OutDir | Out-Null; exit 20 }
 
-# 2) build editor target (incremental)
-& (Join-Path $scripts 'build_project_plugin.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject *> (Join-Path $OutDir 'build_log.txt')
+# 2) build editor target (incremental) + assert the plugin module DLL exists (no false-OK).
+& (Join-Path $scripts 'build_project_plugin.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject -PluginName 'BPParserTestGen' *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'build_log.txt')
 $buildOk = ($LASTEXITCODE -eq 0); Step 'build_editor' $buildOk "see build_log.txt"
 if (-not $buildOk) { Write-Error "build failed (see build_log.txt)"; & (Join-Path $scripts 'agent_status.ps1') -ProjectUProject $ProjectUProject -UERoot $UERoot -OutputDir $OutDir | Out-Null; exit 20 }
 
 # 3) optional smoke: real native dump of a known asset
 $smoke = 'skipped'
 if ($SmokeAssetPath) {
-  & (Join-Path $scripts 'analyze_blueprint.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject -AssetPath $SmokeAssetPath -OutputDir (Join-Path $OutDir 'smoke') -Mode native-full *> (Join-Path $OutDir 'smoke_log.txt')
+  & (Join-Path $scripts 'analyze_blueprint.ps1') -UERoot $UERoot -ProjectUProject $ProjectUProject -AssetPath $SmokeAssetPath -OutputDir (Join-Path $OutDir 'smoke') -Mode native-full *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'smoke_log.txt')
   $smoke = if ($LASTEXITCODE -eq 0) { 'success' } else { 'failed' }
   Step 'smoke_native_dump' ($smoke -eq 'success') "asset=$SmokeAssetPath; see smoke_log.txt"
 }

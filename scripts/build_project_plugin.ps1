@@ -11,7 +11,8 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory=$true)] [string] $UERoot,
-  [Parameter(Mandatory=$true)] [string] $ProjectUProject
+  [Parameter(Mandatory=$true)] [string] $ProjectUProject,
+  [string] $PluginName = "BPParserTestGen"   # if set, assert this plugin's Editor module DLL was produced
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $ProjectUProject)) { Write-Error "Project not found: $ProjectUProject"; exit 30 }
@@ -24,5 +25,18 @@ Write-Host "Building $target (Win64 Development) with $UERoot ..." -ForegroundCo
 & $build $target Win64 Development -Project="$ProjectUProject" -WaitMutex -FromMsBuild
 $code = $LASTEXITCODE
 if ($code -ne 0) { Write-Error "Build FAILED (exit $code)."; exit 20 }
-Write-Host "Build OK." -ForegroundColor Green
+
+# Assert the plugin module actually compiled. A "Build OK" with the plugin disabled produces NO module
+# DLL -> that is a false success. Fail loudly so warmup does not report ready when it isn't.
+if ($PluginName) {
+  $projDir = Split-Path $ProjectUProject -Parent
+  $dll = Join-Path $projDir "Plugins\$PluginName\Binaries\Win64\UnrealEditor-$PluginName.dll"
+  if (-not (Test-Path $dll)) {
+    Write-Error "Build reported OK but plugin module DLL is missing: $dll`nThe plugin is likely NOT enabled in the .uproject (run install_project_plugin.ps1, which enables it), or EnabledByDefault is false."
+    exit 20
+  }
+  Write-Host "Build OK. Verified module DLL: $dll" -ForegroundColor Green
+} else {
+  Write-Host "Build OK." -ForegroundColor Green
+}
 exit 0
