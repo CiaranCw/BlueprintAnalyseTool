@@ -94,7 +94,7 @@ $state = [ordered]@{
   recommended_action=$rec; next_calls=$nextCalls
 }
 $stateFile = Join-Path $OutputDir 'capability_state.json'
-($state | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 $stateFile
+[IO.File]::WriteAllText($stateFile, ($state | ConvertTo-Json -Depth 8), (New-Object System.Text.UTF8Encoding($false)))  # no-BOM UTF-8 for direct json.load
 
 Write-Host "== agent_status ==" -ForegroundColor Cyan
 Write-Host "stage=$stage  engine=$ver$(if($custom){' (custom)'})  cmd=$cmdOk python=$pythonOk plugin_installed=$pluginInstalled plugin_built=$pluginBuilt"

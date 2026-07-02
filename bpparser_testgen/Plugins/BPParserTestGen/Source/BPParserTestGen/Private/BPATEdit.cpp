@@ -66,11 +66,11 @@ namespace
 	}
 	void WriteJson(const FString& Path, const TSharedPtr<FJsonObject>& Root)
 	{
-		FFileHelper::SaveStringToFile(SerializeJson(Root), *Path);
+		FFileHelper::SaveStringToFile(SerializeJson(Root), *Path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 	void WriteText(const FString& Path, const FString& Text)
 	{
-		FFileHelper::SaveStringToFile(Text, *Path);
+		FFileHelper::SaveStringToFile(Text, *Path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 
 	FString Sanitize(const FString& In)

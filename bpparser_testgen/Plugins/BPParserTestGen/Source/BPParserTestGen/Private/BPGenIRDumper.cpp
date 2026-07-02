@@ -172,6 +172,9 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 	Root->SetStringField(TEXT("asset_path"), BP->GetPathName());
 	Root->SetStringField(TEXT("blueprint_class"), BP->GetClass()->GetName());
 	Root->SetStringField(TEXT("parent_class"), BP->ParentClass ? BP->ParentClass->GetPathName() : TEXT(""));
+	Root->SetStringField(TEXT("generated_class"),
+		BP->GeneratedClass ? BP->GeneratedClass->GetPathName()
+		: (BP->SkeletonGeneratedClass ? BP->SkeletonGeneratedClass->GetPathName() : TEXT("")));
 
 	// Graphs.
 	TArray<TSharedPtr<FJsonValue>> Graphs;
@@ -206,16 +209,20 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 	}
 	Root->SetArrayField(TEXT("variables"), Vars);
 
-	// Functions / macros / dispatchers (names).
-	auto NamesArray = [](const TArray<TObjectPtr<UEdGraph>>& List)
+	// Functions / macros / dispatchers. Emit OBJECT arrays [{ "name": ... }] so their shape is
+	// symmetric with variables[] (a consumer can always read entry.name without type-checking).
+	auto ObjNamesArray = [](const TArray<TObjectPtr<UEdGraph>>& List)
 	{
 		TArray<TSharedPtr<FJsonValue>> Arr;
-		for (UEdGraph* G : List) { if (G) { Arr.Add(MakeShared<FJsonValueString>(G->GetName())); } }
+		for (UEdGraph* G : List)
+		{
+			if (G) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), G->GetName()); Arr.Add(MakeShared<FJsonValueObject>(O)); }
+		}
 		return Arr;
 	};
-	Root->SetArrayField(TEXT("functions"), NamesArray(BP->FunctionGraphs));
-	Root->SetArrayField(TEXT("macros"), NamesArray(BP->MacroGraphs));
-	Root->SetArrayField(TEXT("event_dispatchers"), NamesArray(BP->DelegateSignatureGraphs));
+	Root->SetArrayField(TEXT("functions"), ObjNamesArray(BP->FunctionGraphs));
+	Root->SetArrayField(TEXT("macros"), ObjNamesArray(BP->MacroGraphs));
+	Root->SetArrayField(TEXT("event_dispatchers"), ObjNamesArray(BP->DelegateSignatureGraphs));
 
 	// Interfaces.
 	TArray<TSharedPtr<FJsonValue>> Ifaces;
@@ -246,7 +253,7 @@ FString FBPGenIRDumper::DumpAssetToFile(const FString& AssetPath, const FString&
 	IFileManager::Get().MakeDirectory(*OutDir, /*Tree*/ true);
 	const FString ShortName = FPackageName::GetShortName(AssetPath);
 	const FString File = FPaths::Combine(OutDir, ShortName + TEXT(".ir.json"));
-	if (!FFileHelper::SaveStringToFile(Out, *File))
+	if (!FFileHelper::SaveStringToFile(Out, *File, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
 	{
 		UE_LOG(LogBPParserTestGen, Error, TEXT("DumpAssetToFile: failed to write %s"), *File);
 		return FString();

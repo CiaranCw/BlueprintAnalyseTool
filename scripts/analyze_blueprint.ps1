@@ -92,6 +92,12 @@ function Read-UAssetVersions([string]$file) {
 
 function New-Sanitized([string]$assetPath) { return ($assetPath -replace '[/\\.:]', '_').Trim('_') }
 
+# Write UTF-8 WITHOUT BOM so *.json can be read by json.load/JSON.parse directly (no utf-8-sig needed).
+function Write-Utf8NoBom([string]$path,[string]$text){
+  $dir = Split-Path $path -Parent; if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  [IO.File]::WriteAllText($path, [string]$text, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 # --------------------------------------------------- output (common layer) ----
 # Builds the unified deliverables (manifest/summary/score/viz/logs) from whatever IR we have.
 function Write-Outputs {
@@ -112,10 +118,10 @@ function Write-Outputs {
 
   # write the IR under the canonical name
   $irName = if ($Status -eq 'success' -and $Mode -eq 'native_full') { 'blueprint_ir.json' } else { 'partial_ir.json' }
-  if ($Ir) { ($Ir | ConvertTo-Json -Depth 30) | Set-Content -Encoding UTF8 (Join-Path $OutDir $irName) }
+  if ($Ir) { Write-Utf8NoBom (Join-Path $OutDir $irName) ($Ir | ConvertTo-Json -Depth 30) }
 
   # per-graph json
-  foreach($g in $graphs){ $gn = New-Sanitized ($g.graph_name); if($gn){ ($g | ConvertTo-Json -Depth 30) | Set-Content -Encoding UTF8 (Join-Path $OutDir "graphs\$gn.json") } }
+  foreach($g in $graphs){ $gn = New-Sanitized ($g.graph_name); if($gn){ Write-Utf8NoBom (Join-Path $OutDir "graphs\$gn.json") ($g | ConvertTo-Json -Depth 30) } }
 
   # viz (dot + mermaid); minimal but always present
   $dot = "digraph BP {`n  rankdir=LR;`n  label=""$($Meta.asset_name) [$Mode/$Status]"";`n  node[shape=box,style=rounded];`n"
@@ -138,8 +144,8 @@ function Write-Outputs {
     $mmd += "  note[""No graph IR in $Mode mode - run native_full for full graph""]`n"
   }
   $dot += "}`n"
-  Set-Content -Encoding UTF8 (Join-Path $OutDir 'viz\blueprint.dot') $dot
-  Set-Content -Encoding UTF8 (Join-Path $OutDir 'viz\blueprint.mmd') $mmd
+  Write-Utf8NoBom (Join-Path $OutDir 'viz\blueprint.dot') $dot
+  Write-Utf8NoBom (Join-Path $OutDir 'viz\blueprint.mmd') $mmd
 
   # summary.md
   $sum = @"
@@ -171,43 +177,57 @@ $((@($graphs) | ForEach-Object { "- $($_.graph_name) [$($_.graph_type)] nodes=$(
 ## 6. Manual Check Required
 $((@($Manual) | ForEach-Object { "- $_" }) -join "`n")
 "@
-  Set-Content -Encoding UTF8 (Join-Path $OutDir 'summary.md') $sum
+  Write-Utf8NoBom (Join-Path $OutDir 'summary.md') $sum
 
   # understanding_score.json
-  $sc = { param($ok) if($ok){'complete'}else{'failed'} }
+  # Discovery status reflects whether THIS MODE could fully extract a category, NOT whether items exist.
+  # In native_full a "complete" field with count 0 means the asset genuinely has none (N/A), not partial parsing.
   $hasGraphs = $graphs.Count -gt 0
+  $full = ($Mode -eq 'native_full')
+  $d = if($full){'complete'}else{'partial'}
+  $depStat = if($full -or $Mode -eq 'python_partial'){'complete'}else{'partial'}
+  # informational: categories that were fully discovered but are empty (N/A for this asset)
+  $emptyCats = @()
+  if($full){
+    if(@($bp.variables).Count -eq 0){$emptyCats+='variables'}
+    if(@($bp.functions).Count -eq 0){$emptyCats+='functions'}
+    if(@($bp.event_dispatchers).Count -eq 0){$emptyCats+='event_dispatchers'}
+    if(@($bp.components).Count -eq 0){$emptyCats+='components'}
+    if(@($bp.macros).Count -eq 0){$emptyCats+='macros'}
+    if(@($Ir.asset.dependencies).Count -eq 0){$emptyCats+='dependencies'}
+  }
   $score = [ordered]@{
     schema_version='1.0'; asset_path=$Meta.asset_path; status=$Status
     score=[ordered]@{
       asset_load = if($Ir.asset.asset_type){'complete'}elseif($Status -eq 'failed'){'failed'}else{'partial'}
-      graph_discovery = if($hasGraphs){'complete'}else{'partial'}
-      node_discovery = if($nodeCount -gt 0){'complete'}else{'partial'}
-      pin_discovery = if($pinCount -gt 0){'complete'}else{'partial'}
-      edge_discovery = if($edgeCount -gt 0){'complete'}else{'partial'}
-      variable_discovery = if(@($bp.variables).Count -gt 0){'complete'}else{'partial'}
-      function_discovery = if(@($bp.functions).Count -gt 0){'complete'}else{'partial'}
-      dispatcher_discovery = if(@($bp.event_dispatchers).Count -gt 0){'complete'}else{'partial'}
-      component_discovery = if(@($bp.components).Count -gt 0){'complete'}else{'partial'}
-      dependency_discovery = if(@($Ir.asset.dependencies).Count -gt 0){'complete'}else{'partial'}
-      visualization = if($hasGraphs){'complete'}else{'partial'}
+      graph_discovery = $d; node_discovery = $d; pin_discovery = $d; edge_discovery = $d
+      variable_discovery = $d; function_discovery = $d; dispatcher_discovery = $d; component_discovery = $d
+      dependency_discovery = $depStat
+      visualization = 'complete'   # DOT + Mermaid always produced (PNG/SVG optional, see notes)
       agent_callable = 'complete'
     }
-    confidence = if($Mode -eq 'native_full' -and $hasGraphs){0.9}elseif($Mode -eq 'python_partial'){0.4}else{0.2}
-    limitations = @(if($Mode -ne 'native_full'){'No full EdGraph (node/pin/edge) in this mode.'})
+    confidence = if($full){0.9}elseif($Mode -eq 'python_partial'){0.4}else{0.2}
+    semantics_note = 'A "complete" discovery field with a zero count means the asset has NONE of that category (N/A), not that parsing was incomplete.'
+    empty_categories = $emptyCats
+    viz_note = 'PNG/SVG are NOT rasterized by the analyzer (needs Graphviz/Mermaid CLI). DOT + Mermaid are always produced; render them externally (e.g. bpparser_testgen/deliverables/render_viz.ps1) if images are required.'
+    limitations = @(if(-not $full){'No full EdGraph (node/pin/edge) in this mode; run native_full.'})
     manual_check_required = @($Manual)
-    next_actions = @(if($Mode -ne 'native_full'){'Run -Mode native-full (needs the read-only plugin built into the target project) for full IR.'})
+    next_actions = @(if(-not $full){'Run -Mode native-full (needs the read-only plugin built into the target project) for full IR.'})
   }
-  ($score | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 (Join-Path $OutDir 'understanding_score.json')
+  Write-Utf8NoBom (Join-Path $OutDir 'understanding_score.json') ($score | ConvertTo-Json -Depth 8)
 
-  # logs
-  (@($Warnings) | ConvertTo-Json -Depth 5) | Set-Content -Encoding UTF8 (Join-Path $OutDir 'logs\warnings.json')
-  (@($Errors)   | ConvertTo-Json -Depth 5) | Set-Content -Encoding UTF8 (Join-Path $OutDir 'logs\errors.json')
+  # logs (guarantee valid JSON arrays even for 0 or 1 element: PS emits nothing for @() and an
+  # unwrapped object for a single element)
+  function ToJsonArray($items){ $a=@($items); if($a.Count -eq 0){return '[]'}; $j=$a|ConvertTo-Json -Depth 5; if($j -notmatch '^\s*\['){$j="[$j]"}; return $j }
+  Write-Utf8NoBom (Join-Path $OutDir 'logs\warnings.json') (ToJsonArray $Warnings)
+  Write-Utf8NoBom (Join-Path $OutDir 'logs\errors.json')   (ToJsonArray $Errors)
 
   # manifest.json (primary entry for other agents)
   $manifest = [ordered]@{
     schema_version='1.0'; status=$Status; mode=$Mode
     asset_path=$Meta.asset_path; asset_name=$Meta.asset_name
-    asset_type=$Ir.asset.asset_type; parent_class=$Ir.asset.parent_class
+    asset_type=$Ir.asset.asset_type; parent_class=$Ir.asset.parent_class; generated_class=$Ir.asset.generated_class
+    notes=@('Machine-readable member data is under blueprint.* (variables/functions/... are OBJECT arrays with .name); asset-level fields (parent_class/generated_class/interfaces/dependencies) are under asset.*. PNG/SVG are optional (need Graphviz/Mermaid); DOT+Mermaid always produced.')
     project_uproject=$Meta.project_uproject; ue_root=$Meta.ue_root
     engine_version=$Meta.engine_version; is_custom_engine=[bool]$Meta.is_custom_engine
     plugin_installed=[bool]$Meta.plugin_installed; plugin_built=[bool]$Meta.plugin_built
@@ -217,7 +237,7 @@ $((@($Manual) | ForEach-Object { "- $_" }) -join "`n")
     counts=$counts
     warnings=@($Warnings); errors=@($Errors); manual_check_required=@($Manual)
   }
-  ($manifest | ConvertTo-Json -Depth 30) | Set-Content -Encoding UTF8 (Join-Path $OutDir 'manifest.json')
+  Write-Utf8NoBom (Join-Path $OutDir 'manifest.json') ($manifest | ConvertTo-Json -Depth 30)
   return $manifest
 }
 
@@ -309,7 +329,7 @@ function Run-Native {
   $ir = [ordered]@{
     schema_version='1.0'; mode='native_full'; partial=$false
     asset=[ordered]@{ asset_path=$pkgPath; asset_name=$meta.asset_name; asset_type=$dump.blueprint_class;
-      blueprint_class=$dump.blueprint_class; generated_class=''; parent_class=$dump.parent_class;
+      blueprint_class=$dump.blueprint_class; generated_class=$dump.generated_class; parent_class=$dump.parent_class;
       implemented_interfaces=@($dump.interfaces); dependencies=@() }
     blueprint=[ordered]@{ variables=@($dump.variables); functions=@($dump.functions); macros=@($dump.macros);
       event_dispatchers=@($dump.event_dispatchers); components=@(); timelines=@(); graphs=@($dump.graphs | ForEach-Object { $_.graph_name }) }

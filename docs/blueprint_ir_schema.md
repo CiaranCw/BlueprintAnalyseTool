@@ -2,6 +2,18 @@
 
 本文档说明 Blueprint IR 的字段语义。**Schema 版本：`0.1.0`**。
 
+> **权威字段位置与一致性约定（analyze/create 产出的统一 IR，务必按此读取）**
+> - **资产级字段在 `asset.*`**：`asset.parent_class` / `asset.generated_class` / `asset.implemented_interfaces` /
+>   `asset.dependencies` / `asset.asset_type`。**不要**从 `blueprint.*` 读父类/生成类。
+> - **成员级字段在 `blueprint.*`**：`blueprint.variables` / `functions` / `macros` / `event_dispatchers` /
+>   `components` / `graphs`。**计数以 `blueprint.*` 为准**（根级不再放重复的空数组）。
+> - **结构对称**：`variables / functions / macros / event_dispatchers` 全部为**对象数组**，每项至少含
+>   `{ "name": ... }`（可安全地 `entry.name`，不会因某个字段是纯字符串数组而崩溃）。
+> - **编码**：所有 `*.json` 产物为**无 BOM UTF-8**，可被 `json.load` / `JSON.parse` 直接读取（无需 `utf-8-sig`）。
+> - **manifest 与 IR 同源**：`manifest.parent_class/generated_class` 与 `asset.parent_class/generated_class` 取自同一来源，保持一致。
+> - **understanding_score 语义**：`*_discovery` 表示「该模式是否完整抽取了该类别」，**不是**「是否有条目」。
+>   `native_full` 下某字段为 `complete` 但计数为 0，表示资产**本就没有**该类别（N/A），而非解析不全；空集见 `empty_categories`。
+
 JSON Schema 定义文件位于：
 
 ```text

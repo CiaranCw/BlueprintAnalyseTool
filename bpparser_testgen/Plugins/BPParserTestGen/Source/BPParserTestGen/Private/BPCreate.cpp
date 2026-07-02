@@ -39,7 +39,7 @@ namespace
 	const TSharedPtr<FJsonObject>* JObj(const TSharedPtr<FJsonObject>& O,const TCHAR* K){ const TSharedPtr<FJsonObject>* p=nullptr; return (O.IsValid()&&O->TryGetObjectField(K,p))?p:nullptr; }
 	const TArray<TSharedPtr<FJsonValue>>* JArr(const TSharedPtr<FJsonObject>& O,const TCHAR* K){ const TArray<TSharedPtr<FJsonValue>>* p=nullptr; return (O.IsValid()&&O->TryGetArrayField(K,p))?p:nullptr; }
 
-	void WriteJson(const FString& Path,const TSharedRef<FJsonObject>& Root){ FString s; auto w=TJsonWriterFactory<>::Create(&s); FJsonSerializer::Serialize(Root,w); FFileHelper::SaveStringToFile(s,*Path); }
+	void WriteJson(const FString& Path,const TSharedRef<FJsonObject>& Root){ FString s; auto w=TJsonWriterFactory<>::Create(&s); FJsonSerializer::Serialize(Root,w); FFileHelper::SaveStringToFile(s,*Path,FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM); }
 
 	UClass* ResolveClass(const FString& Path){ if(Path.IsEmpty()) return nullptr; return LoadObject<UClass>(nullptr,*Path); }
 
@@ -226,8 +226,8 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		int32 gc=0,nc=0; const TArray<TSharedPtr<FJsonValue>>* gs; if(IR->TryGetArrayField(TEXT("graphs"),gs)){ gc=gs->Num(); for(auto&g:*gs){ const TArray<TSharedPtr<FJsonValue>>* ns; if(g->AsObject()->TryGetArrayField(TEXT("nodes"),ns)) nc+=ns->Num(); } }
 		FString sm=FString::Printf(TEXT("# Create Summary\n\n- asset: `%s`\n- type: %s  parent: %s\n- compile: %s  saved: %d\n- graphs: %d  nodes: %d\n- warnings: %d  manual: %d\n"),
 			*AssetPath,*BpType,ParentPath.IsEmpty()?TEXT("<default>"):*ParentPath,*Compile,bSaved,gc,nc,Warn.Num(),Manual.Num());
-		FFileHelper::SaveStringToFile(sm,*FPaths::Combine(OutDir,TEXT("summary.md")));
-		FFileHelper::SaveStringToFile(FString::Printf(TEXT("digraph Created { label=\"%s\"; node[shape=box,style=rounded]; }\n"),*AssetPath),*FPaths::Combine(OutDir,TEXT("viz\\created.dot")));
+		FFileHelper::SaveStringToFile(sm,*FPaths::Combine(OutDir,TEXT("summary.md")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+		FFileHelper::SaveStringToFile(FString::Printf(TEXT("digraph Created { label=\"%s\"; node[shape=box,style=rounded]; }\n"),*AssetPath),*FPaths::Combine(OutDir,TEXT("viz\\created.dot")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 
 	const bool bBad = Compile.Contains(TEXT("error"))||Compile.Contains(TEXT("fail"));

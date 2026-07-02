@@ -111,7 +111,7 @@ FBPGenReport FBPGenOrchestrator::GenerateAll(bool bSave)
 	const FString Dir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("BPParserTestReports"));
 	IFileManager::Get().MakeDirectory(*Dir, /*Tree*/ true);
 	Report.ReportFilePath = FPaths::Combine(Dir, TEXT("generation_log.json"));
-	FFileHelper::SaveStringToFile(Out, *Report.ReportFilePath);
+	FFileHelper::SaveStringToFile(Out, *Report.ReportFilePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 
 	UE_LOG(LogBPParserTestGen, Display,
 		TEXT("BPParserTestGen done. total=%d ok=%d warn=%d fail=%d -> %s"),

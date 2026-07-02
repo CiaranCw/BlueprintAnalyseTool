@@ -77,7 +77,7 @@ $warm = [ordered]@{
   capability_state='capability_state.json'
   generated_at=(Get-Date).ToUniversalTime().ToString('o')
 }
-($warm | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 (Join-Path $OutDir 'warmup_state.json')
+[IO.File]::WriteAllText((Join-Path $OutDir 'warmup_state.json'), ($warm | ConvertTo-Json -Depth 8), (New-Object System.Text.UTF8Encoding($false)))  # no-BOM UTF-8
 $col = if ($nativeReady) {'Green'} else {'Yellow'}
 Write-Host "warmup: native_full_ready=$nativeReady -> $(Join-Path $OutDir 'warmup_state.json')" -ForegroundColor $col
 if ($nativeReady) { exit 0 } else { exit 20 }

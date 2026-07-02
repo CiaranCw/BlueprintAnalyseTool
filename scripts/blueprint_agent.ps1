@@ -118,7 +118,7 @@ $dispatch = [ordered]@{
 }
 $dispDir = Join-Path $outBase $taskType
 New-Item -ItemType Directory -Force -Path $dispDir | Out-Null
-($dispatch | ConvertTo-Json -Depth 10) | Set-Content -Encoding UTF8 (Join-Path $dispDir 'dispatch_manifest.json')
+[IO.File]::WriteAllText((Join-Path $dispDir 'dispatch_manifest.json'), ($dispatch | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding($false)))  # no-BOM UTF-8
 $col = if ($rc -eq 0) {'Green'} else {'Yellow'}
 Write-Host "blueprint_agent: $taskType -> $status (exit $rc). sub_output=$subOut" -ForegroundColor $col
 Write-Host "dispatch manifest: $(Join-Path $dispDir 'dispatch_manifest.json')"

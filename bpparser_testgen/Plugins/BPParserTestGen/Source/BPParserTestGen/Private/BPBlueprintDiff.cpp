@@ -34,7 +34,7 @@ namespace
 		FString Out;
 		const TSharedRef<TJsonWriter<>> W = TJsonWriterFactory<>::Create(&Out);
 		FJsonSerializer::Serialize(Root, W);
-		FFileHelper::SaveStringToFile(Out, *Path);
+		FFileHelper::SaveStringToFile(Out, *Path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 
 	UBlueprint* FindBlueprintInPackage(UPackage* Package)
