@@ -147,6 +147,16 @@ function Write-Outputs {
   Write-Utf8NoBom (Join-Path $OutDir 'viz\blueprint.dot') $dot
   Write-Utf8NoBom (Join-Path $OutDir 'viz\blueprint.mmd') $mmd
 
+  # Rasterize to PNG/SVG when a renderer is available. Graphviz (dot) is preferred (no browser needed).
+  $png=''; $svg=''; $rendered_by=''
+  $dotExe = (Get-Command dot -EA SilentlyContinue).Source
+  if ($dotExe) {
+    $df = Join-Path $OutDir 'viz\blueprint.dot'
+    try { & $dotExe -Tpng $df -o (Join-Path $OutDir 'viz\blueprint.png') 2>$null; & $dotExe -Tsvg $df -o (Join-Path $OutDir 'viz\blueprint.svg') 2>$null } catch {}
+    if (Test-Path (Join-Path $OutDir 'viz\blueprint.png')) { $png='viz/blueprint.png'; $rendered_by='graphviz' }
+    if (Test-Path (Join-Path $OutDir 'viz\blueprint.svg')) { $svg='viz/blueprint.svg' }
+  }
+
   # summary.md
   $sum = @"
 # Blueprint Understanding Summary
@@ -209,7 +219,7 @@ $((@($Manual) | ForEach-Object { "- $_" }) -join "`n")
     confidence = if($full){0.9}elseif($Mode -eq 'python_partial'){0.4}else{0.2}
     semantics_note = 'A "complete" discovery field with a zero count means the asset has NONE of that category (N/A), not that parsing was incomplete.'
     empty_categories = $emptyCats
-    viz_note = 'PNG/SVG are NOT rasterized by the analyzer (needs Graphviz/Mermaid CLI). DOT + Mermaid are always produced; render them externally (e.g. bpparser_testgen/deliverables/render_viz.ps1) if images are required.'
+    viz_note = if($png){"PNG/SVG rendered via $rendered_by (dot). DOT + Mermaid also produced."}else{'PNG/SVG not rendered (Graphviz `dot` not found on PATH). DOT + Mermaid produced; install Graphviz to auto-rasterize.'}
     limitations = @(if(-not $full){'No full EdGraph (node/pin/edge) in this mode; run native_full.'})
     manual_check_required = @($Manual)
     next_actions = @(if(-not $full){'Run -Mode native-full (needs the read-only plugin built into the target project) for full IR.'})
@@ -233,7 +243,7 @@ $((@($Manual) | ForEach-Object { "- $_" }) -join "`n")
     plugin_installed=[bool]$Meta.plugin_installed; plugin_built=[bool]$Meta.plugin_built
     read_only=$true; generated_at=(Get-Date).ToUniversalTime().ToString('o')
     fallbacks_used=@($Fallbacks)
-    outputs=[ordered]@{ ir=$irName; summary='summary.md'; understanding_score='understanding_score.json'; dot='viz/blueprint.dot'; mermaid='viz/blueprint.mmd'; png=''; svg=''; logs='logs/' }
+    outputs=[ordered]@{ ir=$irName; summary='summary.md'; understanding_score='understanding_score.json'; dot='viz/blueprint.dot'; mermaid='viz/blueprint.mmd'; png=$png; svg=$svg; logs='logs/' }
     counts=$counts
     warnings=@($Warnings); errors=@($Errors); manual_check_required=@($Manual)
   }
