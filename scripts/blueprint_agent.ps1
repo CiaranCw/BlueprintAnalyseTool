@@ -26,9 +26,10 @@ param(
   [string] $OutputDir = "",
   [string] $UERoot = "",
   [string] $ProjectUProject = "",
-  [ValidateSet('','status','warmup','analyze','edit','create','validate')] [string] $Task = "",
+  [ValidateSet('','status','warmup','analyze','edit','create','validate','update')] [string] $Task = "",
   [ValidateSet('','auto','editor_live','native_full','python_partial','offline_asset_scan')] [string] $Mode = "",
   [string[]] $AssetPaths = @(),
+  [string] $SourceAgentRoot = "",
   [switch] $PreferEditorLive,
   [int] $TimeoutSeconds = 30
 )
@@ -52,7 +53,7 @@ if ($RequestJson) {
 }
 
 $taskType = if ($Task) { $Task.ToLower() } else { "$($req.task_type)".ToLower() }
-if ($taskType -notin @('status','warmup','analyze','edit','create','validate')) { Fail "task_type must be status|warmup|analyze|edit|create|validate (got '$taskType')" 30 }
+if ($taskType -notin @('status','warmup','analyze','edit','create','validate','update')) { Fail "task_type must be status|warmup|analyze|edit|create|validate|update (got '$taskType')" 30 }
 
 $proj = if ($ProjectUProject) { $ProjectUProject } else { "$($req.project.uproject)" }
 $ue   = if ($UERoot) { $UERoot } else { "$($req.project.ue_root)" }
@@ -189,6 +190,20 @@ if (-not $handledByLive) {
       New-Item -ItemType Directory -Force -Path $taskOut | Out-Null
       & (Join-Path $scripts 'validate_outputs.ps1') -OutputDir $taskOut
       $rc=$LASTEXITCODE; $subOut=$taskOut; $usedMode='offline_asset_scan'
+    }
+    'update' {
+      # keep an installed agent current: refresh managed files from a source agent repo (idempotent, backed up).
+      $tgt = Split-Path $proj -Parent
+      $src = if ($SourceAgentRoot) { $SourceAgentRoot } else { "$($req.request.source_agent_root)" }
+      $uargs = @{ TargetDir=$tgt; ProjectUProject=$proj }
+      if ($src) { $uargs.SourceAgentRoot=$src }
+      if ($req.request.mode) { $uargs.Mode="$($req.request.mode)" }
+      if ($req.request.run_warmup_after_update) { $uargs.RunWarmupAfterUpdate=$true }
+      if ($req.request.allow_uproject_edit) { $uargs.AllowUProjectEdit=$true }
+      if ($req.request.dry_run) { $uargs.DryRun=$true }
+      if ($exec.strict) { $uargs.Strict=$true }
+      & (Join-Path $scripts 'update_agent_in_project.ps1') @uargs | Out-Null
+      $rc=$LASTEXITCODE; $subOut=(Split-Path $proj -Parent | Join-Path -ChildPath 'Saved\BPParserAgentReports\update'); $usedMode='update'
     }
   }
 }

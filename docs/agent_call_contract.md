@@ -75,8 +75,17 @@ Interpretation rules for a calling agent:
 `blueprint{variables,functions,macros,event_dispatchers,components,graphs}`, `graphs[]` (nodes/pins/edges),
 `analysis{manual_check_required,...}`. `summary.md` is for humans; `viz/*.dot|.mmd` render with Graphviz/Mermaid.
 
-## 5. Guarantees / non-goals
+## 5. Staying current (installed copies)
+
+An INSTALLED agent (`Tools/BlueprintAgent/`) may lag the source repo. Before relying on it, probe with
+`scripts/check_project_agent_version.ps1 -TargetDir <proj> -SourceAgentRoot <repo>` (→ `check_result.json`:
+`is_up_to_date`, `plugin_source_changed`, `requires_warmup_after_update`, `conflicts`). If outdated, run
+`scripts/update_agent_in_project.ps1` (or `task_type:"update"`). If the plugin source changed, status becomes
+`needs_warmup_after_update` — do NOT claim `native_full`/`editor_live` is ready until `warmup` rebuilds it.
+Full protocol: `docs/update_sync_protocol.md`.
+
+## 6. Guarantees / non-goals
 
 - Read-only; never compiles/saves the asset; never modifies blueprint content.
 - `offline` cannot replace the in-engine dumper; `python-partial` cannot reliably yield Pin/edge structure.
-- Full Graph/Node/Pin/Edge IR is only claimed under `native_full`.
+- Full Graph/Node/Pin/Edge IR is only claimed under `native_full` (or `editor_live`, in an open editor).

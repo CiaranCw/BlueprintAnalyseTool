@@ -20,7 +20,7 @@ bounds the editor_live wait (never hangs). See `docs/editor_live_mode.md` for th
 ```json
 {
   "schema_version": "1.0",
-  "task_type": "status|warmup|analyze|edit|create|validate",
+  "task_type": "status|warmup|analyze|edit|create|validate|update",
   "project": {
     "ue_root": "D:/AEngine",
     "uproject": "D:/AClient/AClient.uproject",
@@ -121,6 +121,19 @@ supported; WidgetBlueprint/AnimBlueprint creation is not yet supported (clear fa
 
 ## task_type = validate  →  scripts/validate_outputs.ps1
 Static validation of prior deliverables (JSON well-formed, edge referential integrity, viz presence).
+
+## task_type = update  →  scripts/update_agent_in_project.ps1
+Keep an INSTALLED agent current from a source agent repo (idempotent, backed up, non-destructive).
+```json
+"request": { "source_agent_root": "D:/Projects/BlueprintAgent", "mode": "copy|reference",
+             "dry_run": false, "run_warmup_after_update": false, "allow_uproject_edit": false }
+```
+Refreshes only managed content (`Tools/BlueprintAgent/{scripts,docs,plugin}`, `.cursor`/`.claude`,
+`*.template.json`, and the `AGENTS.md`/`CLAUDE.md` managed block); preserves user files/prose; reports
+conflicts (`modified_in_target`, backed up before replace); marks `needs_warmup_after_update` when the
+plugin source changed; never modifies blueprint assets or `.uproject` (unless `allow_uproject_edit`). Outputs
+`update_plan.json` + `update_result.json` under `Saved/BPParserAgentReports/update/<ts>/`. First probe with
+`scripts/check_project_agent_version.ps1` (→ `check_result.json`). Full protocol: `docs/update_sync_protocol.md`.
 
 ## editor_live (in-editor, file-queue) — reuse an already-open UE editor
 When the target project's UE editor is open with the plugin loaded, `BPAgentLiveService` polls a request

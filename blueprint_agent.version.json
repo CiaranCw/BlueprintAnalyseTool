@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "agent_version": "0.4.0",
+  "agent_commit": "",
+  "build_id": "2026-07-04T00:00:00Z",
+  "schema_versions": {
+    "request_schema": "1.0",
+    "manifest_schema": "1.0",
+    "blueprint_ir_schema": "1.0",
+    "edit_plan_schema": "1.0",
+    "create_plan_schema": "1.0"
+  },
+  "plugin": {
+    "name": "BPParserTestGen",
+    "version": "0.4.0",
+    "requires_rebuild": true,
+    "binary_compatible": false
+  },
+  "capabilities": {
+    "analyze": true,
+    "edit": true,
+    "create": true,
+    "editor_live": true
+  }
+}
