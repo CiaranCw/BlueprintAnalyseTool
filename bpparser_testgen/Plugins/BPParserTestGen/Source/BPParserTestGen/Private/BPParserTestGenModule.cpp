@@ -1,13 +1,26 @@
 // Copyright BlueprintAnalyseTool. All Rights Reserved.
 #include "BPParserTestGenModule.h"
 #include "BPGenOrchestrator.h"
+#include "BPAgentLiveService.h"
 #include "ToolMenus.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/App.h"
 
 #define LOCTEXT_NAMESPACE "BPParserTestGen"
 
 DEFINE_LOG_CATEGORY(LogBPParserTestGen);
+
+namespace
+{
+	// Weak handle so the console commands / static accessor can reach the running service.
+	TWeakPtr<FBPAgentLiveService> GBPAgentLiveServiceWeak;
+}
+
+TSharedPtr<FBPAgentLiveService> FBPParserTestGenModule::GetLiveService()
+{
+	return GBPAgentLiveServiceWeak.Pin();
+}
 
 void FBPParserTestGenModule::StartupModule()
 {
@@ -23,6 +36,40 @@ void FBPParserTestGenModule::StartupModule()
 		}),
 		ECVF_Default));
 
+	// ---- editor_live service (file-queue). Interactive editor only; NEVER in a commandlet
+	// (native_full runs commandlets directly and must not race the queue). ----
+	if (GIsEditor && !IsRunningCommandlet())
+	{
+		LiveService = MakeShared<FBPAgentLiveService>();
+		GBPAgentLiveServiceWeak = LiveService;
+		LiveService->Start();
+
+		ConsoleCommands.Add(IConsoleManager::Get().RegisterConsoleCommand(
+			TEXT("BPAgent.Live.Status"),
+			TEXT("Print the BPAgentLiveService (editor_live) status line."),
+			FConsoleCommandDelegate::CreateLambda([]()
+			{
+				if (TSharedPtr<FBPAgentLiveService> S = FBPParserTestGenModule::GetLiveService())
+				{ UE_LOG(LogBPParserTestGen, Display, TEXT("%s"), *S->GetStatusLine()); }
+				else { UE_LOG(LogBPParserTestGen, Display, TEXT("BPAgentLiveService not running.")); }
+			}),
+			ECVF_Default));
+
+		ConsoleCommands.Add(IConsoleManager::Get().RegisterConsoleCommand(
+			TEXT("BPAgent.Live.Start"),
+			TEXT("Start the BPAgentLiveService (editor_live) request-queue poller."),
+			FConsoleCommandDelegate::CreateLambda([]()
+			{ if (TSharedPtr<FBPAgentLiveService> S = FBPParserTestGenModule::GetLiveService()) { S->Start(); } }),
+			ECVF_Default));
+
+		ConsoleCommands.Add(IConsoleManager::Get().RegisterConsoleCommand(
+			TEXT("BPAgent.Live.Stop"),
+			TEXT("Stop the BPAgentLiveService (editor_live) request-queue poller."),
+			FConsoleCommandDelegate::CreateLambda([]()
+			{ if (TSharedPtr<FBPAgentLiveService> S = FBPParserTestGenModule::GetLiveService()) { S->Stop(); } }),
+			ECVF_Default));
+	}
+
 	// Editor menu button (Tools menu). Guarded so commandlet/headless runs don't crash.
 	if (!IsRunningCommandlet() && UToolMenus::IsToolMenuUIEnabled())
 	{
@@ -33,6 +80,13 @@ void FBPParserTestGenModule::StartupModule()
 
 void FBPParserTestGenModule::ShutdownModule()
 {
+	if (LiveService.IsValid())
+	{
+		LiveService->Stop();
+		LiveService.Reset();
+	}
+	GBPAgentLiveServiceWeak.Reset();
+
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
 

@@ -1,7 +1,10 @@
-# Fallback Modes — offline / python-partial / native-full
+# Fallback Modes — editor_live / offline / python-partial / native-full
 
-Three layered analysis modes with clear capability boundaries. `-Mode auto` walks them and records
-`fallbacks_used` in `manifest.json`. No mode ever silent-fails; every run writes `manifest.json`.
+Four layered analysis modes with clear capability boundaries. `-Mode auto` walks them and records the
+fallback trail (`fallbacks_used` in analyze's `manifest.json`; `editor_live{fallback_from,fallback_to}`
+in the dispatcher's `dispatch_manifest.json`). No mode ever silent-fails; every run writes `manifest.json`.
+
+Auto chain order: **editor_live → native_full → python_partial → offline_asset_scan**.
 
 ## Mode 0 — offline_asset_scan
 - **Runs**: pure PowerShell. No UE launch, no build, no project change.
@@ -29,11 +32,24 @@ Three layered analysis modes with clear capability boundaries. `-Mode auto` walk
   dispatchers/interfaces. Widget/Anim/plugin/custom K2 nodes preserved (unknown → kept, not dropped).
 - **status**: `success`.
 
+## Mode 3 — editor_live
+- **Runs**: inside an **already-open** UE editor via the in-editor `BPAgentLiveService` (file queue). No new
+  UnrealEditor-Cmd process is launched. Requests go to `Saved/BPParserAgentRequests/inbox`; results to
+  `Saved/BPParserAgentReports/editor_live/<id>/`; completion to `.../outbox/<id>.done|.failed`.
+- **Gets**: the **complete** IR — identical unified schema to native_full — read from the editor's live
+  in-memory objects (so unsaved user edits are visible; `source_state` records memory vs disk).
+- **status**: `success`. analyze is strictly read-only; edit/create require explicit authorisation and are
+  refused during PIE / on dirty user-edited targets (see `docs/editor_live_mode.md`).
+- **Fails when**: no editor open / plugin not loaded / service stopped → the client times out
+  (`-TimeoutSeconds`) and reports `unavailable`; `auto` then falls back to native_full.
+- **Use**: day-to-day iteration where the editor is already open (avoids cold-start cost).
+
 ## Why the layering
 Full, faithful Graph/Node/Pin/Edge structure **requires the asset to be loaded in its own engine
 context** (correct engine version + all project plugins that define its parent class and custom nodes).
-`offline` and `python_partial` are safe, non-invasive approximations for when that in-engine dumper
-can't (or shouldn't yet) be run. The auto chain always leaves you with the best obtainable result.
+`editor_live` and `native_full` both satisfy this (one reuses the open editor, the other cold-starts a
+commandlet); `python_partial` and `offline` are safe, non-invasive approximations for when neither in-engine
+path is available. The auto chain always leaves you with the best obtainable result.
 
 ## Observed example (real)
 `WBP_Settings_Graphics` (project `AClient`, custom engine `AEngine` = UE 5.4.4):

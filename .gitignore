@@ -94,3 +94,9 @@ test_output.txt
 
 # ---------- Local bootstrap helper (not part of the project) ----------
 scripts/git_init_push.ps1
+
+# ---------- Driver/exploration prompts used to build this agent (NOT shipped) ----------
+# The routing/contract prompts referenced by AGENTS.md (e.g. *_validation_prompt.md,
+# local_acceptance_issue_repair_prompt.md) remain tracked; only the driving prompts are excluded.
+docs/prompts/*exploration*
+docs/prompts/*update_sync*

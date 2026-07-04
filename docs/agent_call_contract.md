@@ -25,10 +25,14 @@ Exit codes: `0 success` (or partial when not `-Strict`), `10 partial (Strict)`, 
 
 | Mode | UE launch | Builds | Full Graph/Node/Pin/Edge | Use |
 |---|---|---|---|---|
+| `editor_live` | no (reuses an **open** editor) | no | **yes** (from live memory) | day-to-day, editor already open; no cold start |
 | `offline` | no | no | no | project/version/asset-path/uasset-header baseline |
 | `python-partial` | yes (target UE + PythonScriptPlugin) | no | no (parent/interfaces/deps/type) | non-invasive partial |
-| `native-full` | yes (target UE) | plugin build (gated) | **yes** | complete IR |
-| `auto` | as needed | as gated | best available | offline → native-full(if feasible/allowed) → python-partial → offline |
+| `native-full` | yes (target UE) | plugin build (gated) | **yes** | complete IR, cold start / CI / editor closed |
+| `auto` | as needed | as gated | best available | editor_live → native-full(if feasible/allowed) → python-partial → offline |
+
+`editor_live` reuses an already-open UE editor through the in-editor `BPAgentLiveService` (file queue); it
+never launches UnrealEditor-Cmd. Full flow, safety rules, and protocol: `docs/editor_live_mode.md`.
 
 `native-full` requires the read-only dumper plugin (`BPParserTestGen`) present in the target project.
 For a foreign project it is copied in (`-AllowPluginInstall`) and built (`-AllowBuild`) against the

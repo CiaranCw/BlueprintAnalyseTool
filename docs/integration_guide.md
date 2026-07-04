@@ -36,8 +36,23 @@ custom/source engines), with read-only guarantees and a clean removal path.
      -AssetPath "/Game/UI/WBP_X" -Mode native-full
    ```
 
+## Using the open editor instead of cold-starting (editor_live)
+Once the plugin is installed **and built** into the project (steps above / `warmup`), simply **opening the
+project's UE editor** starts the in-editor `BPAgentLiveService`. After that, day-to-day analyze/edit/create
+should reuse the open editor — no UnrealEditor-Cmd cold start:
+```powershell
+# probe (no UE launch; times out fast if the editor is closed)
+.\scripts\blueprint_agent.ps1 -Task status  -Mode editor_live -ProjectUProject "<...>.uproject" -TimeoutSeconds 20
+# analyze, preferring the open editor, else auto-fallback to native_full
+.\scripts\blueprint_agent.ps1 -Task analyze -Mode auto -PreferEditorLive -ProjectUProject "<...>.uproject" -AssetPaths "/Game/UI/WBP_X" -TimeoutSeconds 60
+```
+Confirm the service is live in the editor console with `BPAgent.Live.Status`. Full protocol, dirty/PIE/
+compiling rules, and edit/create safety: `docs/editor_live_mode.md`. `native_full` (the commandlet path
+above) remains the choice for CI, batch, or when the editor is closed.
+
 ## Read-only guarantees
-- The plugin's analysis path only **loads and dumps**; it never compiles/saves the target asset.
+- The plugin's analysis path only **loads and dumps**; it never compiles/saves the target asset. This holds
+  for both `native_full` (commandlet) and `editor_live` (in-editor analyze).
 - No blueprint content is modified. Outputs go to `<project>/Saved/BPParserAgentReports/`.
 - Adding the plugin + building is a **project/tooling** change, not an asset change, and is opt-in.
 

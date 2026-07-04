@@ -36,6 +36,7 @@ public class BPParserTestGen : ModuleRules
 			"ToolMenus",           // editor Tools menu entry
 			"Slate",               // FUIAction / FExecuteAction
 			"SlateCore",           // FSlateIcon
+			"EditorSubsystem",     // GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() (editor_live open-editor check)
 		});
 	}
 }

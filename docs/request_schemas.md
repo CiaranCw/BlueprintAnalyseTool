@@ -4,7 +4,14 @@ Other AIs call the agent with a single `request.json` via `scripts/blueprint_age
 
 ```powershell
 .\scripts\blueprint_agent.ps1 -RequestJson ".\request.json" [-OutputDir "<override>"] [-UERoot "<override>"] [-ProjectUProject "<override>"]
+
+# or without a file (handy for status / quick analyze):
+.\scripts\blueprint_agent.ps1 -Task status  -Mode editor_live -ProjectUProject "<...>.uproject" [-TimeoutSeconds 20]
+.\scripts\blueprint_agent.ps1 -Task analyze -Mode auto -PreferEditorLive -ProjectUProject "<...>.uproject" -AssetPaths "/Game/UI/WBP_X" [-TimeoutSeconds 60]
 ```
+
+`-Mode` overrides `execution.mode`; `-PreferEditorLive` prefers an already-open editor; `-TimeoutSeconds`
+bounds the editor_live wait (never hangs). See `docs/editor_live_mode.md` for the full editor_live flow.
 
 ## Envelope (all task types)
 > First-time on a new project? Call `task_type=status` (read-only, no UE) to learn the stage and whether
@@ -26,7 +33,7 @@ Other AIs call the agent with a single `request.json` via `scripts/blueprint_age
     }
   },
   "execution": {
-    "mode": "auto|native_full|python_partial|offline_asset_scan",
+    "mode": "auto|editor_live|native_full|python_partial|offline_asset_scan",
     "strict": false, "read_only": true, "create_backup": true,
     "allow_destructive_edit": false, "render_preview": true
   },
@@ -35,7 +42,8 @@ Other AIs call the agent with a single `request.json` via `scripts/blueprint_age
 ```
 - `project.ue_root` may be omitted → auto-resolved from `.uproject` EngineAssociation (version → launcher; GUID → source/custom build registry).
 - `engine_policy.allow_project_plugin_install`/`allow_incremental_compile` gate native_full's invasive steps (analyze/create need native for full graph).
-- Dispatcher writes `<output_dir>/<task_type>/dispatch_manifest.json`; the specialized tool writes the detailed `manifest.json`/`edit_result.json` under `sub_output_dir`.
+- `execution.mode=auto` probes **editor_live first** (reuse an open editor), then native_full → python_partial → offline. `editor_live` (explicit) never launches UnrealEditor-Cmd; if no service answers it returns `editor_live_unavailable` (exit 24). See `docs/editor_live_mode.md`.
+- Dispatcher writes `<output_dir>/<task_type>/dispatch_manifest.json` (now includes an `editor_live{attempted,available,fallback_from,fallback_to}` block); the specialized tool writes the detailed `manifest.json`/`edit_result.json` under `sub_output_dir`.
 
 ## task_type = status  →  scripts/agent_status.ps1  (READ-ONLY, no UE launch, always safe first call)
 ```json
@@ -113,6 +121,51 @@ supported; WidgetBlueprint/AnimBlueprint creation is not yet supported (clear fa
 
 ## task_type = validate  →  scripts/validate_outputs.ps1
 Static validation of prior deliverables (JSON well-formed, edge referential integrity, viz presence).
+
+## editor_live (in-editor, file-queue) — reuse an already-open UE editor
+When the target project's UE editor is open with the plugin loaded, `BPAgentLiveService` polls a request
+queue, so no new UnrealEditor-Cmd is launched. Two ways in:
+
+- **Via the dispatcher (recommended):** `blueprint_agent.ps1 -Mode editor_live` (or `auto -PreferEditorLive`).
+  It translates the envelope above into a queue request through `scripts/editor_live_client.ps1`, waits
+  (bounded by `-TimeoutSeconds`), rasterizes PNG/SVG when Graphviz is present, and records fallback.
+- **Directly (any language):** write the payload + a `.ready` commit marker, then poll `outbox`:
+
+```text
+inbox : <Project>/Saved/BPParserAgentRequests/inbox/<id>.request.json   (payload)
+        <Project>/Saved/BPParserAgentRequests/inbox/<id>.ready          (commit marker; service ignores half-written requests)
+report: <output_dir or Saved/BPParserAgentReports>/editor_live/<id>/manifest.json (+ blueprint_ir.json/summary.md/viz/logs)
+outbox: <Project>/Saved/BPParserAgentRequests/outbox/<id>.done | <id>.failed  (JSON: {request_id,exit_code,status,manifest})
+```
+
+Direct request payload (consumed by the plugin):
+```json
+{
+  "schema_version": "1.0", "request_id": "req_20260704_001",
+  "task_type": "status|analyze|edit|create", "mode": "editor_live",
+  "asset_paths": ["/Game/UI/WBP_MainMenu"],
+  "asset_path": "/Game/Blueprints/BP_X",
+  "execution": {
+    "read_only": true, "strict": false, "render_preview": true,
+    "use_loaded_editor_state": true, "allow_dirty_assets": false,
+    "allow_edit": false, "create_backup": true, "allow_destructive_edit": false,
+    "allow_create": false, "require_user_ack": false, "allow_edit_during_pie": false
+  },
+  "edit":   { "...": "same shape as the edit request.operations" },
+  "create": { "...": "same shape as the create request.asset/variables/graphs" },
+  "output_dir": "D:/AClient/Saved/BPParserAgentReports"
+}
+```
+
+status output (`editor_live/<id>/manifest.json`) reports `editor_live.available/service_running/supports`
+and `current_editor_state{is_pie,is_saving,is_compiling_blueprints,dirty_assets_count}`. analyze/edit/create
+manifests add an `editor_live` block with `source_state`
+(`loaded_clean_memory|loaded_dirty_memory|disk_saved_asset|unknown`) and the `editor_state` snapshot.
+
+Safety: analyze is read-only (no save/compile/mutation). `edit` needs `read_only=false`+`allow_edit=true`
+and is refused during PIE (unless `allow_edit_during_pie`) or on a dirty target open in the asset editor
+(unless `require_user_ack`). `create` needs `allow_create=true` and is refused during PIE. During
+save/compile the service waits (bounded) then fails rather than hanging.
 
 ## Data structures
 Unified IR / Node / Pin / Edge shapes are in `docs/blueprint_ir_schema.md`. Unknown nodes keep their

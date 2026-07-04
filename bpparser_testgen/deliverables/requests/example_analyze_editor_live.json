@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "task_type": "analyze",
+  "project": {
+    "ue_root": "",
+    "uproject": "<PATH>/YourProject.uproject",
+    "output_dir": "<PATH>/YourProject/Saved/BPParserAgentReports",
+    "engine_policy": { "allow_project_plugin_install": false, "allow_incremental_compile": false, "allow_python_fallback": true, "allow_offline_fallback": true }
+  },
+  "execution": { "mode": "editor_live", "strict": false, "read_only": true, "render_preview": true, "use_loaded_editor_state": true, "allow_dirty_assets": false },
+  "request": {
+    "asset_paths": [ "/Game/UI/WBP_MainMenu" ]
+  }
+}
