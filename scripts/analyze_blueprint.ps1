@@ -357,6 +357,13 @@ function Run-Native {
       event_dispatchers=@($dump.event_dispatchers); components=@(); timelines=@(); graphs=@($dump.graphs | ForEach-Object { $_.graph_name }) }
     graphs=@($dump.graphs); analysis=[ordered]@{ manual_check_required=@() }
   }
+  # Carry Widget Blueprint IR through to the unified shape (widget_tree already carries per-widget
+  # settable_properties / slot_settable_properties / bindable_events); expose the WBP's own settable_properties.
+  $dn = $dump.PSObject.Properties.Name
+  if ($dn -contains 'widget_tree' -and $dump.widget_tree) { $ir.widget_tree = $dump.widget_tree }
+  if ($dn -contains 'settable_properties') { $ir.settable_properties = @($dump.settable_properties) }
+  if ($dn -contains 'widget_event_bindings') { $ir.widget_event_bindings = @($dump.widget_event_bindings) }
+  if ($dn -contains 'dependencies' -and $dump.dependencies) { $ir.asset.dependencies = @($dump.dependencies) }
   return @{ ir=$ir; status='success' }
 }
 

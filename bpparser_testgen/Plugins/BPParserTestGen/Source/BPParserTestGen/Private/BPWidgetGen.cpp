@@ -120,24 +120,74 @@ UPanelSlot* FBPWidgetGen::AddChild(UWidget* Parent, UWidget* Child)
 	return Panel->AddChild(Child);
 }
 
-FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value)
+namespace
 {
+	// Forward declarations (definitions live in the anonymous namespace further below).
+	bool IsListableSettable(FProperty* P);
+	TSharedPtr<FJsonObject> PropTypeObj(FProperty* P);
+	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched);
+	TArray<TSharedPtr<FJsonValue>> SuggestProps(UStruct* Owner, const FString& Name);
+}
+
+TArray<TSharedPtr<FJsonValue>> FBPWidgetGen::ListSettableProperties(UStruct* Owner, UObject* Instance)
+{
+	TArray<TSharedPtr<FJsonValue>> Out;
+	if (!Owner) { return Out; }
+	for (TFieldIterator<FProperty> It(Owner); It; ++It)
+	{
+		FProperty* P = *It;
+		if (!IsListableSettable(P)) { continue; }
+		const bool bEditConst  = P->HasAnyPropertyFlags(CPF_EditConst);
+		const bool bTransient  = P->HasAnyPropertyFlags(CPF_Transient);
+		const bool bDeprecated = P->HasAnyPropertyFlags(CPF_Deprecated);
+
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		O->SetStringField(TEXT("name"), P->GetName());
+		O->SetStringField(TEXT("display_name"), P->GetDisplayNameText().ToString());
+		O->SetObjectField(TEXT("type"), PropTypeObj(P));
+		O->SetStringField(TEXT("declaring_class"), P->GetOwnerStruct() ? P->GetOwnerStruct()->GetPathName() : TEXT(""));
+		O->SetBoolField(TEXT("editable"), true);
+		O->SetBoolField(TEXT("blueprint_visible"), P->HasAnyPropertyFlags(CPF_BlueprintVisible));
+		O->SetBoolField(TEXT("blueprint_read_only"), P->HasAnyPropertyFlags(CPF_BlueprintReadOnly));
+		O->SetBoolField(TEXT("deprecated"), bDeprecated);
+		if (Instance)
+		{
+			FString V; P->ExportTextItem_Direct(V, P->ContainerPtrToValuePtr<void>(Instance), nullptr, Instance, PPF_None);
+			O->SetStringField(TEXT("current_value"), V);
+		}
+		TArray<TSharedPtr<FJsonValue>> Notes;
+		bool bSetSupported = true;
+		if (bEditConst)  { bSetSupported = false; Notes.Add(MakeShared<FJsonValueString>(TEXT("readonly_or_internal"))); }
+		if (bTransient)  { bSetSupported = false; Notes.Add(MakeShared<FJsonValueString>(TEXT("transient"))); }
+		if (bDeprecated) { bSetSupported = false; Notes.Add(MakeShared<FJsonValueString>(TEXT("deprecated"))); }
+		O->SetBoolField(TEXT("set_supported"), bSetSupported);
+		O->SetArrayField(TEXT("notes"), Notes);
+		Out.Add(MakeShared<FJsonValueObject>(O));
+	}
+	return Out;
+}
+
+FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value,
+	FString& OutResolvedName, TArray<TSharedPtr<FJsonValue>>& OutSuggestions)
+{
+	OutResolvedName.Reset(); OutSuggestions.Reset();
 	if (!Target) { return TEXT("null target"); }
 	if (!Value.IsValid()) { return TEXT("null value"); }
 
-	// 1) Direct FProperty by name (works for box slots' Padding/Size, widget Details, ZOrder, LayoutData, ...).
-	if (FProperty* Prop = Target->GetClass()->FindPropertyByName(FName(*PropName)))
+	// 1) Direct/fuzzy FProperty (exact -> case-insensitive -> bool `b` prefix -> DisplayName -> normalized).
+	FString Matched;
+	if (FProperty* Prop = FindPropertyFuzzy(Target->GetClass(), PropName, Matched))
 	{
 		void* Addr = Prop->ContainerPtrToValuePtr<void>(Target);
 		if (!FJsonObjectConverter::JsonValueToUProperty(Value, Prop, Addr, 0, 0))
 		{
-			return FString::Printf(TEXT("could not import value into property '%s' (%s)"), *PropName, *Prop->GetClass()->GetName());
+			return FString::Printf(TEXT("type_mismatch: could not import value into property '%s' (%s)"), *Matched, *Prop->GetClass()->GetName());
 		}
+		OutResolvedName = Matched;
 		return FString();
 	}
 
-	// 2) Fallback: a single-input setter UFUNCTION named Set<PropName>. This makes convenience keys like
-	// CanvasPanelSlot Position/Size/Anchors/Alignment work (they are setters over LayoutData, not properties).
+	// 2) Fallback: a single-input setter UFUNCTION named Set<PropName> (e.g. CanvasPanelSlot Position/Size/...).
 	if (UFunction* Fn = Target->FindFunction(FName(*(FString(TEXT("Set")) + PropName))))
 	{
 		FProperty* Parm = nullptr;
@@ -154,11 +204,14 @@ FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropNa
 		const bool bOk = FJsonObjectConverter::JsonValueToUProperty(Value, Parm, Parm->ContainerPtrToValuePtr<void>(Frame), 0, 0);
 		if (bOk) { Target->ProcessEvent(Fn, Frame); }
 		for (TFieldIterator<FProperty> It(Fn); It && (It->PropertyFlags & CPF_Parm); ++It) { It->DestroyValue_InContainer(Frame); }
-		if (!bOk) { return FString::Printf(TEXT("could not import value into setter Set%s parameter"), *PropName); }
+		if (!bOk) { return FString::Printf(TEXT("type_mismatch: could not import value into setter Set%s parameter"), *PropName); }
+		OutResolvedName = FString(TEXT("Set")) + PropName;
 		return FString();
 	}
 
-	return FString::Printf(TEXT("no property or 'Set%s' setter on %s"), *PropName, *Target->GetClass()->GetName());
+	// 3) Not found -> classified error + candidate suggestions.
+	OutSuggestions = SuggestProps(Target->GetClass(), PropName);
+	return TEXT("property_not_found");
 }
 
 namespace
@@ -184,6 +237,81 @@ namespace
 		O->SetStringField(TEXT("type"), Type);
 		if (!SubObj.IsEmpty()) { O->SetStringField(TEXT("sub_category_object"), SubObj); }
 		return O;
+	}
+
+	FString NormName(const FString& S){ FString O=S.ToLower(); O.ReplaceInline(TEXT(" "),TEXT("")); O.ReplaceInline(TEXT("_"),TEXT("")); return O; }
+
+	// Short category + optional sub_category_object for a (non-container) property.
+	FString PropCategory(FProperty* P, FString& OutSubObj)
+	{
+		OutSubObj.Reset();
+		if (CastField<FBoolProperty>(P))   return TEXT("bool");
+		if (CastField<FIntProperty>(P))    return TEXT("int");
+		if (CastField<FInt64Property>(P))  return TEXT("int64");
+		if (CastField<FFloatProperty>(P))  return TEXT("float");
+		if (CastField<FDoubleProperty>(P)) return TEXT("double");
+		if (CastField<FStrProperty>(P))    return TEXT("string");
+		if (CastField<FNameProperty>(P))   return TEXT("name");
+		if (CastField<FTextProperty>(P))   return TEXT("text");
+		if (const FEnumProperty* EP=CastField<FEnumProperty>(P)) { if(EP->GetEnum()) OutSubObj=EP->GetEnum()->GetPathName(); return TEXT("enum"); }
+		if (const FByteProperty* BP=CastField<FByteProperty>(P)) { if(BP->Enum){ OutSubObj=BP->Enum->GetPathName(); return TEXT("enum"); } return TEXT("byte"); }
+		if (const FStructProperty* SP=CastField<FStructProperty>(P)) { if(SP->Struct) OutSubObj=SP->Struct->GetPathName(); return TEXT("struct"); }
+		if (const FClassProperty* CP=CastField<FClassProperty>(P)) { if(CP->MetaClass) OutSubObj=CP->MetaClass->GetPathName(); return TEXT("class"); }
+		if (const FSoftObjectProperty* SOP=CastField<FSoftObjectProperty>(P)) { if(SOP->PropertyClass) OutSubObj=SOP->PropertyClass->GetPathName(); return TEXT("soft_object"); }
+		if (const FObjectPropertyBase* OP=CastField<FObjectPropertyBase>(P)) { if(OP->PropertyClass) OutSubObj=OP->PropertyClass->GetPathName(); return TEXT("object"); }
+		return TEXT("unknown");
+	}
+
+	TSharedPtr<FJsonObject> PropTypeObj(FProperty* P)
+	{
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		FString Container = TEXT("none"); FProperty* Inner = P;
+		if (const FArrayProperty* A=CastField<FArrayProperty>(P)) { Container=TEXT("array"); Inner=A->Inner; }
+		else if (const FSetProperty* S=CastField<FSetProperty>(P)) { Container=TEXT("set"); Inner=S->ElementProp; }
+		else if (const FMapProperty* M=CastField<FMapProperty>(P)) { Container=TEXT("map"); Inner=M->ValueProp; }
+		FString Sub; const FString Cat = PropCategory(Inner, Sub);
+		O->SetStringField(TEXT("category"), Cat);
+		O->SetStringField(TEXT("sub_category"), TEXT(""));
+		O->SetStringField(TEXT("sub_category_object"), Sub);
+		O->SetStringField(TEXT("container_type"), Container);
+		return O;
+	}
+
+	// Editable, non-delegate, non-structural property = a candidate for settable_properties / fuzzy matching.
+	bool IsListableSettable(FProperty* P)
+	{
+		if (!P) return false;
+		if (CastField<FMulticastDelegateProperty>(P) || CastField<FDelegateProperty>(P)) return false;
+		const FString N=P->GetName();
+		if (N==TEXT("Slot") || N==TEXT("Slots")) return false;
+		return P->HasAnyPropertyFlags(CPF_Edit);
+	}
+
+	// Resolve a property by fuzzy name: exact -> case-insensitive -> bool `b` prefix -> DisplayName -> normalized.
+	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched)
+	{
+		if (!Owner) return nullptr;
+		if (FProperty* P=FindFProperty<FProperty>(Owner, FName(*Name))) { OutMatched=P->GetName(); return P; }
+		const FString bName=FString(TEXT("b"))+Name;
+		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; const FString pn=P->GetName();
+			if (pn.Equals(Name,ESearchCase::IgnoreCase) || pn.Equals(bName,ESearchCase::IgnoreCase)) { OutMatched=pn; return P; } }
+		const FString nm=NormName(Name);
+		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; const FString pn=P->GetName();
+			if (NormName(pn)==nm) { OutMatched=pn; return P; }
+			const FString disp=P->GetDisplayNameText().ToString();
+			if (disp.Equals(Name,ESearchCase::IgnoreCase) || NormName(disp)==nm) { OutMatched=pn; return P; } }
+		return nullptr;
+	}
+
+	TArray<TSharedPtr<FJsonValue>> SuggestProps(UStruct* Owner, const FString& Name)
+	{
+		TArray<TSharedPtr<FJsonValue>> Out; if(!Owner) return Out;
+		const FString nm=NormName(Name);
+		auto AddP=[&](FProperty* P){ TSharedPtr<FJsonObject> O=MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"),P->GetName()); O->SetStringField(TEXT("display_name"),P->GetDisplayNameText().ToString()); FString sub; O->SetStringField(TEXT("type"),PropCategory(P,sub)); Out.Add(MakeShared<FJsonValueObject>(O)); };
+		for (TFieldIterator<FProperty> It(Owner); It && Out.Num()<8; ++It) { FProperty* P=*It; if(!IsListableSettable(P)) continue;
+			if (NormName(P->GetName()).Contains(nm) || NormName(P->GetDisplayNameText().ToString()).Contains(nm)) { AddP(P); } }
+		if (Out.Num()==0) { for (TFieldIterator<FProperty> It(Owner); It && Out.Num()<8; ++It) { FProperty* P=*It; if(IsListableSettable(P)) AddP(P); } }
+		return Out;
 	}
 }
 

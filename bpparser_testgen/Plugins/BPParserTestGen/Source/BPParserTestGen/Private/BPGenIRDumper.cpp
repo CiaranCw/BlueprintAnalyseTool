@@ -225,6 +225,10 @@ namespace
 			}
 			O->SetArrayField(TEXT("bindable_events"), Be);
 		}
+		// settable (editable) properties on the widget + on its slot (for accurate create/edit requests)
+		O->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(W->GetClass(), W));
+		O->SetArrayField(TEXT("slot_settable_properties"),
+			W->Slot ? FBPWidgetGen::ListSettableProperties(W->Slot->GetClass(), W->Slot) : TArray<TSharedPtr<FJsonValue>>());
 		TArray<TSharedPtr<FJsonValue>> Kids;
 		if (UPanelWidget* P = Cast<UPanelWidget>(W))
 		{
@@ -397,6 +401,11 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 		Root->SetObjectField(TEXT("widget_tree"), DumpWidgetTree(WBP));
 		Root->SetArrayField(TEXT("widget_event_bindings"), DumpWidgetEventBindings(WBP));
 		Root->SetArrayField(TEXT("dependencies"), DumpWidgetDependencies(WBP));
+		// this WBP's OWN exposed (instance-editable) properties -> what callers can set on instances of it
+		if (UClass* GC = WBP->GeneratedClass ? WBP->GeneratedClass.Get() : (WBP->SkeletonGeneratedClass ? WBP->SkeletonGeneratedClass.Get() : nullptr))
+		{
+			Root->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(GC, GC->GetDefaultObject()));
+		}
 	}
 
 	return Root;

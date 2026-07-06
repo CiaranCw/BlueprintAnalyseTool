@@ -1,0 +1,17 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_SettableTest", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": {
+        "name": "RootCanvas", "type": "CanvasPanel",
+        "children": [
+          {
+            "name": "Title", "type": "TextBlock",
+            "properties": { "Text": "Hello", "IsEnabled": false, "NopeField": 123 },
+            "slot": { "properties": { "Position": { "X": 40, "Y": 30 }, "Size": { "X": 300, "Y": 60 } } }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -261,7 +261,35 @@ UE 来源：`UBlueprint::SimpleConstructionScript->GetRootNodes()` 递归。每�
                        "parameters": [ { "name": "bIsChecked", "type": "bool" } ] } ]
 ```
 
-### 10.1 widget_event_bindings（Widget Blueprint 根级）
+每个 widget 节点还含 **`settable_properties`** 与 **`slot_settable_properties`**（见 10.3）——用于让其他 AI
+在 create/edit 前**准确得知控件/槽可设置的真实字段名**，避免用 Details 显示名猜错。
+
+### 10.1 settable_properties / slot_settable_properties（每个 widget 节点 + WBP 根级）
+枚举控件类（**含继承链**）上 `CPF_Edit`（Details 可编辑）的属性——控件自身 C++ UPROPERTY、继承的引擎属性、
+自定义 `UserWidget` 暴露的变量。**排除**：委托（在 `bindable_events`）、函数、结构性反向引用（`Slot`/`Slots`）。
+WBP 根级的 `settable_properties` 为该 WBP **自身生成类**的可设置属性（analyze 一个自定义控件即可知道能在其实例上设什么）。
+```json
+"settable_properties": [
+  { "name": "bDefaultChecked",              // 真实 FProperty 内部名（写请求时用它）
+    "display_name": "Default Checked",       // Details 显示名（FProperty::GetDisplayNameText，可能与 name 不同）
+    "type": { "category": "bool", "sub_category": "", "sub_category_object": "", "container_type": "none" },
+    "declaring_class": "/Script/AClient.RGSettingsCheckboxItemWidget",  // 声明该属性的类（继承链定位）
+    "editable": true, "blueprint_visible": true, "blueprint_read_only": false, "deprecated": false,
+    "current_value": "False",                // 实例（或根级 CDO）上的 ExportText 值
+    "set_supported": true,                   // 是否支持反射写入
+    "notes": [] }                            // set_supported=false 时: readonly_or_internal | transient | deprecated
+],
+"slot_settable_properties": [ /* 同结构，枚举该控件所在 slot 对象的可编辑属性 */ ]
+```
+要点：
+- **务必用 `name`（内部名）而非 `display_name`** 构造 create/edit 请求；bool 属性常带 `b` 前缀（`bDefaultChecked`）。
+- `type.category` ∈ `bool|int|int64|float|double|string|name|text|byte|enum|struct|class|object|soft_object|unknown`，
+  容器用 `container_type` ∈ `none|array|set|map`，`sub_category_object` 给出 enum/struct/class 的路径。
+- create/edit 若属性名匹配失败，`manifest`/`create_result` 的 `property_notes` 会给出 `property_not_found` +
+  `suggestions`（候选 `{name,display_name,type}`）；若走了 alias 匹配则给出 `property_alias_matched`
+  （`input`→`resolved_to`）。见 `docs/issue_patterns.md` P16。
+
+### 10.2 widget_event_bindings（Widget Blueprint 根级）
 已在图中创建的绑定事件节点（`UK2Node_ComponentBoundEvent`）的 redump（UE 来源：遍历 `UbergraphPages`/`FunctionGraphs`）：
 ```json
 "widget_event_bindings": [
@@ -274,7 +302,7 @@ create 侧另在 `manifest.json`/`create_result.json` 写入 `widget_event_bindi
 `status`：`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`
 及 `handler_type`/`handler_name`）。两者可交叉核对（请求结果 vs 图内实际节点）。
 
-### 10.2 dependencies（Widget Blueprint 根级 — 自定义控件）
+### 10.3 dependencies（Widget Blueprint 根级 — 自定义控件）
 WidgetTree 中引用的项目自定义控件（class path 以 `/Game/` 开头）会去重记录：
 ```json
 "dependencies": [

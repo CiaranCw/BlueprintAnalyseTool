@@ -56,6 +56,13 @@ normalized to the `_C` generated class); it is constructed as a black box with s
 `dependencies` (`type=custom_user_widget`). Deferred (warn/manual): handler exec-wiring to a named
 custom_event/function, property binding (`widget.bindings`), custom-widget internal expansion, UMG animation,
 pixel-accurate render. See `docs/widget_blueprint_schema.md`.
+- **Widget property names**: keys in a widget/slot `properties` object are resolved with **alias matching**
+  (exact → case-insensitive → bool `b` prefix → Details DisplayName → strip space/underscore), then a `Set<Key>`
+  setter fallback. An aliased write is reported as `property_alias_matched` and a miss as `property_not_found`
+  **with `suggestions`** in `manifest`/`create_result` `property_notes[]` (never silent). To avoid guessing, first
+  **analyze** the target/custom widget and read each widget's `settable_properties` (use the internal `name`, not
+  the display name; bool props often carry a `b` prefix, e.g. `Default Checked` → `bDefaultChecked`). See
+  `docs/blueprint_ir_schema.md` §10.1 and `docs/issue_patterns.md` P16.
 - AnimBlueprint creation → clear `failed` (needs its factory); use Actor/Component/Interface/Widget.
 - Unsupported `node_type` → warning + `manual_check_required`, never silently dropped.
 - After creation, open the asset in the editor to visually confirm.

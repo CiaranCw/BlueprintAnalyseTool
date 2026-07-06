@@ -1,0 +1,18 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_SettableCustom", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": {
+        "name": "RootCanvas", "type": "CanvasPanel",
+        "children": [
+          {
+            "name": "CustomWidgetHost",
+            "type": "/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem",
+            "properties": { "TextName": "RealNameApplied", "DefaultChecked": true, "NopeXYZ": 1 },
+            "slot": { "properties": { "Position": { "X": 20, "Y": 20 }, "Size": { "X": 400, "Y": 50 } } }
+          }
+        ]
+      }
+    }
+  }
+}

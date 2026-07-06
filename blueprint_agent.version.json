@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
-  "agent_version": "0.4.0",
+  "agent_version": "0.4.1",
   "agent_commit": "",
-  "build_id": "2026-07-04T00:00:00Z",
+  "build_id": "2026-07-06T00:00:00Z",
   "schema_versions": {
     "request_schema": "1.0",
     "manifest_schema": "1.0",
@@ -12,7 +12,7 @@
   },
   "plugin": {
     "name": "BPParserTestGen",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "requires_rebuild": true,
     "binary_compatible": false
   },
@@ -20,6 +20,7 @@
     "analyze": true,
     "edit": true,
     "create": true,
-    "editor_live": true
+    "editor_live": true,
+    "widget_settable_properties": true
   }
 }

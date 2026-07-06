@@ -95,6 +95,7 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 	bool bWidgetAsset=false;
 	TArray<TSharedPtr<FJsonValue>> EventBindings;   // widget event-binding results (Phase 4)
 	TArray<TSharedPtr<FJsonValue>> WidgetDeps;      // custom UserWidget dependencies (Phase 5)
+	TArray<TSharedPtr<FJsonValue>> PropertyNotes;   // alias-matched / not-found property resolution notes
 
 	FString Text;
 	if(!FFileHelper::LoadFileToString(Text,*SpecFile)){ Log(TEXT("cannot read spec file")); return 30; }
@@ -139,14 +140,14 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		if(bWidgetAsset){ Out->SetStringField(TEXT("hierarchy_dot"),TEXT("viz/hierarchy.dot")); Out->SetStringField(TEXT("hierarchy_mmd"),TEXT("viz/hierarchy.mmd")); }
 		M->SetObjectField(TEXT("outputs"),Out);
 		if(BP){ M->SetStringField(TEXT("created_asset"),BP->GetPathName()); }
-		if(bWidgetAsset){ M->SetArrayField(TEXT("widget_event_bindings"),EventBindings); M->SetArrayField(TEXT("dependencies"),WidgetDeps); }
+		if(bWidgetAsset){ M->SetArrayField(TEXT("widget_event_bindings"),EventBindings); M->SetArrayField(TEXT("dependencies"),WidgetDeps); M->SetArrayField(TEXT("property_notes"),PropertyNotes); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("manifest.json")),M);
 
 		TSharedRef<FJsonObject> Res=MakeShared<FJsonObject>();
 		Res->SetStringField(TEXT("status"),Status); Res->SetStringField(TEXT("asset_path"),AssetPath);
 		Res->SetStringField(TEXT("overwrite_policy"),Overwrite);
 		Res->SetArrayField(TEXT("warnings"),W); Res->SetArrayField(TEXT("errors"),E);
-		if(bWidgetAsset){ Res->SetArrayField(TEXT("widget_event_bindings"),EventBindings); Res->SetArrayField(TEXT("dependencies"),WidgetDeps); }
+		if(bWidgetAsset){ Res->SetArrayField(TEXT("widget_event_bindings"),EventBindings); Res->SetArrayField(TEXT("dependencies"),WidgetDeps); Res->SetArrayField(TEXT("property_notes"),PropertyNotes); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("create_result.json")),Res);
 		Log(FString::Printf(TEXT("status=%s -> %s"),*Status,*OutDir));
 		return Code;
@@ -183,6 +184,28 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 			{
 				const TSharedPtr<FJsonObject>* RootWrap = JObj(*Hier,TEXT("root"));
 				TSharedPtr<FJsonObject> RootNode = RootWrap ? *RootWrap : *Hier;
+				// set a property on a widget/slot with fuzzy resolution; record alias / not-found notes.
+				auto SetProp = [&](UObject* T, const FString& K, const TSharedPtr<FJsonValue>& V, const FString& WName, const FString& WClassPath)
+				{
+					FString Resolved; TArray<TSharedPtr<FJsonValue>> Sugg;
+					const FString e = FBPWidgetGen::SetPropertyFromJson(T, K, V, Resolved, Sugg);
+					if(e.IsEmpty())
+					{
+						if(!Resolved.Equals(K,ESearchCase::CaseSensitive) && !Resolved.Equals(FString(TEXT("Set"))+K))
+						{
+							TSharedRef<FJsonObject> N=MakeShared<FJsonObject>(); N->SetStringField(TEXT("code"),TEXT("property_alias_matched")); N->SetStringField(TEXT("input"),K); N->SetStringField(TEXT("resolved_to"),Resolved); N->SetStringField(TEXT("widget"),WName);
+							PropertyNotes.Add(MakeShared<FJsonValueObject>(N));
+							Warn.Add(FString::Printf(TEXT("property_alias_matched on %s: '%s' -> '%s'"),*WName,*K,*Resolved));
+						}
+					}
+					else
+					{
+						TSharedRef<FJsonObject> N=MakeShared<FJsonObject>(); N->SetStringField(TEXT("code"),TEXT("property_not_found")); N->SetStringField(TEXT("input"),K); N->SetStringField(TEXT("widget"),WName); N->SetStringField(TEXT("widget_class"),WClassPath); N->SetArrayField(TEXT("suggestions"),Sugg);
+						PropertyNotes.Add(MakeShared<FJsonValueObject>(N));
+						Warn.Add(FString::Printf(TEXT("property_not_found on %s: '%s' [%s] (%d suggestions)"),*WName,*K,*e,Sugg.Num()));
+						Manual.Add(FString::Printf(TEXT("widget '%s': property '%s' not found; see manifest property_notes for suggestions"),*WName,*K));
+					}
+				};
 				TFunction<UWidget*(const TSharedPtr<FJsonObject>&, UWidget*)> Build;
 				Build = [&](const TSharedPtr<FJsonObject>& Node, UWidget* ParentW) -> UWidget*
 				{
@@ -203,10 +226,10 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 						if(!Slot){ Warn.Add(FString::Printf(TEXT("parent_not_panel: cannot add '%s' under '%s' (not a UPanelWidget)"),*WName,*ParentW->GetName())); Manual.Add(FString::Printf(TEXT("widget '%s': parent_not_panel"),*WName)); }
 						else if(const TSharedPtr<FJsonObject>* SlotObj = JObj(Node,TEXT("slot")))
 							if(const TSharedPtr<FJsonObject>* SP = JObj(*SlotObj,TEXT("properties")))
-								for(const auto& kv : (*SP)->Values){ const FString e=FBPWidgetGen::SetPropertyFromJson(Slot,kv.Key,kv.Value); if(!e.IsEmpty()) Warn.Add(TEXT("slot prop '")+kv.Key+TEXT("' on ")+WName+TEXT(": ")+e); }
+								for(const auto& kv : (*SP)->Values){ SetProp(Slot,kv.Key,kv.Value,WName+TEXT(" (slot)"),Slot->GetClass()->GetPathName()); }
 					}
 					if(const TSharedPtr<FJsonObject>* Props = JObj(Node,TEXT("properties")))
-						for(const auto& kv : (*Props)->Values){ const FString e=FBPWidgetGen::SetPropertyFromJson(W,kv.Key,kv.Value); if(!e.IsEmpty()) Warn.Add(TEXT("prop '")+kv.Key+TEXT("' on ")+WName+TEXT(": ")+e); }
+						for(const auto& kv : (*Props)->Values){ SetProp(W,kv.Key,kv.Value,WName,W->GetClass()->GetPathName()); }
 					if(const TArray<TSharedPtr<FJsonValue>>* Kids = JArr(Node,TEXT("children")))
 						for(const auto& kv : *Kids){ if(auto ko=kv->AsObject()) Build(ko, W); }
 					return W;

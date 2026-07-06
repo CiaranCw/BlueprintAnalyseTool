@@ -123,6 +123,15 @@ For `blueprint_type:"Widget"` add a `widget.hierarchy` (recursive WidgetTree: `t
 `children`); Details + slot props are set by reflection (+ `Set<Key>` setter fallback for CanvasPanel Position/
 Size/Anchors/Alignment). Output adds `created_ir.json.widget_tree` + `viz/hierarchy.dot|.mmd`.
 
+**Widget property names — analyze first, don't guess.** A `properties` key is resolved by alias matching
+(exact → case-insensitive → bool `b` prefix → Details DisplayName → strip space/underscore) then a `Set<Key>`
+setter; an alias write emits `property_alias_matched` and a miss emits `property_not_found` **with `suggestions`**
+in `manifest`/`create_result` `property_notes[]`. Every widget in the IR (analyze/redump) carries
+`settable_properties` + `slot_settable_properties` — `{name, display_name, type, declaring_class, editable,
+blueprint_visible, blueprint_read_only, deprecated, current_value, set_supported, notes}`. Use the internal
+`name` (bool props often carry a `b` prefix, e.g. `Default Checked` → `bDefaultChecked`). See
+`docs/blueprint_ir_schema.md` §10.1 and `docs/issue_patterns.md` P16.
+
 `widget.events` binds widget delegates **generically by reflection** (any BlueprintAssignable multicast delegate):
 ```json
 "events": [ { "widget": "QualityComboBox", "event": "OnSelectionChanged", "handler": { "type": "bound_event", "name": "OnQualityChanged" } } ]

@@ -53,19 +53,61 @@ Properties are applied by reflection, so **any real `FProperty` name works**:
 - Value mapping uses `FJsonObjectConverter`: numbers/bools/strings as-is; `FText` from string; enums by name
   (e.g. `Visibility: "HitTestInvisible"`); structs as nested objects (`FMargin`, `FVector2D`, `FLinearColor`);
   object/asset refs as path strings.
-- **Convenience setters**: if a key is not a direct property, the agent calls a single-input setter UFUNCTION
-  `Set<Key>`. This makes `CanvasPanelSlot` `Position` / `Size` / `Anchors` / `Alignment` work (they are setters
-  over `LayoutData`, not properties). Box slots expose `Padding`/`Size`/`HorizontalAlignment`/`VerticalAlignment`
-  as real properties, so those set directly.
-- Unknown key (no property and no `Set<Key>` setter) → recorded as a `warning` (never fatal, never silent).
+- **Name resolution (alias matching)**: keys are resolved against the widget/slot class (incl. the inherited chain)
+  in this order — exact → case-insensitive → bool `b` prefix (`DefaultChecked`→`bDefaultChecked`) → Details
+  DisplayName (`Default Checked`) → strip spaces/underscores. When a non-exact match is used, a
+  `property_alias_matched` note is recorded (`input`,`resolved_to`,`widget`) so the caller always knows the real
+  field written. **Prefer the internal name** (see the settable_properties section) to avoid relying on aliases.
+- **Convenience setters**: if no property matches, the agent calls a single-input setter UFUNCTION `Set<Key>`. This
+  makes `CanvasPanelSlot` `Position` / `Size` / `Anchors` / `Alignment` work (setters over `LayoutData`). Box slots
+  expose `Padding`/`Size`/`HorizontalAlignment`/`VerticalAlignment` as real properties, so those set directly.
+- Unknown key (no property, alias, or `Set<Key>` setter) → `property_not_found` in `property_notes` **with a
+  `suggestions` list** (candidate `{name,display_name,type}`) + a `warning` + `manual_check_required` (never silent).
 
-Verified examples (redumped and confirmed): `TextBlock.Text`, `Visibility`, `CanvasPanelSlot` Position+Size
-(→ `LayoutData.Offsets`).
+Verified (redumped): `TextBlock.Text`, `Visibility`, `CanvasPanelSlot` Position+Size (→ `LayoutData.Offsets`),
+and on custom `WBP_Setting_CheckboxItem`: `TextName` (exact), `DefaultChecked`→`bDefaultChecked` (alias), `NopeXYZ`
+(not found → suggestions).
+
+## Widget settable_properties and property name resolution
+**Do not guess field names.** The Details panel shows a *DisplayName* (e.g. `Default Checked`), but the real
+`FProperty` name can differ (e.g. `bDefaultChecked`) — bool properties commonly carry a `b` prefix. To write
+properties reliably, first **analyze** the widget (or the target WBP) and read `settable_properties`.
+
+Every widget node in the IR (and the WBP's own class at the IR root) carries:
+```json
+"settable_properties": [
+  { "name": "bDefaultChecked", "display_name": "Default Checked",
+    "type": { "category": "bool", "sub_category": "", "sub_category_object": "", "container_type": "none" },
+    "declaring_class": "/Script/AClient.RGSettingsCheckboxItemWidget",
+    "editable": true, "blueprint_visible": true, "blueprint_read_only": false, "deprecated": false,
+    "current_value": "False", "set_supported": true, "notes": [] }
+],
+"slot_settable_properties": [ /* editable props of this widget's slot object */ ]
+```
+- **Scope**: `CPF_Edit` (Details-editable) properties across the **whole inherited chain** — the widget's own C++
+  UPROPERTYs, inherited engine props, and a custom `UserWidget`'s exposed variables. Delegates are **excluded**
+  (they are in `bindable_events`); functions are excluded; structural backrefs (`Slot`/`Slots`) are excluded.
+- **`set_supported`** is `false` (with a `notes` entry) for `readonly_or_internal` (EditConst), `transient`, or
+  `deprecated` properties.
+- **`current_value`** is the exported text of the property on the live instance (or the class default at IR root).
+
+### Recommended workflow for other AIs
+```text
+1. analyze the target WBP or custom control;
+2. read settable_properties (use `name`, not `display_name`) and slot_settable_properties;
+3. build the create/edit request with the real internal names;
+4. run create/edit;
+5. redump and verify current_value changed.
+```
+On a wrong name, read `property_notes[].suggestions` (or the redump's settable_properties) and retry with a
+`name` from the list.
 
 ## Outputs
 `create` writes to `<OutputDir>/create/<...>/`:
-- `manifest.json` (status/outputs), `create_result.json`
-- `created_ir.json` — includes `widget_tree` (see `docs/blueprint_ir_schema.md`)
+- `manifest.json` (status/outputs), `create_result.json` — both carry `property_notes[]`
+  (`property_alias_matched` / `property_not_found` with `suggestions`) for widget property resolution
+- `created_ir.json` — includes `widget_tree` with per-widget `settable_properties`/`slot_settable_properties`
+  (see `docs/blueprint_ir_schema.md`)
 - `summary.md`
 - `viz/hierarchy.dot`, `viz/hierarchy.mmd` (widget hierarchy; rasterize to PNG/SVG via the client/Graphviz)
 

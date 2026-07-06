@@ -402,3 +402,52 @@ were not captured, so downstream tooling couldn't see what the WBP needs.
 
 ### Cross-version note
 - Generated-class naming (`_C`) and `GeneratedClass` are stable; the resolver tolerates all three input forms.
+
+## P16: Widget settable_properties and property name resolution (Details name ≠ internal name)
+
+### Typical symptom
+- A widget property set silently no-ops or errors because the caller used the **Details DisplayName** instead of
+  the real `FProperty` name. Classic case: Details shows `Default Checked` but the property is `bDefaultChecked`
+  (bool `b` prefix). Callers were forced to guess field names because the IR exposed `bindable_events` but no list
+  of *settable* properties.
+
+### Affected families
+- Any widget/slot Details write in create/edit (native widgets and custom `UserWidget` exposed variables), across
+  the whole inherited chain (widget's own C++ UPROPERTYs + engine base props).
+
+### Root cause
+- The UMG Details panel labels fields with `FProperty::GetDisplayNameText()` (spaces, no `b` prefix), while
+  reflection writes need the internal `FName`. There was no discovery surface, and a name miss produced a bare
+  warning with no candidates.
+
+### Generalized fix
+- **Discovery**: `FBPWidgetGen::ListSettableProperties(Owner, Instance)` enumerates `TFieldIterator<FProperty>`
+  over the class (incl. inherited), keeping `CPF_Edit` properties and excluding delegates (they belong in
+  `bindable_events`), functions, and structural backrefs (`Slot`/`Slots`). Each entry: `name`, `display_name`,
+  `type{category,sub_category,sub_category_object,container_type}`, `declaring_class`, `editable`,
+  `blueprint_visible`, `blueprint_read_only`, `deprecated`, `current_value` (ExportText of the live value),
+  `set_supported`, `notes` (`readonly_or_internal|transient|deprecated`). Emitted per widget in `widget_tree`
+  (`settable_properties` + `slot_settable_properties`) and at the WBP root for the WBP's own class. The unified
+  analyze IR (`blueprint_ir.json`) carries these through, not just the raw dump.
+- **Resolution**: `FBPWidgetGen::SetPropertyFromJson` resolves a key by exact → case-insensitive → bool `b` prefix
+  → DisplayName → normalized (strip space/underscore), then the `Set<Key>` setter fallback. An aliased write is
+  reported as `property_alias_matched` (`input`→`resolved_to`); a miss is `property_not_found` **with
+  `suggestions`** (`{name,display_name,type}`). Both go to `manifest`/`create_result` `property_notes[]` — an alias
+  is **never silent** (the caller always learns the real field).
+
+### Recommended AI workflow
+1. `analyze` the target WBP / custom control; 2. read `settable_properties` (use `name`, not `display_name`);
+3. build the create/edit request with real names; 4. apply; 5. redump and confirm `current_value` changed.
+On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
+
+### Validation
+- BPTest: `IsEnabled:false` → alias→`bIsEnabled` (`current_value="False"`); `NopeField` → `property_not_found` + 8
+  suggestions; `Text`/`bIsEnabled` current_value read back.
+- AClient (real): analyze `WBP_Setting_CheckboxItem` → root `settable_properties` shows `TextName` (Text Name/text),
+  `ItemId` (Item Id/name), `bDefaultChecked` (Default Checked/bool) with declaring class
+  `RGSettingsCheckboxItemWidget` and correct `current_value`. Create with `TextName` (exact, applied),
+  `DefaultChecked` (alias→`bDefaultChecked`, applied `True`), `NopeXYZ` (not found + suggestions). UE 5.4.
+
+### Cross-version note
+- `CPF_Edit`/`GetDisplayNameText`/`ExportTextItem_Direct` are stable across UE versions; the `b`-prefix and
+  DisplayName aliases are heuristic conveniences — the internal `name` remains the canonical, version-safe key.

@@ -167,6 +167,34 @@ writes `selftest_summary.json`. Exit 0 = all passed. A tracked snapshot of the l
 
 ---
 
+## 8b. Widget (UMG) property edits — settable_properties and name resolution
+
+When an edit sets a **widget or slot property** (a `set_property` op on a `UWidgetBlueprint`, or a widget
+property inside a create/edit `properties` object), the property key is resolved by the shared reflection
+resolver (same as create):
+
+- **exact → case-insensitive → bool `b` prefix → Details DisplayName → strip spaces/underscores**, then a
+  `Set<Key>` setter UFUNCTION fallback.
+- An aliased write is recorded as `property_alias_matched` (`input`→`resolved_to`); a miss is
+  `property_not_found` **with a `suggestions` list** (`{name,display_name,type}`) — both in `property_notes[]`,
+  never silent.
+
+**Don't guess field names.** The Details DisplayName can differ from the real `FProperty` name, and bool
+properties often carry a `b` prefix (Details `Default Checked` → property `bDefaultChecked`). The reliable flow:
+
+```text
+1. analyze the target WBP / custom control (task_type=analyze);
+2. read each widget's settable_properties (+ slot_settable_properties) — use the internal `name`;
+3. build the edit request with real names;
+4. apply; then redump and confirm current_value changed.
+```
+
+`settable_properties` (internal name, DisplayName, type, declaring_class, editable/BP-visible/read-only,
+deprecated, `current_value`, `set_supported`, `notes`) is documented in `docs/blueprint_ir_schema.md` §10.1;
+the resolution rules and rationale are in `docs/issue_patterns.md` P16.
+
+---
+
 ## 9. Known limitations (need manual UE confirmation or future work)
 
 - `new_node` factory covers the common node families above; other node classes return a clear

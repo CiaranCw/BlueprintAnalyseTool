@@ -45,8 +45,19 @@ public:
 	/** Parent Child under Parent (Parent must be a UPanelWidget). Returns the created slot, or nullptr. */
 	static UPanelSlot* AddChild(UWidget* Parent, UWidget* Child);
 
-	/** Set a property (on a widget or a slot) from a JSON value via reflection. Returns "" on success or an error. */
-	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value);
+	/** Set a property (on a widget or a slot) from a JSON value via reflection with fuzzy name resolution
+	 *  (exact -> case-insensitive -> bool `b` prefix -> DisplayName -> strip space/underscore) then a `Set<Name>`
+	 *  setter fallback. Returns "" on success or "property_not_found". OutResolvedName = the actual property/setter
+	 *  used (differs from PropName => alias matched; caller should warn). On failure OutSuggestions is filled with
+	 *  candidate { name, display_name, type } objects. */
+	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value,
+		FString& OutResolvedName, TArray<TSharedPtr<FJsonValue>>& OutSuggestions);
+
+	/** Enumerate the editable (CPF_Edit) properties of a widget or slot class (incl. inherited) for discovery:
+	 *  [{ name, display_name, type{category,sub_category,sub_category_object,container_type}, declaring_class,
+	 *     editable, blueprint_visible, blueprint_read_only, deprecated, current_value, set_supported, notes }].
+	 *  Delegates (see bindable_events), functions, and structural backrefs (Slot/Slots) are excluded. */
+	static TArray<TSharedPtr<FJsonValue>> ListSettableProperties(UStruct* Owner, UObject* Instance);
 
 	// ---- Phase 4 (generalized, reflection-based widget event binding) ----
 
