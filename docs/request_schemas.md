@@ -121,9 +121,18 @@ supported (AnimBlueprint creation not yet). Outputs:
 
 For `blueprint_type:"Widget"` add a `widget.hierarchy` (recursive WidgetTree: `type`/`name`/`properties`/`slot`/
 `children`); Details + slot props are set by reflection (+ `Set<Key>` setter fallback for CanvasPanel Position/
-Size/Anchors/Alignment). Output adds `created_ir.json.widget_tree` + `viz/hierarchy.dot|.mmd`. Deferred
-(warn/manual): event/property binding, custom UserWidget children, UMG animation, pixel render. Full schema:
-`docs/widget_blueprint_schema.md`.
+Size/Anchors/Alignment). Output adds `created_ir.json.widget_tree` + `viz/hierarchy.dot|.mmd`.
+
+`widget.events` binds widget delegates **generically by reflection** (any BlueprintAssignable multicast delegate):
+```json
+"events": [ { "widget": "QualityComboBox", "event": "OnSelectionChanged", "handler": { "type": "bound_event", "name": "OnQualityChanged" } } ]
+```
+Each result → `widget_event_bindings` (manifest/create_result/created_ir) with `status`
+(`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`) and
+`parameters`. Idempotent (repeat = `reused`). Analyze may set `include.widget_bindable_events` to enumerate a
+WBP's bindable events (every widget in the IR also carries `bindable_events`). Deferred (warn/manual): handler
+exec-wiring to custom_event/function, property binding, custom UserWidget children insertion, UMG animation,
+pixel render. Full schema: `docs/widget_blueprint_schema.md`.
 
 ## task_type = validate  →  scripts/validate_outputs.ps1
 Static validation of prior deliverables (JSON well-formed, edge referential integrity, viz presence).

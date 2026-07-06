@@ -74,21 +74,53 @@ The created WBP opens in the UE editor; its Hierarchy panel shows the widgets; `
 mirrors the hierarchy with each widget's `class`, `is_variable`, `slot.class`, `slot.properties`, and changed
 `properties` (redump values align with the request). Blueprint assets other than the created one are not modified.
 
-## Events (Phase 4 — partial, supported)
-Bind a widget delegate (e.g. Button `OnClicked`) to a graph event. `widget.events`:
+## Events (Phase 4 — generalized, reflection-based)
+Bind ANY widget's BlueprintAssignable multicast delegate to a graph event — **no per-widget special-casing**.
+The mechanism is purely reflective: `widget instance → UClass → enumerate FMulticastDelegateProperty → match
+event name → UK2Node_ComponentBoundEvent`.
+
 ```json
-"events": [ { "widget": "PlayButton", "event": "OnClicked", "handler": { "type": "custom_event", "name": "OnPlayClicked" } } ]
+"events": [
+  { "widget": "PlayButton",     "event": "OnClicked",          "handler": { "type": "bound_event", "name": "OnPlayClicked" } },
+  { "widget": "EnableCheckBox", "event": "OnCheckStateChanged" },
+  { "widget": "QualityComboBox","event": "OnSelectionChanged" }
+]
 ```
-The agent compiles once (so the widget variable exists), then creates a `UK2Node_ComponentBoundEvent` in the
-EventGraph — the same "On Clicked (PlayButton)" event node the UMG Details "+ event" button produces (verified:
-redump shows it under `graphs[EventGraph]`). **Currently the bound-event node is created but not auto-wired to a
-named `handler`** (that wiring is a later refinement, recorded as `manual_check_required`). `is_variable` widgets
-are required (the agent sets this automatically).
+The agent compiles once (so widget variables exist), resolves the delegate (exact then case-insensitive over the
+bindable set), and creates the bound-event node — the same "On X (Widget)" event the UMG Details "+ event" button
+produces. Each result is recorded in `manifest.json`/`create_result.json` under `widget_event_bindings`
+(`widget/widget_class/event/delegate_property/node_title/node_class/graph/parameters/status/reused`), and the
+redumped nodes appear in `created_ir.json.widget_event_bindings`.
+
+Event discovery (no binding) — every widget in the IR carries `bindable_events` (name + parameters); analyze can
+request `include.widget_bindable_events` to enumerate an existing WBP's events.
+
+`status` values: `bound | reused` (idempotent — a second identical request reuses the node) | classified failures
+`widget_not_found | not_variable | property_missing | delegate_not_found | pins_incomplete | error` (all surfaced in
+`warnings` + `manual_check_required`, never silent). `delegate_not_found` also lists the widget's available events.
+
+### Verified capability matrix (UE 5.4)
+| Widget class | Event bound | Parameters (redumped) |
+|---|---|---|
+| Button | OnClicked | (none) |
+| CheckBox | OnCheckStateChanged | bIsChecked |
+| ComboBoxString | OnSelectionChanged | SelectedItem, SelectionType (`ESelectInfo`) |
+| Slider | OnValueChanged | Value |
+| EditableTextBox | OnTextChanged | Text |
+| SpinBox | OnValueChanged | InValue |
+| ScrollBox | OnUserScrolled | CurrentOffset |
+
+Also discoverable/bindable by the same reflection (not all separately verified): Button OnPressed/OnReleased/
+OnHovered/OnUnhovered, ComboBox OnOpening, Slider capture-begin/end, EditableText(Box) OnTextCommitted, SpinBox
+OnValueCommitted/OnBeginSliderMovement/OnEndSliderMovement, and **custom UserWidget** BlueprintAssignable delegates.
 
 ## Deferred (will warn / `manual_check_required`)
-- **Handler wiring** — connecting a bound event's exec to a specific custom event/function by `handler.name`.
+- **Handler exec-wiring (P2)** — for `handler.type` `custom_event`/`function`, connecting the bound event's exec to
+  a named custom event / function. The bound-event node is created; the wiring is recorded as
+  `manual_check_required`. `bound_event` (default) needs no wiring (the node is the entry).
 - **Property binding** (`widget.bindings`, e.g. Text→getter) — accepted, not applied.
-- **Custom `UserWidget` children** — resolution/insertion of project `.._C` widgets.
+- **Custom `UserWidget` children insertion** (Phase 5) — event discovery/binding on custom widgets is supported
+  where the class is loaded; adding custom widgets to the tree is Phase 5.
 - **UMG Animation** (`widget.animations`) — accepted, not applied.
 - **Pixel-accurate rendered preview** — only the hierarchy diagram is produced (headless render is out of scope).
 

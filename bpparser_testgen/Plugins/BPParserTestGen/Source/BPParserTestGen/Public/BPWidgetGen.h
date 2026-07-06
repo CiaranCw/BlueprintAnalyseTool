@@ -40,8 +40,25 @@ public:
 	/** Set a property (on a widget or a slot) from a JSON value via reflection. Returns "" on success or an error. */
 	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value);
 
-	/** Phase 4: create a bound-event node in the WBP EventGraph for <WidgetName>.<EventName>
-	 *  (e.g. PlayButton.OnClicked), like the UMG Details "+ event" button. The WBP must be compiled once
-	 *  first so the widget variable exists as a property. Returns "" on success or an error string. */
-	static FString BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName);
+	// ---- Phase 4 (generalized, reflection-based widget event binding) ----
+
+	/** All BlueprintAssignable multicast-delegate properties on a widget class (incl. inherited) = the events
+	 *  the UMG Details "+ event" button can bind. Generic (no per-widget special-casing). */
+	static TArray<FMulticastDelegateProperty*> GetBindableDelegates(UClass* WidgetClass);
+
+	/** Resolve an event by name to its bindable delegate: exact match, then case-insensitive over the
+	 *  bindable set. Returns nullptr if the class has no such bindable multicast delegate. */
+	static FMulticastDelegateProperty* FindBindableDelegate(UClass* WidgetClass, const FString& EventName);
+
+	/** Describe a delegate's parameters as a JSON array [{ name, type, sub_category_object? }]. */
+	static TArray<TSharedPtr<FJsonValue>> DescribeDelegateParams(const FMulticastDelegateProperty* Delegate);
+
+	/** Create (or reuse) a bound-event node in the WBP EventGraph for <WidgetName>.<EventName>, via reflection
+	 *  (works for ANY widget/custom UserWidget with a BlueprintAssignable multicast delegate). The WBP must be
+	 *  compiled once first (so the widget variable exists). Fills OutResult (widget/widget_class/event/
+	 *  delegate_property/node_title/node_class/graph/parameters/status/reused). Returns "" on success or a
+	 *  classified error string; OutResult.status is one of bound|reused|widget_not_found|not_variable|
+	 *  property_missing|delegate_not_found|pins_incomplete|error. */
+	static FString BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName,
+		TSharedPtr<FJsonObject>& OutResult);
 };

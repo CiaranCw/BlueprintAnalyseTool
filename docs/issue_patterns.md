@@ -336,3 +336,36 @@ returned `status='success'` — a "false success" (same class as warmup "build O
 
 ### Regression assets
 - Any Blueprint with non-ASCII node comments; keep such a case in the target suite for encoding regression.
+
+---
+
+## P14: Widget event binding must be reflection-driven, not per-widget special-cased
+
+### Typical symptom
+- Only `Button.OnClicked` binds; other widgets/events (CheckBox `OnCheckStateChanged`, ComboBox
+  `OnSelectionChanged`, Slider/SpinBox `OnValueChanged`, EditableTextBox `OnTextChanged`, ScrollBox
+  `OnUserScrolled`, custom UserWidget delegates) are unsupported or need new `if widget==X` code.
+
+### Affected families
+- All UMG widgets exposing BlueprintAssignable multicast delegates, incl. project custom `UserWidget`s.
+
+### Root cause
+Special-casing widget/event pairs does not scale and misses custom widgets. The binding must be generic.
+
+### Generalized fix
+- Discover events by reflection: enumerate `FMulticastDelegateProperty` with `CPF_BlueprintAssignable` on the
+  widget `UClass` (`FBPWidgetGen::GetBindableDelegates`). Resolve the requested event exact-then-case-insensitive
+  (`FindBindableDelegate`) — no hardcoded names. Bind via `UK2Node_ComponentBoundEvent::InitializeComponentBoundEventParams`
+  with the widget's `FObjectProperty` (on the skeleton class, so compile once first) + the delegate property.
+- Idempotent via `FKismetEditorUtilities::FindBoundEventForComponent`. Parameters come from the delegate's
+  `SignatureFunction`. Emit per-widget `bindable_events` + top-level `widget_event_bindings` in the IR.
+- Classify every failure (`widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete`) into
+  warnings + manual_check_required; `delegate_not_found` lists the widget's available events.
+
+### Validation
+- `WBP_Agent_EventMatrix` (7 widget types) — each event → a `UK2Node_ComponentBoundEvent` with correct params in
+  redump; duplicate request → `reused`; bogus event → `delegate_not_found` + available list. Verified on UE 5.4.
+
+### Cross-version note
+- `UK2Node_ComponentBoundEvent`, `InitializeComponentBoundEventParams`, and `FindBoundEventForComponent` are the
+  version-sensitive touch points; delegate reflection is stable. Re-verify these on engine upgrades.

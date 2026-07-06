@@ -25,6 +25,8 @@
 #include "Components/Widget.h"
 #include "Components/PanelWidget.h"
 #include "Components/PanelSlot.h"
+#include "BPWidgetGen.h"
+#include "K2Node_ComponentBoundEvent.h"
 
 namespace
 {
@@ -210,6 +212,19 @@ namespace
 		}
 		else { O->SetField(TEXT("slot"), MakeShared<FJsonValueNull>()); }
 		O->SetObjectField(TEXT("properties"), DumpChangedEditProps(W));
+		// bindable events (reflection: BlueprintAssignable multicast delegates on the widget class)
+		{
+			TArray<TSharedPtr<FJsonValue>> Be;
+			for (FMulticastDelegateProperty* D : FBPWidgetGen::GetBindableDelegates(W->GetClass()))
+			{
+				TSharedPtr<FJsonObject> E = MakeShared<FJsonObject>();
+				E->SetStringField(TEXT("event_name"), D->GetName());
+				E->SetStringField(TEXT("delegate_property"), D->GetName());
+				E->SetArrayField(TEXT("parameters"), FBPWidgetGen::DescribeDelegateParams(D));
+				Be.Add(MakeShared<FJsonValueObject>(E));
+			}
+			O->SetArrayField(TEXT("bindable_events"), Be);
+		}
 		TArray<TSharedPtr<FJsonValue>> Kids;
 		if (UPanelWidget* P = Cast<UPanelWidget>(W))
 		{
@@ -231,6 +246,44 @@ namespace
 		}
 		else { O->SetField(TEXT("root"), MakeShared<FJsonValueNull>()); }
 		return O;
+	}
+
+	// Redump the bound widget-event nodes (UK2Node_ComponentBoundEvent) across the WBP graphs.
+	TArray<TSharedPtr<FJsonValue>> DumpWidgetEventBindings(UWidgetBlueprint* WBP)
+	{
+		TArray<TSharedPtr<FJsonValue>> Out;
+		if (!WBP) { return Out; }
+		TArray<UEdGraph*> Graphs;
+		for (UEdGraph* G : WBP->UbergraphPages) { if (G) { Graphs.Add(G); } }
+		for (UEdGraph* G : WBP->FunctionGraphs) { if (G) { Graphs.Add(G); } }
+		for (UEdGraph* G : Graphs)
+		{
+			for (UEdGraphNode* N : G->Nodes)
+			{
+				UK2Node_ComponentBoundEvent* BE = Cast<UK2Node_ComponentBoundEvent>(N);
+				if (!BE) { continue; }
+				TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+				O->SetStringField(TEXT("widget"), BE->ComponentPropertyName.ToString());
+				O->SetStringField(TEXT("event"), BE->DelegatePropertyName.ToString());
+				O->SetStringField(TEXT("delegate_property"), BE->DelegatePropertyName.ToString());
+				O->SetStringField(TEXT("node_class"), BE->GetClass()->GetName());
+				O->SetStringField(TEXT("node_title"), BE->GetNodeTitle(ENodeTitleType::ListView).ToString());
+				O->SetStringField(TEXT("graph"), G->GetName());
+				TArray<TSharedPtr<FJsonValue>> Params;
+				for (UEdGraphPin* Pin : BE->Pins)
+				{
+					if (!Pin || Pin->Direction != EGPD_Output) { continue; }
+					if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { continue; }
+					if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Delegate) { continue; }
+					if (Pin->PinName == TEXT("OutputDelegate")) { continue; }
+					Params.Add(MakeShared<FJsonValueString>(Pin->PinName.ToString()));
+				}
+				O->SetArrayField(TEXT("parameters"), Params);
+				O->SetStringField(TEXT("status"), TEXT("bound"));
+				Out.Add(MakeShared<FJsonValueObject>(O));
+			}
+		}
+		return Out;
 	}
 }
 
@@ -305,10 +358,12 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 	}
 	Root->SetArrayField(TEXT("interfaces"), Ifaces);
 
-	// Widget Blueprint: also emit the visual WidgetTree (hierarchy / slots / customized Details).
+	// Widget Blueprint: also emit the visual WidgetTree (hierarchy / slots / customized Details) and the
+	// bound widget-event nodes.
 	if (UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP))
 	{
 		Root->SetObjectField(TEXT("widget_tree"), DumpWidgetTree(WBP));
+		Root->SetArrayField(TEXT("widget_event_bindings"), DumpWidgetEventBindings(WBP));
 	}
 
 	return Root;

@@ -253,3 +253,23 @@ UE 来源：`UBlueprint::SimpleConstructionScript->GetRootNodes()` 递归。每�
 - 结构性反向引用（`Slot` / `Slots`）不进入 `properties`（槽已作为独立 `slot` 节点，子级即 `children`）。
 - Canvas 槽的 Position/Size/Anchors/Alignment 落在 `LayoutData`（通过 setter 写入）；Box 槽的
   `Padding`/`Size`/对齐为直接属性。
+
+每个 widget 节点还含 **`bindable_events`**（反射枚举控件类上 BlueprintAssignable 的多播委托 = UMG “+ event” 可绑定项）：
+```json
+"bindable_events": [ { "event_name": "OnClicked", "delegate_property": "OnClicked", "parameters": [] },
+                     { "event_name": "OnCheckStateChanged", "delegate_property": "OnCheckStateChanged",
+                       "parameters": [ { "name": "bIsChecked", "type": "bool" } ] } ]
+```
+
+### 10.1 widget_event_bindings（Widget Blueprint 根级）
+已在图中创建的绑定事件节点（`UK2Node_ComponentBoundEvent`）的 redump（UE 来源：遍历 `UbergraphPages`/`FunctionGraphs`）：
+```json
+"widget_event_bindings": [
+  { "widget": "QualityComboBox", "event": "OnSelectionChanged", "delegate_property": "OnSelectionChanged",
+    "node_class": "K2Node_ComponentBoundEvent", "node_title": "On Selection Changed (QualityComboBox)",
+    "graph": "EventGraph", "parameters": [ "SelectedItem", "SelectionType" ], "status": "bound" }
+]
+```
+create 侧另在 `manifest.json`/`create_result.json` 写入 `widget_event_bindings`（含每个请求事件的
+`status`：`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`
+及 `handler_type`/`handler_name`）。两者可交叉核对（请求结果 vs 图内实际节点）。

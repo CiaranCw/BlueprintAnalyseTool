@@ -46,10 +46,13 @@ viz/created.dot
 - Function `body` graphs and component `attach_to` hierarchy are recorded as `manual_check_required`
   (signatures/flat components are created; deep body wiring is not auto-generated in this version).
 - **Widget Blueprint (UMG)**: supported (Phase 1-4) — WidgetTree hierarchy, slots, and Details via reflection;
-  `created_ir.json` gains `widget_tree` and `viz/hierarchy.dot|.mmd` is produced. **Widget events** (`widget.events`,
-  e.g. Button `OnClicked`) create the bound-event node in the EventGraph (handler-wiring to a named event is a
-  later refinement). Deferred (warn/manual): property binding (`widget.bindings`), custom `UserWidget` children,
-  UMG animation, pixel-accurate render. See `docs/widget_blueprint_schema.md`.
+  `created_ir.json` gains `widget_tree` and `viz/hierarchy.dot|.mmd` is produced. **Widget events** (`widget.events`)
+  are bound **generically by reflection** (any BlueprintAssignable multicast delegate on any widget — Button/CheckBox/
+  ComboBox/Slider/EditableTextBox/SpinBox/ScrollBox/custom UserWidget), creating a `UK2Node_ComponentBoundEvent` per
+  event; results (incl. parameters, idempotent `reused`, and classified failures) go to `widget_event_bindings` in
+  manifest/create_result, and the redumped nodes + per-widget `bindable_events` appear in `created_ir.json`. Deferred
+  (warn/manual): handler exec-wiring to a named custom_event/function, property binding (`widget.bindings`), custom
+  `UserWidget` children insertion, UMG animation, pixel-accurate render. See `docs/widget_blueprint_schema.md`.
 - AnimBlueprint creation → clear `failed` (needs its factory); use Actor/Component/Interface/Widget.
 - Unsupported `node_type` → warning + `manual_check_required`, never silently dropped.
 - After creation, open the asset in the editor to visually confirm.

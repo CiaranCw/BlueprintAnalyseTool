@@ -13,6 +13,7 @@
 #include "BPGen.h"                           // FBPGen::GetEventGraph
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "JsonObjectConverter.h"
+#include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectGlobals.h"
@@ -126,27 +127,120 @@ FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropNa
 	return FString::Printf(TEXT("no property or 'Set%s' setter on %s"), *PropName, *Target->GetClass()->GetName());
 }
 
-FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName)
+namespace
 {
-	if (!WBP) { return TEXT("null WBP"); }
-	UEdGraph* EventGraph = FBPGen::GetEventGraph(WBP);
-	if (!EventGraph) { return TEXT("no EventGraph"); }
+	// Map a delegate/function parameter FProperty to { name, type, sub_category_object? }.
+	TSharedPtr<FJsonObject> ParamTypeJson(FProperty* P)
+	{
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		O->SetStringField(TEXT("name"), P->GetName());
+		FString Type = TEXT("unknown"); FString SubObj;
+		if (CastField<FBoolProperty>(P))            { Type = TEXT("bool"); }
+		else if (CastField<FIntProperty>(P))        { Type = TEXT("int"); }
+		else if (CastField<FInt64Property>(P))      { Type = TEXT("int64"); }
+		else if (CastField<FFloatProperty>(P))      { Type = TEXT("float"); }
+		else if (CastField<FDoubleProperty>(P))     { Type = TEXT("double"); }
+		else if (CastField<FStrProperty>(P))        { Type = TEXT("string"); }
+		else if (CastField<FNameProperty>(P))       { Type = TEXT("name"); }
+		else if (CastField<FTextProperty>(P))       { Type = TEXT("text"); }
+		else if (const FEnumProperty* EP = CastField<FEnumProperty>(P)) { Type = TEXT("enum"); if (EP->GetEnum()) { SubObj = EP->GetEnum()->GetPathName(); } }
+		else if (const FByteProperty* BP = CastField<FByteProperty>(P)) { if (BP->Enum) { Type = TEXT("enum"); SubObj = BP->Enum->GetPathName(); } else { Type = TEXT("byte"); } }
+		else if (const FStructProperty* SP = CastField<FStructProperty>(P)) { Type = TEXT("struct"); if (SP->Struct) { SubObj = SP->Struct->GetPathName(); } }
+		else if (const FObjectPropertyBase* OP = CastField<FObjectPropertyBase>(P)) { Type = TEXT("object"); if (OP->PropertyClass) { SubObj = OP->PropertyClass->GetPathName(); } }
+		O->SetStringField(TEXT("type"), Type);
+		if (!SubObj.IsEmpty()) { O->SetStringField(TEXT("sub_category_object"), SubObj); }
+		return O;
+	}
+}
 
-	// The widget variable becomes a property on the (skeleton) generated class after a compile.
+TArray<FMulticastDelegateProperty*> FBPWidgetGen::GetBindableDelegates(UClass* WidgetClass)
+{
+	TArray<FMulticastDelegateProperty*> Out;
+	if (!WidgetClass) { return Out; }
+	for (TFieldIterator<FMulticastDelegateProperty> It(WidgetClass); It; ++It)
+	{
+		FMulticastDelegateProperty* D = *It;
+		if (D->HasAnyPropertyFlags(CPF_BlueprintAssignable)) { Out.Add(D); }   // = the "+ event" delegates
+	}
+	return Out;
+}
+
+FMulticastDelegateProperty* FBPWidgetGen::FindBindableDelegate(UClass* WidgetClass, const FString& EventName)
+{
+	if (!WidgetClass) { return nullptr; }
+	// exact
+	if (FMulticastDelegateProperty* D = FindFProperty<FMulticastDelegateProperty>(WidgetClass, FName(*EventName)))
+	{
+		if (D->HasAnyPropertyFlags(CPF_BlueprintAssignable)) { return D; }
+	}
+	// case-insensitive over the bindable set (handles display-vs-internal name drift without hardcoding)
+	for (FMulticastDelegateProperty* D : GetBindableDelegates(WidgetClass))
+	{
+		if (D->GetName().Equals(EventName, ESearchCase::IgnoreCase)) { return D; }
+	}
+	return nullptr;
+}
+
+TArray<TSharedPtr<FJsonValue>> FBPWidgetGen::DescribeDelegateParams(const FMulticastDelegateProperty* Delegate)
+{
+	TArray<TSharedPtr<FJsonValue>> Out;
+	if (!Delegate || !Delegate->SignatureFunction) { return Out; }
+	for (TFieldIterator<FProperty> It(Delegate->SignatureFunction); It && (It->PropertyFlags & CPF_Parm); ++It)
+	{
+		if (It->PropertyFlags & CPF_ReturnParm) { continue; }
+		Out.Add(MakeShared<FJsonValueObject>(ParamTypeJson(*It)));
+	}
+	return Out;
+}
+
+FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName,
+	TSharedPtr<FJsonObject>& OutResult)
+{
+	if (!OutResult.IsValid()) { OutResult = MakeShared<FJsonObject>(); }
+	OutResult->SetStringField(TEXT("widget"), WidgetName);
+	OutResult->SetStringField(TEXT("event"), EventName);
+	auto Fail = [&](const FString& Status, const FString& Msg) -> FString { OutResult->SetStringField(TEXT("status"), Status); return Msg; };
+
+	if (!WBP) { return Fail(TEXT("error"), TEXT("null WBP")); }
+	UEdGraph* EventGraph = FBPGen::GetEventGraph(WBP);
+	if (!EventGraph) { return Fail(TEXT("error"), TEXT("no EventGraph")); }
+
 	UClass* OwnerClass = WBP->SkeletonGeneratedClass ? WBP->SkeletonGeneratedClass.Get()
 		: (WBP->GeneratedClass ? WBP->GeneratedClass.Get() : nullptr);
-	if (!OwnerClass) { return TEXT("no generated class (compile the WBP first)"); }
+	if (!OwnerClass) { return Fail(TEXT("property_missing"), TEXT("no generated class (compile the WBP first)")); }
 
 	FObjectProperty* WidgetProp = FindFProperty<FObjectProperty>(OwnerClass, FName(*WidgetName));
-	if (!WidgetProp) { return FString::Printf(TEXT("widget variable '%s' not found on %s (compile first / is_variable?)"), *WidgetName, *OwnerClass->GetName()); }
+	if (!WidgetProp)
+	{
+		// classify: not in tree, vs in tree but not a variable, vs property not yet generated
+		UWidget* W = (WBP->WidgetTree) ? WBP->WidgetTree->FindWidget(FName(*WidgetName)) : nullptr;
+		if (!W)                    { return Fail(TEXT("widget_not_found"), FString::Printf(TEXT("widget '%s' not found in WidgetTree"), *WidgetName)); }
+		if (!W->bIsVariable)       { return Fail(TEXT("not_variable"), FString::Printf(TEXT("widget '%s' is not a variable; cannot bind events"), *WidgetName)); }
+		return Fail(TEXT("property_missing"), FString::Printf(TEXT("widget variable '%s' not found on %s (compile first)"), *WidgetName, *OwnerClass->GetName()));
+	}
 
 	UClass* WidgetClass = WidgetProp->PropertyClass;
-	FMulticastDelegateProperty* DelProp = WidgetClass ? FindFProperty<FMulticastDelegateProperty>(WidgetClass, FName(*EventName)) : nullptr;
-	if (!DelProp) { return FString::Printf(TEXT("delegate '%s' not found on widget class %s"), *EventName, WidgetClass ? *WidgetClass->GetName() : TEXT("<null>")); }
+	OutResult->SetStringField(TEXT("widget_class"), WidgetClass ? WidgetClass->GetPathName() : TEXT(""));
 
-	// Already bound? (idempotent)
-	if (FKismetEditorUtilities::FindBoundEventForComponent(WBP, DelProp->GetFName(), WidgetProp->GetFName()))
+	FMulticastDelegateProperty* DelProp = FindBindableDelegate(WidgetClass, EventName);
+	if (!DelProp)
 	{
+		FString Avail;
+		for (FMulticastDelegateProperty* D : GetBindableDelegates(WidgetClass)) { Avail += (Avail.IsEmpty() ? TEXT("") : TEXT(", ")) + D->GetName(); }
+		return Fail(TEXT("delegate_not_found"), FString::Printf(TEXT("event '%s' is not a bindable multicast delegate on %s; available: [%s]"),
+			*EventName, WidgetClass ? *WidgetClass->GetName() : TEXT("<null>"), *Avail));
+	}
+	OutResult->SetStringField(TEXT("delegate_property"), DelProp->GetName());
+	OutResult->SetArrayField(TEXT("parameters"), DescribeDelegateParams(DelProp));
+
+	// Idempotent: reuse an existing bound-event node for this widget+delegate.
+	if (const UK2Node_ComponentBoundEvent* Existing = FKismetEditorUtilities::FindBoundEventForComponent(WBP, DelProp->GetFName(), WidgetProp->GetFName()))
+	{
+		OutResult->SetStringField(TEXT("node_class"), TEXT("K2Node_ComponentBoundEvent"));
+		OutResult->SetStringField(TEXT("node_title"), Existing->GetNodeTitle(ENodeTitleType::ListView).ToString());
+		OutResult->SetStringField(TEXT("graph"), Existing->GetGraph() ? Existing->GetGraph()->GetName() : TEXT(""));
+		OutResult->SetBoolField(TEXT("reused"), true);
+		OutResult->SetStringField(TEXT("status"), TEXT("reused"));
 		return FString();
 	}
 
@@ -155,11 +249,20 @@ FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& Widg
 	Node->CreateNewGuid();
 	Node->PostPlacedNewNode();
 	Node->AllocateDefaultPins();
-	// place below any existing nodes to avoid overlap
 	int32 MaxY = 0; for (UEdGraphNode* N : EventGraph->Nodes) { if (N) { MaxY = FMath::Max(MaxY, N->NodePosY + 160); } }
 	Node->NodePosX = 0; Node->NodePosY = MaxY;
 	EventGraph->AddNode(Node, /*bFromUI*/ false, /*bSelectNewNode*/ false);
 
+	if (Node->Pins.Num() == 0)
+	{
+		return Fail(TEXT("pins_incomplete"), FString::Printf(TEXT("bound-event node for %s.%s created but has no pins"), *WidgetName, *EventName));
+	}
+
+	OutResult->SetStringField(TEXT("node_class"), TEXT("K2Node_ComponentBoundEvent"));
+	OutResult->SetStringField(TEXT("node_title"), Node->GetNodeTitle(ENodeTitleType::ListView).ToString());
+	OutResult->SetStringField(TEXT("graph"), EventGraph->GetName());
+	OutResult->SetBoolField(TEXT("reused"), false);
+	OutResult->SetStringField(TEXT("status"), TEXT("bound"));
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
 	return FString();
 }

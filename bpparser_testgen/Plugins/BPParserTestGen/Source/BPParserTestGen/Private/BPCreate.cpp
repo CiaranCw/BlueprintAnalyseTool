@@ -93,6 +93,7 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 	auto Log=[](const FString& m){ UE_LOG(LogBPParserTestGen,Display,TEXT("BPCreate: %s"),*m); };
 	TArray<FString> Warn, Err, Manual;
 	bool bWidgetAsset=false;
+	TArray<TSharedPtr<FJsonValue>> EventBindings;   // widget event-binding results (Phase 4)
 
 	FString Text;
 	if(!FFileHelper::LoadFileToString(Text,*SpecFile)){ Log(TEXT("cannot read spec file")); return 30; }
@@ -137,12 +138,14 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		if(bWidgetAsset){ Out->SetStringField(TEXT("hierarchy_dot"),TEXT("viz/hierarchy.dot")); Out->SetStringField(TEXT("hierarchy_mmd"),TEXT("viz/hierarchy.mmd")); }
 		M->SetObjectField(TEXT("outputs"),Out);
 		if(BP){ M->SetStringField(TEXT("created_asset"),BP->GetPathName()); }
+		if(bWidgetAsset){ M->SetArrayField(TEXT("widget_event_bindings"),EventBindings); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("manifest.json")),M);
 
 		TSharedRef<FJsonObject> Res=MakeShared<FJsonObject>();
 		Res->SetStringField(TEXT("status"),Status); Res->SetStringField(TEXT("asset_path"),AssetPath);
 		Res->SetStringField(TEXT("overwrite_policy"),Overwrite);
 		Res->SetArrayField(TEXT("warnings"),W); Res->SetArrayField(TEXT("errors"),E);
+		if(bWidgetAsset){ Res->SetArrayField(TEXT("widget_event_bindings"),EventBindings); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("create_result.json")),Res);
 		Log(FString::Printf(TEXT("status=%s -> %s"),*Status,*OutDir));
 		return Code;
@@ -207,7 +210,7 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 			}
 			else { Manual.Add(TEXT("widget: no hierarchy provided; created an empty WidgetTree.")); }
 
-			// Phase 4: bind widget events (e.g. Button OnClicked). Needs widget variables to exist -> compile once.
+			// Phase 4 (generalized): bind widget events by reflection. Needs widget variables -> compile once.
 			if(const TArray<TSharedPtr<FJsonValue>>* Events = JArr(*WObj,TEXT("events")))
 			{
 				FBPGen::CompileBlueprint(WBP);
@@ -215,9 +218,22 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 				{
 					const TSharedPtr<FJsonObject> eo=ev->AsObject(); if(!eo) continue;
 					const FString wn=JStr(eo,TEXT("widget")); const FString en=JStr(eo,TEXT("event"),TEXT("OnClicked"));
-					const FString e=FBPWidgetGen::BindWidgetEvent(WBP, wn, en);
-					if(!e.IsEmpty()){ Warn.Add(FString::Printf(TEXT("event bind %s.%s: %s"),*wn,*en,*e)); }
-					else if(const TSharedPtr<FJsonObject>* h=JObj(eo,TEXT("handler"))){ Manual.Add(FString::Printf(TEXT("event %s.%s: bound-event node created; wiring to handler '%s' is a later refinement."),*wn,*en,*JStr(*h,TEXT("name")))); }
+					TSharedPtr<FJsonObject> res;
+					const FString e=FBPWidgetGen::BindWidgetEvent(WBP, wn, en, res);
+					// record requested handler (exec-wiring to custom_event/function is P2 / deferred)
+					if(const TSharedPtr<FJsonObject>* h=JObj(eo,TEXT("handler")))
+					{
+						const FString ht=JStr(*h,TEXT("type"),TEXT("bound_event")); const FString hn=JStr(*h,TEXT("name"));
+						res->SetStringField(TEXT("handler_type"),ht); res->SetStringField(TEXT("handler_name"),hn);
+						if(e.IsEmpty() && ht!=TEXT("bound_event")) { Manual.Add(FString::Printf(TEXT("event %s.%s: bound-event node created; exec-wiring to %s '%s' is deferred (P2)."),*wn,*en,*ht,*hn)); }
+					}
+					EventBindings.Add(MakeShared<FJsonValueObject>(res));
+					if(!e.IsEmpty())
+					{
+						const FString st=JStr(res,TEXT("status"),TEXT("error"));
+						Warn.Add(FString::Printf(TEXT("event bind %s.%s [%s]: %s"),*wn,*en,*st,*e));
+						Manual.Add(FString::Printf(TEXT("event %s.%s not bound (%s): %s"),*wn,*en,*st,*e));
+					}
 				}
 			}
 		}
