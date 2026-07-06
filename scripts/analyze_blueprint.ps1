@@ -98,6 +98,14 @@ function Write-Utf8NoBom([string]$path,[string]$text){
   [IO.File]::WriteAllText($path, [string]$text, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+# Read JSON as UTF-8 regardless of the PS console codepage. `Get-Content -Raw` uses the ANSI codepage on
+# Windows PowerShell 5.1 (e.g. GB2312/GBK), which corrupts UTF-8 multibyte content (e.g. Chinese node
+# comments) and makes ConvertFrom-Json throw. ReadAllText with UTF8Encoding decodes correctly and also
+# strips a UTF-8 BOM if present. Throws on invalid JSON (callers must treat that as a real failure).
+function Read-JsonUtf8([string]$path){
+  return ([System.IO.File]::ReadAllText($path, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json)
+}
+
 # --------------------------------------------------- output (common layer) ----
 # Builds the unified deliverables (manifest/summary/score/viz/logs) from whatever IR we have.
 function Write-Outputs {
@@ -306,7 +314,8 @@ function Run-Python {
   Info "python-partial: launching $cmdExe (this loads the target project; may take a while)..."
   & $cmdExe "$ProjectUProject" -run=pythonscript -script="$py" -unattended -nopause -nosplash -nullrhi -stdout *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\python_run.txt')
   if (-not (Test-Path $raw)) { [void]$err.Add("python-partial: no output produced (see logs/python_run.txt)"); return $null }
-  $ir = Get-Content $raw -Raw | ConvertFrom-Json
+  try { $ir = Read-JsonUtf8 $raw } catch { [void]$err.Add("python-partial: failed to parse output '$raw' (encoding/JSON): $($_.Exception.Message)"); return $null }
+  if (-not $ir) { [void]$err.Add("python-partial: parsed empty output (see logs/python_run.txt)"); return $null }
   foreach($w in @($ir.warnings)){ [void]$warn.Add("python: $w") }
   foreach($e in @($ir.errors)){ [void]$err.Add("python: $e") }
   return @{ ir=$ir; status='partial' }
@@ -334,7 +343,10 @@ function Run-Native {
   $short = ($pkgPath -replace '.*/','')
   $irFile = Join-Path $rawDir "$short.ir.json"
   if (-not (Test-Path $irFile)) { [void]$err.Add("native-full: dumper produced no IR (see logs/native_run.txt)"); return $null }
-  $dump = Get-Content $irFile -Raw | ConvertFrom-Json
+  # Read the dumper IR as UTF-8 and FAIL FOR REAL on any problem (do not emit a null-shell "success").
+  try { $dump = Read-JsonUtf8 $irFile }
+  catch { [void]$err.Add("native-full: failed to parse dumper IR '$irFile' (encoding/JSON): $($_.Exception.Message)"); return $null }
+  if (-not $dump -or -not $dump.blueprint_class) { [void]$err.Add("native-full: dumper IR parsed empty/invalid (missing blueprint_class); refusing to write a null IR - see logs/native_run.txt"); return $null }
   # adapt bpat-ir-dump -> unified IR shape
   $ir = [ordered]@{
     schema_version='1.0'; mode='native_full'; partial=$false

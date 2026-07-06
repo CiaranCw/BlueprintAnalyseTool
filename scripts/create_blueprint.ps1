@@ -20,7 +20,8 @@ $ErrorActionPreference='Stop'
 function Fail($m,$c){ Write-Error $m; exit $c }
 if (-not (Test-Path $ProjectUProject)) { Fail "Project not found: $ProjectUProject" 30 }
 if (-not (Test-Path $SpecFile)) { Fail "Spec not found: $SpecFile" 30 }
-try { Get-Content $SpecFile -Raw | ConvertFrom-Json | Out-Null } catch { Fail "Spec is not valid JSON: $_" 30 }
+# Read as UTF-8 (PS 5.1 Get-Content uses the ANSI codepage and corrupts UTF-8, e.g. Chinese in a create spec).
+try { [System.IO.File]::ReadAllText($SpecFile, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json | Out-Null } catch { Fail "Spec is not valid JSON/UTF-8: $_" 30 }
 $ProjectDir = Split-Path $ProjectUProject -Parent
 
 if ([string]::IsNullOrWhiteSpace($UERoot)) {

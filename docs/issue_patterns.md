@@ -299,3 +299,40 @@ which on multi-exec nodes is a case/loop-body pin, not the continuation. Also: a
 
 ### Generalized fix
 - Prefer public UPROPERTY assignment over non-exported methods for MinimalAPI K2 nodes.
+
+---
+
+## P13: Reading UTF-8 JSON on a non-UTF-8 console (input-side encoding) + false success
+
+### Typical symptom
+- `analyze` reports `status=success`/exit 0 but `blueprint_ir.json` collapses from ~MB to ~1.7 KB, all
+  fields `null` (`asset_type/parent_class/graphs` null, `graphs:[null]`). The raw dumper output under
+  `native_raw/*.ir.json` is valid (Python parses it fine). Triggered by a Blueprint whose node comments
+  contain non-ASCII text (e.g. Chinese).
+
+### Affected families
+- Any PowerShell that reads UE/user-produced JSON with `Get-Content -Raw | ConvertFrom-Json`:
+  analyze (native + python IR), compare_ir, validate_outputs, atomic_edit_selftest, and request/manifest
+  readers (blueprint_agent, editor_live_client, edit/create request validation).
+
+### Root cause
+Windows PowerShell 5.1 `Get-Content` uses the ANSI codepage (e.g. GB2312/GBK, `[Console]::OutputEncoding`),
+which mis-decodes UTF-8 multibyte sequences. `ConvertFrom-Json` then throws at the first non-ASCII byte
+(reproduced at byte 2255 = a Chinese comment). The exception was swallowed: `$dump` became `$null`,
+downstream `$dump.graphs` etc. resolved to `null`, a null-shell IR was written, yet the function still
+returned `status='success'` — a "false success" (same class as warmup "build OK but no DLL").
+
+### Generalized fix
+- Read JSON via `[System.IO.File]::ReadAllText($p, (New-Object System.Text.UTF8Encoding($false)))` (decodes
+  UTF-8 correctly, strips a BOM if present) — mirror of the output-side "UTF-8 without BOM" rule.
+- Make failure real: wrap the read in try/catch; on parse failure add an error and `return $null` so the
+  mode falls back / the run is `failed`. In native-full also reject a parsed-but-empty dump (missing
+  `blueprint_class`) instead of emitting a null IR.
+
+### Validation
+- Repro on a GB2312 console: old `Get-Content` read throws on Chinese content; `ReadAllText(UTF8)` parses
+  (204 nodes intact). End-to-end native_full re-run of `WBP_Settings_Graphics` (has Chinese comments):
+  `blueprint_ir.json` = 1389 KB, `graphs=8 nodes=204 edges=266`, `status=success`, `{`-first (no BOM).
+
+### Regression assets
+- Any Blueprint with non-ASCII node comments; keep such a case in the target suite for encoding regression.

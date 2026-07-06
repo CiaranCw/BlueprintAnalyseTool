@@ -36,11 +36,13 @@ param(
 $ErrorActionPreference='Stop'
 function Fail($m,$c){ Write-Error $m; exit $c }
 function San([string]$s){ return ($s -replace '[/\\.:]','_').Trim('_') }
+# Read JSON as UTF-8 (PS 5.1 Get-Content uses the ANSI codepage and corrupts UTF-8, e.g. Chinese in a request).
+function Read-JsonUtf8([string]$p){ return ([System.IO.File]::ReadAllText($p, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json) }
 
 # ---- resolve request (from file OR synthesized from -Task/-AssetPaths) ------------------
 if ($RequestJson) {
   if (-not (Test-Path $RequestJson)) { Fail "Request not found: $RequestJson" 30 }
-  try { $req = Get-Content $RequestJson -Raw | ConvertFrom-Json } catch { Fail "request.json is not valid JSON: $_" 30 }
+  try { $req = Read-JsonUtf8 $RequestJson } catch { Fail "request.json is not valid JSON/UTF-8: $_" 30 }
 } else {
   if (-not $Task) { Fail "Provide -RequestJson OR -Task." 30 }
   if (-not $ProjectUProject) { Fail "Provide -ProjectUProject when using -Task without -RequestJson." 30 }

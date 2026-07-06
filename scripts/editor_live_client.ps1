@@ -41,6 +41,8 @@ function Write-Utf8NoBom([string]$path,[string]$text){
   $dir = Split-Path $path -Parent; if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
   [IO.File]::WriteAllText($path, [string]$text, (New-Object System.Text.UTF8Encoding($false)))
 }
+# Read JSON as UTF-8 (PS 5.1 Get-Content uses the ANSI codepage and corrupts UTF-8, e.g. Chinese content).
+function Read-JsonUtf8([string]$p){ return ([System.IO.File]::ReadAllText($p, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json) }
 function Emit($obj,[int]$code){ $obj | Write-Output; exit $code }
 
 if (-not (Test-Path $ProjectUProject)) {
@@ -55,7 +57,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) { $OutputDir = Join-Path $ProjectD
 # ---- build the request payload -------------------------------------------------
 $reqId = "req_" + (Get-Date -Format 'yyyyMMdd_HHmmss_fff') + "_" + ([guid]::NewGuid().ToString('N').Substring(0,6))
 if ($RequestJson -and (Test-Path $RequestJson)) {
-  $req = Get-Content $RequestJson -Raw | ConvertFrom-Json
+  $req = Read-JsonUtf8 $RequestJson
   if (-not $req.request_id) { $req | Add-Member -NotePropertyName request_id -NotePropertyValue $reqId -Force } else { $reqId = "$($req.request_id)" }
   if (-not $req.mode) { $req | Add-Member -NotePropertyName mode -NotePropertyValue 'editor_live' -Force }
 } elseif ($RequestObject) {
@@ -111,7 +113,7 @@ if (-not $marker) {
 }
 
 # ---- read marker + manifest ----------------------------------------------------
-$markerObj = try { Get-Content $marker -Raw | ConvertFrom-Json } catch { $null }
+$markerObj = try { Read-JsonUtf8 $marker } catch { $null }
 $manifestPath = if ($markerObj -and $markerObj.manifest) { "$($markerObj.manifest)" } else { "" }
 $reportDir = if ($manifestPath) { Split-Path $manifestPath -Parent } else { "" }
 $exit = if ($markerObj -and ($null -ne $markerObj.exit_code)) { [int]$markerObj.exit_code } else { if($ok){0}else{20} }
@@ -127,7 +129,7 @@ if ($ok -and (-not $NoRenderPreview) -and $manifestPath -and (Test-Path $manifes
     } catch {}
     if (Test-Path (Join-Path $reportDir 'viz\blueprint.png')) {
       try {
-        $mf = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $mf = Read-JsonUtf8 $manifestPath
         if ($mf.outputs) {
           $mf.outputs.png = 'viz/blueprint.png'
           if (Test-Path (Join-Path $reportDir 'viz\blueprint.svg')) { $mf.outputs.svg = 'viz/blueprint.svg' }

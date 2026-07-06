@@ -21,8 +21,10 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $ExpectedJson)) { Write-Error "Expected not found: $ExpectedJson"; exit 30 }
 if (-not (Test-Path $ActualJson))   { Write-Error "Actual not found: $ActualJson"; exit 30 }
 
-$exp = Get-Content $ExpectedJson -Raw | ConvertFrom-Json
-$act = Get-Content $ActualJson -Raw | ConvertFrom-Json
+# Read as UTF-8 (PS 5.1 Get-Content uses the ANSI codepage and corrupts UTF-8, e.g. Chinese node comments in IR).
+function Read-JsonUtf8([string]$p){ return ([System.IO.File]::ReadAllText($p, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json) }
+$exp = Read-JsonUtf8 $ExpectedJson
+$act = Read-JsonUtf8 $ActualJson
 
 function NodeClassCounts($ir) {
   $h = @{}

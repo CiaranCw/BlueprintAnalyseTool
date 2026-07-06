@@ -35,7 +35,8 @@ if (Test-Path $ExpectedIrDir) {
   Get-ChildItem (Join-Path $ExpectedIrDir '*.json') | ForEach-Object {
     $irCount++
     $name = $_.Name
-    try { $o = Get-Content $_.FullName -Raw | ConvertFrom-Json }
+    # Read as UTF-8 (PS 5.1 Get-Content uses the ANSI codepage and would corrupt UTF-8, e.g. Chinese in IR).
+    try { $o = [System.IO.File]::ReadAllText($_.FullName, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json }
     catch { [void]$failed.Add(@{ item=$name; kind='invalid_json'; detail="$($_.Exception.Message)" }); return }
 
     $missing = @($req | Where-Object { -not ($o.PSObject.Properties.Name -contains $_) })

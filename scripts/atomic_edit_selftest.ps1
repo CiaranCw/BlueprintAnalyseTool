@@ -113,7 +113,7 @@ foreach ($c in $cases) {
   if ($resDir) {
     $resFile = Join-Path $resDir.FullName 'diff_report.json'
     if (Test-Path $resFile) {
-      $d = Get-Content $resFile -Raw | ConvertFrom-Json
+      $d = [System.IO.File]::ReadAllText($resFile, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
       $diffFacts = "added=$(@($d.added_nodes).Count) removed=$(@($d.removed_nodes).Count) +edges=$(@($d.added_edges).Count) -edges=$(@($d.removed_edges).Count)"
     }
   }

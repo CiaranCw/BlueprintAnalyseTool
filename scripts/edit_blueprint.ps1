@@ -35,9 +35,10 @@ if (-not (Test-Path $ProjectUProject)) { Fail "Project not found: $ProjectUProje
 if (-not (Test-Path $EditRequestJson)) { Fail "Edit request not found: $EditRequestJson" 30 }
 $ProjectDir = Split-Path $ProjectUProject -Parent
 
-# Validate the request JSON early (fail fast before launching UE).
-try { Get-Content $EditRequestJson -Raw | ConvertFrom-Json | Out-Null }
-catch { Fail "Edit request is not valid JSON: $_" 30 }
+# Validate the request JSON early (fail fast before launching UE). Read as UTF-8: PS 5.1 Get-Content uses
+# the ANSI codepage and would corrupt UTF-8 (e.g. Chinese node titles/comments in operations) => false reject.
+try { [System.IO.File]::ReadAllText($EditRequestJson, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json | Out-Null }
+catch { Fail "Edit request is not valid JSON/UTF-8: $_" 30 }
 
 if ([string]::IsNullOrWhiteSpace($UERoot)) {
   $ver = (Get-Content $ProjectUProject -Raw | ConvertFrom-Json).EngineAssociation
