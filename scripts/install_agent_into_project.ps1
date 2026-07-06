@@ -21,7 +21,8 @@ param(
   [Parameter(Mandatory=$true)] [string] $TargetDir,
   [string] $ProjectUProject = "",
   [string] $AgentRoot = "",
-  [switch] $Reference
+  [switch] $Reference,
+  [switch] $NoBackup   # skip backing up files we are about to (over)write (default: back up)
 )
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'agent_sync_lib.ps1')
@@ -39,9 +40,39 @@ $uprojForDoc = if ($ProjectUProject) { $ProjectUProject } else { "<PATH>/YourPro
 $uprojForDoc = $uprojForDoc -replace '\\','/'
 
 $ver = Read-AgentVersion $AgentRoot
+$toolsDir = Join-Path $TargetDir 'Tools\BlueprintAgent'
+
+# ---- backup anything we are about to (over)write / mirror (reversible first install) ----
+# install (unlike update) previously had NO backup: overwriting our own files, and especially the /MIR
+# mirror of Tools/BlueprintAgent (which deletes extra files), could not be undone. Back up first.
+$backedUp = New-Object System.Collections.ArrayList
+if (-not $NoBackup) {
+  $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
+  $backupDir = Join-Path $TargetDir "Saved\BPParserAgentReports\install\$ts\backup"
+  function Backup-File([string]$path,[string]$asName){
+    if (Test-Path $path -PathType Leaf) {
+      New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+      Copy-Item $path (Join-Path $backupDir $asName) -Force
+      [void]$backedUp.Add($asName)
+    }
+  }
+  function Backup-Dir([string]$path,[string]$asName){
+    if (Test-Path $path -PathType Container) {
+      $d = Join-Path $backupDir $asName; New-Item -ItemType Directory -Force -Path $d | Out-Null
+      robocopy $path $d /E /NFL /NDL /NJH /NJS /NP | Out-Null
+      [void]$backedUp.Add("$asName\")
+    }
+  }
+  Backup-File (Join-Path $TargetDir 'AGENTS.md') 'AGENTS.md'
+  Backup-File (Join-Path $TargetDir 'CLAUDE.md') 'CLAUDE.md'
+  Backup-File (Join-Path $TargetDir 'GEMINI.md') 'GEMINI.md'
+  Backup-File (Join-Path $TargetDir '.cursor\rules\blueprint-agent.mdc') 'cursor_rules_blueprint-agent.mdc'
+  Backup-File (Join-Path $TargetDir '.claude\commands\blueprint.md') 'claude_commands_blueprint.md'
+  Backup-Dir  $toolsDir 'Tools_BlueprintAgent'
+  if ($backedUp.Count -gt 0) { Write-Host ("Backed up {0} existing item(s) -> {1}" -f $backedUp.Count,$backupDir) -ForegroundColor DarkGray }
+}
 
 # ---- resolve entry + plugin-source paths (copy vs reference) ----
-$toolsDir = Join-Path $TargetDir 'Tools\BlueprintAgent'
 if ($Reference) {
   $entry     = Join-Path $AgentRoot 'scripts\blueprint_agent.ps1'
   $docsPath  = Join-Path $AgentRoot 'docs'
@@ -58,10 +89,11 @@ if ($Reference) {
 
 $written = New-Object System.Collections.ArrayList
 
-# ---- managed block (AGENTS.md + CLAUDE.md) ----
+# ---- managed block (AGENTS.md + CLAUDE.md always; GEMINI.md only if the project already uses it) ----
 $block = Get-BABlock $entry $docsPath $uprojForDoc $pluginSrc
 [void]$written.Add(@{ file='AGENTS.md'; action=(Upsert-ManagedBlock (Join-Path $TargetDir 'AGENTS.md') $block) })
 [void]$written.Add(@{ file='CLAUDE.md'; action=(Upsert-ManagedBlock (Join-Path $TargetDir 'CLAUDE.md') $block) })
+if (Test-Path (Join-Path $TargetDir 'GEMINI.md')) { [void]$written.Add(@{ file='GEMINI.md'; action=(Upsert-ManagedBlock (Join-Path $TargetDir 'GEMINI.md') $block) }) }
 
 # ---- Cursor rule ----
 $cursorDir = Join-Path $TargetDir '.cursor\rules'; New-Item -ItemType Directory -Force -Path $cursorDir | Out-Null
@@ -123,7 +155,8 @@ Write-Utf8NoBom (Get-SyncStatePath $TargetDir) ($syncState | ConvertTo-Json -Dep
 # ---- install summary ----
 $summary = [ordered]@{ schema_version='1.0'; installed_at=(Get-Date).ToUniversalTime().ToString('o');
   target_dir=$TargetDir; agent_root=$AgentRoot; mode=$(if($Reference){'reference'}else{'copy'});
-  agent_version=$(if($ver){"$($ver.agent_version)"}else{''}); entry=$entry; uproject=$ProjectUProject; files=@($written) }
+  agent_version=$(if($ver){"$($ver.agent_version)"}else{''}); entry=$entry; uproject=$ProjectUProject;
+  backup_dir=$(if($backedUp.Count -gt 0){($backupDir -replace '\\','/')}else{''}); backups=@($backedUp); files=@($written) }
 Write-Utf8NoBom (Join-Path $toolsDir 'onboarding_install.json') ($summary | ConvertTo-Json -Depth 8)
 
 Write-Host "== Blueprint Agent onboarding installed ==" -ForegroundColor Green

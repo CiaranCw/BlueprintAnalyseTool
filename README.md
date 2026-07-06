@@ -62,9 +62,11 @@
 
 它会（幂等、非破坏地）写入：
 
-- `AGENTS.md` / `CLAUDE.md` 中一段带标记的**受管块**（只替换标记块，不动你的其它内容）；
-- `.cursor/rules/blueprint-agent.mdc`、`.claude/commands/blueprint.md`；
+- `AGENTS.md` / `CLAUDE.md`（及已存在的 `GEMINI.md`）中一段带标记的**受管块**（只替换标记块，不动你的其它内容；文件原本没有标记就把块追加到末尾）；
+- `.cursor/rules/blueprint-agent.mdc`、`.claude/commands/blueprint.md`（专属文件名，不影响你在同目录下的其它规则/命令）；
 - `Tools/BlueprintAgent/`：脚本、文档、插件源码、机器可读描述符 `blueprint_agent.manifest.json`、示例请求、版本与同步基线。
+
+> 安装/更新前会先把将被改写的既有文件备份到 `Saved/BPParserAgentReports/{install,update}/<ts>/backup/`（可用 `-NoBackup` 跳过）。`Tools/BlueprintAgent/` 由 Agent 托管（镜像同步），请勿在其中放置个人文件——放在别处即可。
 
 安装后，项目里的 AI 应遵循的标准流程（这些已写进受管块，AI 会自动读到）：
 

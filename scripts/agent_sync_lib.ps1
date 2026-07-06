@@ -43,16 +43,22 @@ function Read-AgentVersion([string]$root){
 function Get-ManagedBlockBegin { '<!-- BEGIN BLUEPRINT-AGENT' }
 function Get-ManagedBlockEnd   { '<!-- END BLUEPRINT-AGENT (managed) -->' }
 
-# Replace the managed block in $file (create/append if absent). Returns 'replaced'|'appended'|'created'.
+# Replace the managed block in $file (create/append if absent). Returns 'replaced'|'repaired'|'appended'|'created'.
 function Upsert-ManagedBlock([string]$file,[string]$block){
   $begin = Get-ManagedBlockBegin; $end = Get-ManagedBlockEnd
   if (Test-Path $file) {
     $txt = Get-Content $file -Raw
     $bi = $txt.IndexOf($begin)
     if ($bi -ge 0) {
-      $ei = $txt.IndexOf($end); if ($ei -ge 0) { $ei += $end.Length
+      $ei = $txt.IndexOf($end)
+      if ($ei -ge 0) {
+        # well-formed block -> replace exactly between the markers
+        $ei += $end.Length
         Write-Utf8NoBom $file ($txt.Substring(0,$bi) + $block + $txt.Substring($ei)); return 'replaced'
       }
+      # BEGIN present but END missing (user broke the block): treat everything from BEGIN to EOF as the
+      # broken managed region and replace it, so we never leave/duplicate a partial block.
+      Write-Utf8NoBom $file ($txt.Substring(0,$bi).TrimEnd() + "`r`n`r`n" + $block + "`r`n"); return 'repaired'
     }
     Write-Utf8NoBom $file ($txt.TrimEnd() + "`r`n`r`n" + $block + "`r`n"); return 'appended'
   } else {
