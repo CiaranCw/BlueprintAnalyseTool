@@ -82,50 +82,70 @@ if ($liveEligibleTask) {
 }
 
 function Invoke-EditorLive {
-  param([string]$LiveTask,[string]$PayloadJsonPath="")
-  $a = @{ ProjectUProject=$proj; Task=$LiveTask; OutputDir=$outBase; TimeoutSeconds=$TimeoutSeconds }
+  param([string]$LiveTask,[string]$PayloadJsonPath="",[int]$TimeoutOverride=0)
+  $to = if ($TimeoutOverride -gt 0) { $TimeoutOverride } else { $TimeoutSeconds }
+  $a = @{ ProjectUProject=$proj; Task=$LiveTask; OutputDir=$outBase; TimeoutSeconds=$to }
   if ($PayloadJsonPath) { $a.RequestJson=$PayloadJsonPath }
   elseif ($LiveTask -eq 'analyze') { $a.AssetPaths=@($req.request.asset_paths) }
   return (& (Join-Path $scripts 'editor_live_client.ps1') @a)
 }
 
 if ($tryLive) {
-  $payload = ""
-  switch ($taskType) {
-    'edit' {
-      $er = $req.request
-      $p = [ordered]@{ schema_version='1.0'; task_type='edit'; mode='editor_live'; asset_path="$($er.asset_path)"; edit=$er
-        execution=[ordered]@{ read_only=$false; allow_edit=$true
-          create_backup=($exec.create_backup -ne $false)
-          allow_destructive_edit=[bool]($er.allow_destructive_edit -or $exec.allow_destructive_edit)
-          strict=[bool]$exec.strict
-          require_user_ack=[bool]$exec.require_user_ack
-          allow_edit_during_pie=[bool]$exec.allow_edit_during_pie }
-        output_dir=($outBase -replace '\\','/') }
-      $payload = Join-Path $env:TEMP ("bpagent_live_edit_" + (San "$($er.asset_path)") + ".json")
-      ($p | ConvertTo-Json -Depth 40) | Set-Content -Encoding UTF8 $payload
-    }
-    'create' {
-      $cr = $req.request
-      $p = [ordered]@{ schema_version='1.0'; task_type='create'; mode='editor_live'; create=$cr
-        execution=[ordered]@{ allow_create=$true }
-        output_dir=($outBase -replace '\\','/') }
-      $payload = Join-Path $env:TEMP ("bpagent_live_create_" + (San "$($cr.asset.asset_path)") + ".json")
-      ($p | ConvertTo-Json -Depth 40) | Set-Content -Encoding UTF8 $payload
+  # Phase 1: FAST liveness probe. A running live service answers status in ~1-2s; when the editor is closed
+  # we must NOT pay the full -TimeoutSeconds before falling back to native (that would slow every headless
+  # analyze). So probe with a short timeout; only submit the real task (full timeout) if a service answers.
+  $probeTimeout = [Math]::Max(3, [Math]::Min([int]$TimeoutSeconds, 8))
+  $probe = Invoke-EditorLive -LiveTask 'status' -TimeoutOverride $probeTimeout
+  $liveAvailable = [bool]$probe.available
+
+  if (-not $liveAvailable) {
+    if ($mode -eq 'editor_live') {
+      $usedMode='editor_live'; $rc=24; $subOut=(Join-Path (Join-Path $outBase 'editor_live') (San "$($probe.request_id)"))
+      Write-Host "[editor_live] unavailable (probe ${probeTimeout}s); explicit mode -> not launching UnrealEditor-Cmd." -ForegroundColor Yellow
+    } else {
+      $fallbackFrom='editor_live'; Write-Host "[auto] editor_live unavailable (probe ${probeTimeout}s) -> native_full/python/offline." -ForegroundColor Yellow
     }
   }
-  $live = Invoke-EditorLive -LiveTask $taskType -PayloadJsonPath $payload
-  $liveAvailable = [bool]$live.available
-  if ($live.available) {
-    $usedMode='editor_live'; $rc=[int]$live.exit_code; $subOut=$live.report_dir; $reqId=$live.request_id
-  }
-  elseif ($mode -eq 'editor_live') {
-    # explicit editor_live but no service answered: DO NOT launch UnrealEditor-Cmd. Report unavailable.
-    $usedMode='editor_live'; $rc=24; $subOut=(Join-Path (Join-Path $outBase 'editor_live') (San $live.request_id))
-    Write-Host "[editor_live] unavailable and mode is explicit; not falling back to native_full." -ForegroundColor Yellow
+  elseif ($taskType -eq 'status') {
+    $usedMode='editor_live'; $rc=[int]$probe.exit_code; $subOut=$probe.report_dir; $reqId=$probe.request_id
   }
   else {
-    $fallbackFrom='editor_live'; Write-Host "[auto] editor_live unavailable -> falling back to native_full/python/offline." -ForegroundColor Yellow
+    # Phase 2: service is alive -> submit the real task with the FULL timeout.
+    $payload = ""
+    switch ($taskType) {
+      'edit' {
+        $er = $req.request
+        $p = [ordered]@{ schema_version='1.0'; task_type='edit'; mode='editor_live'; asset_path="$($er.asset_path)"; edit=$er
+          execution=[ordered]@{ read_only=$false; allow_edit=$true
+            create_backup=($exec.create_backup -ne $false)
+            allow_destructive_edit=[bool]($er.allow_destructive_edit -or $exec.allow_destructive_edit)
+            strict=[bool]$exec.strict
+            require_user_ack=[bool]$exec.require_user_ack
+            allow_edit_during_pie=[bool]$exec.allow_edit_during_pie }
+          output_dir=($outBase -replace '\\','/') }
+        $payload = Join-Path $env:TEMP ("bpagent_live_edit_" + (San "$($er.asset_path)") + ".json")
+        ($p | ConvertTo-Json -Depth 40) | Set-Content -Encoding UTF8 $payload
+      }
+      'create' {
+        $cr = $req.request
+        $p = [ordered]@{ schema_version='1.0'; task_type='create'; mode='editor_live'; create=$cr
+          execution=[ordered]@{ allow_create=$true }
+          output_dir=($outBase -replace '\\','/') }
+        $payload = Join-Path $env:TEMP ("bpagent_live_create_" + (San "$($cr.asset.asset_path)") + ".json")
+        ($p | ConvertTo-Json -Depth 40) | Set-Content -Encoding UTF8 $payload
+      }
+    }
+    $live = Invoke-EditorLive -LiveTask $taskType -PayloadJsonPath $payload -TimeoutOverride $TimeoutSeconds
+    if ($live.available) {
+      $usedMode='editor_live'; $rc=[int]$live.exit_code; $subOut=$live.report_dir; $reqId=$live.request_id
+    }
+    elseif ($mode -eq 'editor_live') {
+      $usedMode='editor_live'; $rc=24; $subOut=(Join-Path (Join-Path $outBase 'editor_live') (San "$($live.request_id)"))
+      Write-Host "[editor_live] service stopped responding after probe; explicit mode -> no native fallback." -ForegroundColor Yellow
+    }
+    else {
+      $fallbackFrom='editor_live'; Write-Host "[auto] editor_live task did not complete -> native_full/python/offline." -ForegroundColor Yellow
+    }
   }
 }
 
