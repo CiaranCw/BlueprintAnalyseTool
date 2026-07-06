@@ -39,4 +39,9 @@ public:
 
 	/** Set a property (on a widget or a slot) from a JSON value via reflection. Returns "" on success or an error. */
 	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value);
+
+	/** Phase 4: create a bound-event node in the WBP EventGraph for <WidgetName>.<EventName>
+	 *  (e.g. PlayButton.OnClicked), like the UMG Details "+ event" button. The WBP must be compiled once
+	 *  first so the widget variable exists as a property. Returns "" on success or an error string. */
+	static FString BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName);
 };

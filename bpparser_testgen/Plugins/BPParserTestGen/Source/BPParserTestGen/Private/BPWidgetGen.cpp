@@ -10,6 +10,7 @@
 #include "Components/PanelWidget.h"          // UPanelWidget
 #include "Components/PanelSlot.h"            // UPanelSlot
 
+#include "BPGen.h"                           // FBPGen::GetEventGraph
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "JsonObjectConverter.h"
 #include "Dom/JsonValue.h"
@@ -18,6 +19,11 @@
 #include "UObject/UObjectIterator.h"
 #include "UObject/UnrealType.h"
 #include "Misc/PackageName.h"
+
+#include "EdGraph/EdGraph.h"
+#include "K2Node_ComponentBoundEvent.h"
+#include "Kismet2/KismetEditorUtilities.h"
+#include "Kismet2/BlueprintEditorUtils.h"
 
 UWidgetBlueprint* FBPWidgetGen::CreateWidgetBlueprint(const FString& AssetPath, UClass* ParentClass)
 {
@@ -118,4 +124,42 @@ FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropNa
 	}
 
 	return FString::Printf(TEXT("no property or 'Set%s' setter on %s"), *PropName, *Target->GetClass()->GetName());
+}
+
+FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName)
+{
+	if (!WBP) { return TEXT("null WBP"); }
+	UEdGraph* EventGraph = FBPGen::GetEventGraph(WBP);
+	if (!EventGraph) { return TEXT("no EventGraph"); }
+
+	// The widget variable becomes a property on the (skeleton) generated class after a compile.
+	UClass* OwnerClass = WBP->SkeletonGeneratedClass ? WBP->SkeletonGeneratedClass.Get()
+		: (WBP->GeneratedClass ? WBP->GeneratedClass.Get() : nullptr);
+	if (!OwnerClass) { return TEXT("no generated class (compile the WBP first)"); }
+
+	FObjectProperty* WidgetProp = FindFProperty<FObjectProperty>(OwnerClass, FName(*WidgetName));
+	if (!WidgetProp) { return FString::Printf(TEXT("widget variable '%s' not found on %s (compile first / is_variable?)"), *WidgetName, *OwnerClass->GetName()); }
+
+	UClass* WidgetClass = WidgetProp->PropertyClass;
+	FMulticastDelegateProperty* DelProp = WidgetClass ? FindFProperty<FMulticastDelegateProperty>(WidgetClass, FName(*EventName)) : nullptr;
+	if (!DelProp) { return FString::Printf(TEXT("delegate '%s' not found on widget class %s"), *EventName, WidgetClass ? *WidgetClass->GetName() : TEXT("<null>")); }
+
+	// Already bound? (idempotent)
+	if (FKismetEditorUtilities::FindBoundEventForComponent(WBP, DelProp->GetFName(), WidgetProp->GetFName()))
+	{
+		return FString();
+	}
+
+	UK2Node_ComponentBoundEvent* Node = NewObject<UK2Node_ComponentBoundEvent>(EventGraph);
+	Node->InitializeComponentBoundEventParams(WidgetProp, DelProp);
+	Node->CreateNewGuid();
+	Node->PostPlacedNewNode();
+	Node->AllocateDefaultPins();
+	// place below any existing nodes to avoid overlap
+	int32 MaxY = 0; for (UEdGraphNode* N : EventGraph->Nodes) { if (N) { MaxY = FMath::Max(MaxY, N->NodePosY + 160); } }
+	Node->NodePosX = 0; Node->NodePosY = MaxY;
+	EventGraph->AddNode(Node, /*bFromUI*/ false, /*bSelectNewNode*/ false);
+
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+	return FString();
 }

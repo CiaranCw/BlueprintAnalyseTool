@@ -74,8 +74,19 @@ The created WBP opens in the UE editor; its Hierarchy panel shows the widgets; `
 mirrors the hierarchy with each widget's `class`, `is_variable`, `slot.class`, `slot.properties`, and changed
 `properties` (redump values align with the request). Blueprint assets other than the created one are not modified.
 
-## Deferred (NOT in Phase 1-3 — will warn / `manual_check_required`)
-- **Event binding** (e.g. Button `OnClicked` → event/function) — `widget.events` is accepted but not applied.
+## Events (Phase 4 — partial, supported)
+Bind a widget delegate (e.g. Button `OnClicked`) to a graph event. `widget.events`:
+```json
+"events": [ { "widget": "PlayButton", "event": "OnClicked", "handler": { "type": "custom_event", "name": "OnPlayClicked" } } ]
+```
+The agent compiles once (so the widget variable exists), then creates a `UK2Node_ComponentBoundEvent` in the
+EventGraph — the same "On Clicked (PlayButton)" event node the UMG Details "+ event" button produces (verified:
+redump shows it under `graphs[EventGraph]`). **Currently the bound-event node is created but not auto-wired to a
+named `handler`** (that wiring is a later refinement, recorded as `manual_check_required`). `is_variable` widgets
+are required (the agent sets this automatically).
+
+## Deferred (will warn / `manual_check_required`)
+- **Handler wiring** — connecting a bound event's exec to a specific custom event/function by `handler.name`.
 - **Property binding** (`widget.bindings`, e.g. Text→getter) — accepted, not applied.
 - **Custom `UserWidget` children** — resolution/insertion of project `.._C` widgets.
 - **UMG Animation** (`widget.animations`) — accepted, not applied.

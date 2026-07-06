@@ -174,7 +174,6 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		if(const TSharedPtr<FJsonObject>* WObj = JObj(Req,TEXT("widget")))
 		{
 			if(JArr(*WObj,TEXT("bindings")))   Manual.Add(TEXT("widget.bindings deferred (property binding is a later phase; not applied)."));
-			if(JArr(*WObj,TEXT("events")))     Manual.Add(TEXT("widget.events (event binding, e.g. OnClicked) deferred to a later phase."));
 			if(JArr(*WObj,TEXT("animations"))) Manual.Add(TEXT("widget.animations deferred to a later phase."));
 			if(const TSharedPtr<FJsonObject>* Hier = JObj(*WObj,TEXT("hierarchy")))
 			{
@@ -207,6 +206,20 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 				Build(RootNode, (UWidget*)nullptr);
 			}
 			else { Manual.Add(TEXT("widget: no hierarchy provided; created an empty WidgetTree.")); }
+
+			// Phase 4: bind widget events (e.g. Button OnClicked). Needs widget variables to exist -> compile once.
+			if(const TArray<TSharedPtr<FJsonValue>>* Events = JArr(*WObj,TEXT("events")))
+			{
+				FBPGen::CompileBlueprint(WBP);
+				for(const auto& ev : *Events)
+				{
+					const TSharedPtr<FJsonObject> eo=ev->AsObject(); if(!eo) continue;
+					const FString wn=JStr(eo,TEXT("widget")); const FString en=JStr(eo,TEXT("event"),TEXT("OnClicked"));
+					const FString e=FBPWidgetGen::BindWidgetEvent(WBP, wn, en);
+					if(!e.IsEmpty()){ Warn.Add(FString::Printf(TEXT("event bind %s.%s: %s"),*wn,*en,*e)); }
+					else if(const TSharedPtr<FJsonObject>* h=JObj(eo,TEXT("handler"))){ Manual.Add(FString::Printf(TEXT("event %s.%s: bound-event node created; wiring to handler '%s' is a later refinement."),*wn,*en,*JStr(*h,TEXT("name")))); }
+				}
+			}
 		}
 	}
 	else BP=FBPGen::CreateActorBlueprint(AssetPath, Parent?Parent:AActor::StaticClass());
