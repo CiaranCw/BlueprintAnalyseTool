@@ -70,6 +70,17 @@ if ($SmokeAssetPath) {
 $state = $null; try { $state = Get-Content (Join-Path $OutDir 'capability_state.json') -Raw | ConvertFrom-Json } catch {}
 $nativeReady = [bool]($state -and $state.capabilities.understand_full)
 
+# 4b) On success, refresh the CANONICAL status/capability_state.json (the file other AIs read) and clear any
+# 'needs_warmup_after_update' marker a prior update left behind, so the project reflects native_ready.
+if ($nativeReady) {
+  $statusDir = Join-Path $ProjectDir 'Saved\BPParserAgentReports\status'
+  & (Join-Path $scripts 'agent_status.ps1') -ProjectUProject $ProjectUProject -UERoot $UERoot -OutputDir $statusDir | Out-Null
+  $ss = Join-Path $ProjectDir 'Tools\BlueprintAgent\.agent_sync\sync_state.json'
+  if (Test-Path $ss) { try { $j = Get-Content $ss -Raw | ConvertFrom-Json; $j.warmup_required_after_update = $false; [IO.File]::WriteAllText($ss, ($j | ConvertTo-Json -Depth 8), (New-Object System.Text.UTF8Encoding($false))) } catch {} }
+  $mf = Join-Path $ProjectDir 'Tools\BlueprintAgent\blueprint_agent.manifest.json'
+  if (Test-Path $mf) { try { $j = Get-Content $mf -Raw | ConvertFrom-Json; if ($j.install) { $j.install.warmup_required_after_update = $false; [IO.File]::WriteAllText($mf, ($j | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding($false))) } } catch {} }
+}
+
 $warm = [ordered]@{
   schema_version='1.0'; status=$(if($nativeReady){'success'}else{'partial'})
   project_uproject=$ProjectUProject; ue_root=$UERoot
