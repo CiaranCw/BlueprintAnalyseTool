@@ -28,6 +28,14 @@ public:
 	 *  or a full class path (e.g. "/Script/UMG.Image" or a custom "/Game/UI/WBP_X.WBP_X_C"). nullptr if unresolved. */
 	static UClass* ResolveWidgetClass(const FString& TypeSpec);
 
+	/** Rich resolver (Phase 5): also accepts a custom UserWidget by package path (`/Game/UI/WBP_X`), object path
+	 *  (`/Game/UI/WBP_X.WBP_X`) or generated-class path (`/Game/UI/WBP_X.WBP_X_C`) - all normalized to the `_C`
+	 *  generated class. On failure returns nullptr and sets OutError to a category:
+	 *  class_path_invalid | class_load_failed | not_user_widget. On success OutError is empty, bOutCustom is true
+	 *  for `/Game/...` widgets, and OutAssetPath / OutGeneratedClass are filled (for dependency recording). */
+	static UClass* ResolveWidgetClassEx(const FString& TypeSpec, FString& OutError, bool& bOutCustom,
+		FString& OutAssetPath, FString& OutGeneratedClass);
+
 	/** Construct a widget of WidgetClass into WBP's WidgetTree (unparented). Marks it as a variable (named). */
 	static UWidget* ConstructWidget(UWidgetBlueprint* WBP, UClass* WidgetClass, const FName Name);
 

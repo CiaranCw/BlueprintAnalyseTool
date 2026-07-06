@@ -248,6 +248,38 @@ namespace
 		return O;
 	}
 
+	// Collect custom (/Game/...) widget classes referenced anywhere in the tree.
+	void CollectCustomWidgetDeps(UWidget* W, TMap<FString,FString>& OutGenToAsset)
+	{
+		if (!W) { return; }
+		const FString ClassPath = W->GetClass()->GetPathName();
+		if (ClassPath.StartsWith(TEXT("/Game/")))
+		{
+			FString Asset = ClassPath; int32 Dot; if (Asset.FindChar('.', Dot)) { Asset = Asset.Left(Dot); }
+			OutGenToAsset.Add(ClassPath, Asset);
+		}
+		if (UPanelWidget* P = Cast<UPanelWidget>(W))
+		{
+			for (int32 i = 0; i < P->GetChildrenCount(); ++i) { CollectCustomWidgetDeps(P->GetChildAt(i), OutGenToAsset); }
+		}
+	}
+
+	TArray<TSharedPtr<FJsonValue>> DumpWidgetDependencies(UWidgetBlueprint* WBP)
+	{
+		TArray<TSharedPtr<FJsonValue>> Out;
+		TMap<FString,FString> Deps;
+		if (WBP && WBP->WidgetTree) { CollectCustomWidgetDeps(WBP->WidgetTree->RootWidget, Deps); }
+		for (const TPair<FString,FString>& KV : Deps)
+		{
+			TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+			O->SetStringField(TEXT("type"), TEXT("custom_user_widget"));
+			O->SetStringField(TEXT("asset_path"), KV.Value);
+			O->SetStringField(TEXT("generated_class"), KV.Key);
+			Out.Add(MakeShared<FJsonValueObject>(O));
+		}
+		return Out;
+	}
+
 	// Redump the bound widget-event nodes (UK2Node_ComponentBoundEvent) across the WBP graphs.
 	TArray<TSharedPtr<FJsonValue>> DumpWidgetEventBindings(UWidgetBlueprint* WBP)
 	{
@@ -364,6 +396,7 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 	{
 		Root->SetObjectField(TEXT("widget_tree"), DumpWidgetTree(WBP));
 		Root->SetArrayField(TEXT("widget_event_bindings"), DumpWidgetEventBindings(WBP));
+		Root->SetArrayField(TEXT("dependencies"), DumpWidgetDependencies(WBP));
 	}
 
 	return Root;

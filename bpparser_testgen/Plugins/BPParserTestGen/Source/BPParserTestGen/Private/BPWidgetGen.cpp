@@ -2,6 +2,7 @@
 #include "BPWidgetGen.h"
 #include "BPParserTestGenModule.h"
 
+#include "Engine/Blueprint.h"                 // UBlueprint (custom widget generated-class fallback)
 #include "WidgetBlueprint.h"                 // UWidgetBlueprint (UMGEditor)
 #include "WidgetBlueprintFactory.h"          // UWidgetBlueprintFactory (UMGEditor)
 #include "Blueprint/UserWidget.h"            // UUserWidget (UMG)
@@ -49,21 +50,54 @@ UWidgetBlueprint* FBPWidgetGen::CreateWidgetBlueprint(const FString& AssetPath, 
 
 UClass* FBPWidgetGen::ResolveWidgetClass(const FString& TypeSpec)
 {
-	if (TypeSpec.IsEmpty()) { return nullptr; }
+	FString Err, Asset, Gen; bool bCustom = false;
+	return ResolveWidgetClassEx(TypeSpec, Err, bCustom, Asset, Gen);
+}
 
-	// Full path (an engine class path like /Script/UMG.Image, or a custom generated class /Game/..._C).
-	if (TypeSpec.Contains(TEXT("/")) || TypeSpec.Contains(TEXT(".")))
+UClass* FBPWidgetGen::ResolveWidgetClassEx(const FString& TypeSpec, FString& OutError, bool& bOutCustom,
+	FString& OutAssetPath, FString& OutGeneratedClass)
+{
+	OutError.Reset(); bOutCustom = false; OutAssetPath.Reset(); OutGeneratedClass.Reset();
+	if (TypeSpec.IsEmpty()) { OutError = TEXT("class_path_invalid"); return nullptr; }
+
+	// Builtin short name (no path separators) -> /Script/UMG.<Name>.
+	if (!TypeSpec.Contains(TEXT("/")))
 	{
-		if (UClass* C = LoadObject<UClass>(nullptr, *TypeSpec)) { return C; }
+		if (UClass* C = LoadObject<UClass>(nullptr, *(FString(TEXT("/Script/UMG.")) + TypeSpec))) { return C; }
+		for (TObjectIterator<UClass> It; It; ++It)
+		{
+			if (It->IsChildOf(UWidget::StaticClass()) && It->GetName() == TypeSpec) { return *It; }
+		}
+		OutError = TEXT("class_load_failed");
+		return nullptr;
 	}
-	// Builtin short name under /Script/UMG (CanvasPanel, TextBlock, Button, Image, ...).
-	if (UClass* C = LoadObject<UClass>(nullptr, *(FString(TEXT("/Script/UMG.")) + TypeSpec))) { return C; }
-	// Fallback: any loaded UWidget subclass whose name matches.
-	for (TObjectIterator<UClass> It; It; ++It)
+
+	// Path form (engine /Script/... class OR custom /Game asset). Normalize to the generated class.
+	bOutCustom = TypeSpec.StartsWith(TEXT("/Game/"));
+	FString Pkg = TypeSpec; int32 Dot;
+	if (TypeSpec.FindChar('.', Dot)) { Pkg = TypeSpec.Left(Dot); }            // strip object/_C suffix -> package path
+	const FString Short = FPackageName::GetShortName(Pkg);
+	OutAssetPath = Pkg;
+	const FString GenObjPath = Pkg + TEXT(".") + Short + TEXT("_C");          // /Game/UI/WBP_X.WBP_X_C
+
+	UClass* C = LoadObject<UClass>(nullptr, *TypeSpec);                        // as-given (handles _C or /Script.Class)
+	if (!C) { C = LoadObject<UClass>(nullptr, *GenObjPath); }                  // derive _C generated class
+	if (!C)
 	{
-		if (It->IsChildOf(UWidget::StaticClass()) && It->GetName() == TypeSpec) { return *It; }
+		// last resort: load the Blueprint object and take its GeneratedClass
+		if (UObject* Obj = LoadObject<UObject>(nullptr, *(Pkg + TEXT(".") + Short)))
+		{
+			if (UBlueprint* BP = Cast<UBlueprint>(Obj)) { C = BP->GeneratedClass; }
+			else if (UClass* AsClass = Cast<UClass>(Obj)) { C = AsClass; }
+		}
 	}
-	return nullptr;
+	if (!C) { OutError = TEXT("class_load_failed"); return nullptr; }
+
+	if (!C->IsChildOf(UWidget::StaticClass())) { OutError = TEXT("not_user_widget"); return nullptr; }
+	if (C->HasAnyClassFlags(CLASS_Abstract))   { OutError = TEXT("not_user_widget"); return nullptr; }
+
+	OutGeneratedClass = C->GetPathName();
+	return C;
 }
 
 UWidget* FBPWidgetGen::ConstructWidget(UWidgetBlueprint* WBP, UClass* WidgetClass, const FName Name)

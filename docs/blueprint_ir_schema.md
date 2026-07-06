@@ -273,3 +273,13 @@ UE 来源：`UBlueprint::SimpleConstructionScript->GetRootNodes()` 递归。每�
 create 侧另在 `manifest.json`/`create_result.json` 写入 `widget_event_bindings`（含每个请求事件的
 `status`：`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`
 及 `handler_type`/`handler_name`）。两者可交叉核对（请求结果 vs 图内实际节点）。
+
+### 10.2 dependencies（Widget Blueprint 根级 — 自定义控件）
+WidgetTree 中引用的项目自定义控件（class path 以 `/Game/` 开头）会去重记录：
+```json
+"dependencies": [
+  { "type": "custom_user_widget", "asset_path": "/Game/UI/Common/WBP_CustomButton",
+    "generated_class": "/Game/UI/Common/WBP_CustomButton.WBP_CustomButton_C" }
+]
+```
+dumper 从 widget_tree 派生（analyze/redump 通用）；create 侧另按解析结果写入 manifest/create_result 的 `dependencies`。

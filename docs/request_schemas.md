@@ -130,9 +130,16 @@ Size/Anchors/Alignment). Output adds `created_ir.json.widget_tree` + `viz/hierar
 Each result → `widget_event_bindings` (manifest/create_result/created_ir) with `status`
 (`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`) and
 `parameters`. Idempotent (repeat = `reused`). Analyze may set `include.widget_bindable_events` to enumerate a
-WBP's bindable events (every widget in the IR also carries `bindable_events`). Deferred (warn/manual): handler
-exec-wiring to custom_event/function, property binding, custom UserWidget children insertion, UMG animation,
-pixel render. Full schema: `docs/widget_blueprint_schema.md`.
+WBP's bindable events (every widget in the IR also carries `bindable_events`).
+
+**Custom UserWidget children**: set a hierarchy node's `type` to a project widget's class/asset path
+(`/Game/UI/WBP_X.WBP_X_C`, `/Game/UI/WBP_X.WBP_X`, or `/Game/UI/WBP_X` — all normalized to `_C`). It is inserted
+as a black box (slot/Details/events supported) and recorded under `dependencies`
+(`{type:custom_user_widget, asset_path, generated_class}`). Failure categories: `class_path_invalid|
+class_load_failed|not_user_widget|construct_widget_failed|parent_not_panel|property_set_failed`.
+
+Deferred (warn/manual): handler exec-wiring to custom_event/function, property binding, custom-widget internal
+expansion, UMG animation, pixel render. Full schema: `docs/widget_blueprint_schema.md`.
 
 ## task_type = validate  →  scripts/validate_outputs.ps1
 Static validation of prior deliverables (JSON well-formed, edge referential integrity, viz presence).

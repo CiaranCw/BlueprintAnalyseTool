@@ -114,13 +114,47 @@ Also discoverable/bindable by the same reflection (not all separately verified):
 OnHovered/OnUnhovered, ComboBox OnOpening, Slider capture-begin/end, EditableText(Box) OnTextCommitted, SpinBox
 OnValueCommitted/OnBeginSliderMovement/OnEndSliderMovement, and **custom UserWidget** BlueprintAssignable delegates.
 
+## Custom UserWidget Support (Phase 5)
+Reference a project's own `UserWidget` as a child by its class/asset path in `hierarchy.type`. The custom widget
+is treated as a **black box** (its internals are not expanded): the agent loads its class, constructs it into the
+tree, sets its slot + exposed Details, discovers its events, and records it as a dependency.
+
+**Accepted `type` forms** (all normalized to the `_C` generated class):
+```text
+/Game/UI/Common/WBP_CustomButton.WBP_CustomButton_C   (generated class path)
+/Game/UI/Common/WBP_CustomButton.WBP_CustomButton     (object path)
+/Game/UI/Common/WBP_CustomButton                       (package path)
+```
+Resolution order: load the given path as a `UClass`; else derive `<Pkg>.<Short>_C`; else load the Blueprint and
+take its `GeneratedClass`. The class must be a `UWidget` subclass and non-abstract.
+
+**Details / Slot**: set by the same reflection path as native widgets (basic types, enum, object/soft-object by
+asset path, `FLinearColor`/`FMargin`/`FVector2D` structs, and the `Set<Key>` setter fallback). Missing property →
+`warning`; type mismatch → the importer error is surfaced (never silent).
+
+**Events**: the custom widget's own `BlueprintAssignable` multicast delegates are discovered
+(`bindable_events`) and can be bound exactly like native widgets (verified: `WBP_Setting_CheckboxItem` →
+`OnCheckboxItemChanged`, `OnVisibilityChanged`).
+
+**Dependency record** (in `created_ir.json` / `manifest.json` / `create_result.json`):
+```json
+"dependencies": [
+  { "type": "custom_user_widget", "asset_path": "/Game/UI/Common/WBP_CustomButton",
+    "generated_class": "/Game/UI/Common/WBP_CustomButton.WBP_CustomButton_C" }
+]
+```
+**Failure categories** (surfaced in warnings + manual_check_required): `class_path_invalid | class_load_failed |
+not_user_widget | construct_widget_failed | parent_not_panel | property_set_failed`.
+
+Verified (UE 5.4, AClient real project): `/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem_C` inserted into a
+new WBP — class loaded, constructed, slot geometry applied, dependency recorded, events discovered, compile/save OK.
+
 ## Deferred (will warn / `manual_check_required`)
 - **Handler exec-wiring (P2)** — for `handler.type` `custom_event`/`function`, connecting the bound event's exec to
   a named custom event / function. The bound-event node is created; the wiring is recorded as
   `manual_check_required`. `bound_event` (default) needs no wiring (the node is the entry).
 - **Property binding** (`widget.bindings`, e.g. Text→getter) — accepted, not applied.
-- **Custom `UserWidget` children insertion** (Phase 5) — event discovery/binding on custom widgets is supported
-  where the class is loaded; adding custom widgets to the tree is Phase 5.
+- **Custom widget internal expansion** — the custom widget is a black box (its own child tree is not recursed).
 - **UMG Animation** (`widget.animations`) — accepted, not applied.
 - **Pixel-accurate rendered preview** — only the hierarchy diagram is produced (headless render is out of scope).
 

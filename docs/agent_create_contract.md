@@ -50,9 +50,12 @@ viz/created.dot
   are bound **generically by reflection** (any BlueprintAssignable multicast delegate on any widget — Button/CheckBox/
   ComboBox/Slider/EditableTextBox/SpinBox/ScrollBox/custom UserWidget), creating a `UK2Node_ComponentBoundEvent` per
   event; results (incl. parameters, idempotent `reused`, and classified failures) go to `widget_event_bindings` in
-  manifest/create_result, and the redumped nodes + per-widget `bindable_events` appear in `created_ir.json`. Deferred
-  (warn/manual): handler exec-wiring to a named custom_event/function, property binding (`widget.bindings`), custom
-  `UserWidget` children insertion, UMG animation, pixel-accurate render. See `docs/widget_blueprint_schema.md`.
+  manifest/create_result, and the redumped nodes + per-widget `bindable_events` appear in `created_ir.json`. **Custom `UserWidget` children**:
+reference a project widget by class/asset path in `hierarchy.type` (`/Game/..._C`, object, or package form — all
+normalized to the `_C` generated class); it is constructed as a black box with slot/Details/events + recorded under
+`dependencies` (`type=custom_user_widget`). Deferred (warn/manual): handler exec-wiring to a named
+custom_event/function, property binding (`widget.bindings`), custom-widget internal expansion, UMG animation,
+pixel-accurate render. See `docs/widget_blueprint_schema.md`.
 - AnimBlueprint creation → clear `failed` (needs its factory); use Actor/Component/Interface/Widget.
 - Unsupported `node_type` → warning + `manual_check_required`, never silently dropped.
 - After creation, open the asset in the editor to visually confirm.

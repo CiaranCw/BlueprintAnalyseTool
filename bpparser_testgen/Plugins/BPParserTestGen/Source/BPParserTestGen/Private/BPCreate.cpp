@@ -94,6 +94,7 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 	TArray<FString> Warn, Err, Manual;
 	bool bWidgetAsset=false;
 	TArray<TSharedPtr<FJsonValue>> EventBindings;   // widget event-binding results (Phase 4)
+	TArray<TSharedPtr<FJsonValue>> WidgetDeps;      // custom UserWidget dependencies (Phase 5)
 
 	FString Text;
 	if(!FFileHelper::LoadFileToString(Text,*SpecFile)){ Log(TEXT("cannot read spec file")); return 30; }
@@ -138,14 +139,14 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		if(bWidgetAsset){ Out->SetStringField(TEXT("hierarchy_dot"),TEXT("viz/hierarchy.dot")); Out->SetStringField(TEXT("hierarchy_mmd"),TEXT("viz/hierarchy.mmd")); }
 		M->SetObjectField(TEXT("outputs"),Out);
 		if(BP){ M->SetStringField(TEXT("created_asset"),BP->GetPathName()); }
-		if(bWidgetAsset){ M->SetArrayField(TEXT("widget_event_bindings"),EventBindings); }
+		if(bWidgetAsset){ M->SetArrayField(TEXT("widget_event_bindings"),EventBindings); M->SetArrayField(TEXT("dependencies"),WidgetDeps); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("manifest.json")),M);
 
 		TSharedRef<FJsonObject> Res=MakeShared<FJsonObject>();
 		Res->SetStringField(TEXT("status"),Status); Res->SetStringField(TEXT("asset_path"),AssetPath);
 		Res->SetStringField(TEXT("overwrite_policy"),Overwrite);
 		Res->SetArrayField(TEXT("warnings"),W); Res->SetArrayField(TEXT("errors"),E);
-		if(bWidgetAsset){ Res->SetArrayField(TEXT("widget_event_bindings"),EventBindings); }
+		if(bWidgetAsset){ Res->SetArrayField(TEXT("widget_event_bindings"),EventBindings); Res->SetArrayField(TEXT("dependencies"),WidgetDeps); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("create_result.json")),Res);
 		Log(FString::Printf(TEXT("status=%s -> %s"),*Status,*OutDir));
 		return Code;
@@ -187,15 +188,19 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 				{
 					const FString WType = JStr(Node,TEXT("type"));
 					const FString WName = JStr(Node,TEXT("name"));
-					UClass* WClass = FBPWidgetGen::ResolveWidgetClass(WType);
-					if(!WClass){ Warn.Add(FString::Printf(TEXT("widget type unresolved: '%s' (name=%s)"),*WType,*WName)); return (UWidget*)nullptr; }
+					FString RErr, RAsset, RGen; bool bCustom=false;
+					UClass* WClass = FBPWidgetGen::ResolveWidgetClassEx(WType, RErr, bCustom, RAsset, RGen);
+					if(!WClass){ Warn.Add(FString::Printf(TEXT("widget '%s' type '%s' unresolved [%s]"),*WName,*WType,*RErr)); Manual.Add(FString::Printf(TEXT("widget '%s': class '%s' not resolved (%s)"),*WName,*WType,*RErr)); return (UWidget*)nullptr; }
+					// record custom UserWidget dependency
+					if(bCustom){ TSharedRef<FJsonObject> Dep=MakeShared<FJsonObject>(); Dep->SetStringField(TEXT("type"),TEXT("custom_user_widget")); Dep->SetStringField(TEXT("asset_path"),RAsset); Dep->SetStringField(TEXT("generated_class"),RGen);
+						bool bDup=false; for(const auto& d:WidgetDeps){ if(d->AsObject() && JStr(d->AsObject(),TEXT("generated_class"))==RGen){ bDup=true; break; } } if(!bDup) WidgetDeps.Add(MakeShared<FJsonValueObject>(Dep)); }
 					UWidget* W = FBPWidgetGen::ConstructWidget(WBP, WClass, WName.IsEmpty()?NAME_None:FName(*WName));
-					if(!W){ Warn.Add(FString::Printf(TEXT("construct failed for type '%s'"),*WType)); return (UWidget*)nullptr; }
+					if(!W){ Warn.Add(FString::Printf(TEXT("construct_widget_failed for '%s' (type '%s')"),*WName,*WType)); Manual.Add(FString::Printf(TEXT("widget '%s': construct_widget_failed"),*WName)); return (UWidget*)nullptr; }
 					if(!ParentW) { FBPWidgetGen::SetRoot(WBP, W); }
 					else
 					{
 						UPanelSlot* Slot = FBPWidgetGen::AddChild(ParentW, W);
-						if(!Slot){ Warn.Add(FString::Printf(TEXT("AddChild failed (parent '%s' is not a panel?) for '%s'"),*ParentW->GetName(),*WName)); }
+						if(!Slot){ Warn.Add(FString::Printf(TEXT("parent_not_panel: cannot add '%s' under '%s' (not a UPanelWidget)"),*WName,*ParentW->GetName())); Manual.Add(FString::Printf(TEXT("widget '%s': parent_not_panel"),*WName)); }
 						else if(const TSharedPtr<FJsonObject>* SlotObj = JObj(Node,TEXT("slot")))
 							if(const TSharedPtr<FJsonObject>* SP = JObj(*SlotObj,TEXT("properties")))
 								for(const auto& kv : (*SP)->Values){ const FString e=FBPWidgetGen::SetPropertyFromJson(Slot,kv.Key,kv.Value); if(!e.IsEmpty()) Warn.Add(TEXT("slot prop '")+kv.Key+TEXT("' on ")+WName+TEXT(": ")+e); }

@@ -369,3 +369,36 @@ Special-casing widget/event pairs does not scale and misses custom widgets. The 
 ### Cross-version note
 - `UK2Node_ComponentBoundEvent`, `InitializeComponentBoundEventParams`, and `FindBoundEventForComponent` are the
   version-sensitive touch points; delegate reflection is stable. Re-verify these on engine upgrades.
+
+---
+
+## P15: Custom UserWidget class resolution + dependency recording
+
+### Typical symptom
+- A hierarchy node `type` referencing a project widget (`/Game/UI/WBP_X`) fails to resolve, or resolves only when
+  the exact `.._C` generated-class path is given; the created WBP has no record of the custom-widget dependency.
+
+### Affected families
+- Any custom `UserWidget` inserted as a child (Phase 5), referenced by package/object/generated-class path.
+
+### Root cause
+`LoadObject<UClass>` only succeeds on the generated-class (`.._C`) object path; a package or object path does not
+load as a class. Without normalization, callers must know the `_C` convention. And dependencies on custom widgets
+were not captured, so downstream tooling couldn't see what the WBP needs.
+
+### Generalized fix
+- `FBPWidgetGen::ResolveWidgetClassEx` normalizes all three forms to `<Pkg>.<Short>_C` (try as-given → derive `_C`
+  → load Blueprint and take `GeneratedClass`), verifies `IsChildOf(UWidget)` and non-abstract, and returns a
+  classified error (`class_path_invalid|class_load_failed|not_user_widget`) plus the asset/generated-class paths.
+- Record `dependencies` (`type=custom_user_widget`) both from the create resolution (manifest/create_result) and by
+  walking `widget_tree` for `/Game/` classes in the dumper (analyze/redump). Construction/slot/Details/events reuse
+  the generic native path.
+
+### Validation
+- BPTest: reference a local WBP by package path → resolved to `_C`, constructed, dependency recorded.
+- AClient (real): `/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem_C` inserted — loaded, constructed, slot
+  applied, dependency recorded, `bindable_events` (OnCheckboxItemChanged/OnVisibilityChanged) discovered, compile/
+  save OK. Verified on UE 5.4 (custom AEngine).
+
+### Cross-version note
+- Generated-class naming (`_C`) and `GeneratedClass` are stable; the resolver tolerates all three input forms.
