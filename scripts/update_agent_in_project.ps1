@@ -99,11 +99,14 @@ if ($DryRun) {
 }
 
 # ---- 1. backup current installed agent ----
-if ($installed -and (Test-Path $toolsDir)) {
+# Back up whatever is currently installed even when there is NO sync baseline (pre-sync installs, e.g. a copy
+# made before the update/sync system existed) - the first update must still be reversible.
+if (Test-Path $toolsDir) {
   $backupDir = Join-Path $updDir 'backup\Tools_BlueprintAgent'
   New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
   robocopy $toolsDir $backupDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
   if ($LASTEXITCODE -ge 8) { [void]$errors.Add("backup failed (robocopy exit $LASTEXITCODE)") } else { [void]$backups.Add(($backupDir -replace '\\','/')) }
+  if (-not $installed) { [void]$warnings.Add("no sync baseline found (pre-sync install); backed up existing Tools/BlueprintAgent and establishing a fresh baseline (conflicts cannot be detected on this first update)") }
 } else { [void]$warnings.Add("no prior install detected; performing a fresh managed-content write") }
 
 # also back up managed-block host files that we will touch
