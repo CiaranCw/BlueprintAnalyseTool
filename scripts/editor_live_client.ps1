@@ -118,26 +118,41 @@ $manifestPath = if ($markerObj -and $markerObj.manifest) { "$($markerObj.manifes
 $reportDir = if ($manifestPath) { Split-Path $manifestPath -Parent } else { "" }
 $exit = if ($markerObj -and ($null -ne $markerObj.exit_code)) { [int]$markerObj.exit_code } else { if($ok){0}else{20} }
 
-# ---- optional PNG/SVG rasterization for parity (client-side; C++ service emits DOT/MMD only) ----
+# ---- PNG/SVG rasterization for parity (C++ service emits DOT/MMD only) + clear the now-stale note ----
 if ($ok -and (-not $NoRenderPreview) -and $manifestPath -and (Test-Path $manifestPath)) {
-  $dotExe = (Get-Command dot -ErrorAction SilentlyContinue).Source
+  $pngPath = Join-Path $reportDir 'viz\blueprint.png'
+  $svgPath = Join-Path $reportDir 'viz\blueprint.svg'
   $dotFile = Join-Path $reportDir 'viz\blueprint.dot'
-  if ($dotExe -and (Test-Path $dotFile)) {
+  $dotExe = (Get-Command dot -ErrorAction SilentlyContinue).Source
+  if ($dotExe -and (Test-Path $dotFile) -and -not (Test-Path $pngPath)) {
+    try { & $dotExe -Tpng $dotFile -o $pngPath 2>$null; & $dotExe -Tsvg $dotFile -o $svgPath 2>$null } catch {}
+  }
+  # If a PNG now exists (rendered here or already present), reflect it in the manifest AND drop the stale
+  # "PNG/SVG not rendered..." manual_check_required note the in-editor service always emits (else it misleads
+  # the caller into thinking no image was produced when the client just made one).
+  if (Test-Path $pngPath) {
     try {
-      & $dotExe -Tpng $dotFile -o (Join-Path $reportDir 'viz\blueprint.png') 2>$null
-      & $dotExe -Tsvg $dotFile -o (Join-Path $reportDir 'viz\blueprint.svg') 2>$null
-    } catch {}
-    if (Test-Path (Join-Path $reportDir 'viz\blueprint.png')) {
-      try {
-        $mf = Read-JsonUtf8 $manifestPath
-        if ($mf.outputs) {
-          $mf.outputs.png = 'viz/blueprint.png'
-          if (Test-Path (Join-Path $reportDir 'viz\blueprint.svg')) { $mf.outputs.svg = 'viz/blueprint.svg' }
-          Write-Utf8NoBom $manifestPath ($mf | ConvertTo-Json -Depth 40)
-          Info "rasterized viz PNG/SVG via Graphviz"
+      $mf = Read-JsonUtf8 $manifestPath
+      if ($mf.PSObject.Properties.Name -contains 'outputs' -and $mf.outputs) {
+        $mf.outputs.png = 'viz/blueprint.png'
+        if (Test-Path $svgPath) { $mf.outputs.svg = 'viz/blueprint.svg' }
+      }
+      if ($mf.PSObject.Properties.Name -contains 'manual_check_required') {
+        $mf.manual_check_required = @(@($mf.manual_check_required) | Where-Object { "$_" -notmatch 'PNG/SVG' })
+      }
+      Write-Utf8NoBom $manifestPath ($mf | ConvertTo-Json -Depth 40)
+      # keep understanding_score.json consistent too
+      $scorePath = Join-Path $reportDir 'understanding_score.json'
+      if (Test-Path $scorePath) {
+        $sc = Read-JsonUtf8 $scorePath
+        if ($sc.PSObject.Properties.Name -contains 'manual_check_required') {
+          $sc.manual_check_required = @(@($sc.manual_check_required) | Where-Object { "$_" -notmatch 'PNG/SVG' })
         }
-      } catch {}
-    }
+        if ($sc.PSObject.Properties.Name -contains 'viz_note') { $sc.viz_note = 'PNG/SVG rasterized via Graphviz by the client. DOT + Mermaid also produced.' }
+        Write-Utf8NoBom $scorePath ($sc | ConvertTo-Json -Depth 8)
+      }
+      Info "viz PNG/SVG present; manifest updated (stale PNG/SVG note cleared)"
+    } catch {}
   }
 }
 

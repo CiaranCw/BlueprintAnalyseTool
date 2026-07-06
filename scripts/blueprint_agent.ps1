@@ -65,6 +65,26 @@ $mode = if ($Mode) { $Mode } elseif ($req.execution.mode) { "$($req.execution.mo
 $pol  = $req.project.engine_policy
 $exec = $req.execution
 
+# Tolerate alternate asset-path shapes for analyze: some callers pass request.asset_path (singular),
+# top-level asset_paths/asset_path, or target.asset_path instead of the documented request.asset_paths.
+# Normalize into request.asset_paths so both the editor_live and native paths agree.
+function Resolve-AssetPaths($r){
+  if ($r.request.asset_paths) { return @(@($r.request.asset_paths) | Where-Object { "$_" -ne '' }) }
+  if ($r.request.asset_path)  { return @("$($r.request.asset_path)") }
+  if ($r.asset_paths)         { return @(@($r.asset_paths) | Where-Object { "$_" -ne '' }) }
+  if ($r.asset_path)          { return @("$($r.asset_path)") }
+  if ($r.target.asset_path)   { return @("$($r.target.asset_path)") }
+  if ($r.request.target.asset_path) { return @("$($r.request.target.asset_path)") }
+  return @()
+}
+if ($taskType -eq 'analyze') {
+  $na = Resolve-AssetPaths $req
+  if ($na.Count -gt 0) {
+    if (-not $req.request) { $req | Add-Member -NotePropertyName request -NotePropertyValue ([pscustomobject]@{}) -Force }
+    $req.request | Add-Member -NotePropertyName asset_paths -NotePropertyValue ([object[]]$na) -Force
+  }
+}
+
 Write-Host "== blueprint_agent ==" -ForegroundColor Cyan
 Write-Host "task_type=$taskType  mode=$mode  prefer_live=$([bool]$PreferEditorLive)  project=$proj"
 
@@ -170,7 +190,7 @@ if (-not $handledByLive) {
       $rc=$LASTEXITCODE; $subOut=(Join-Path (Split-Path $proj -Parent) 'Saved\BPParserAgentReports\warmup'); $usedMode='native_full'
     }
     'analyze' {
-      $assets = @($req.request.asset_paths); if (-not $assets -or $assets.Count -eq 0) { Fail "analyze: request.asset_paths is empty" 30 }
+      $assets = @($req.request.asset_paths); if (-not $assets -or $assets.Count -eq 0) { Fail "analyze: no asset provided. Use request.asset_paths: [\"/Game/Path/To/Asset\"] (array of /Game paths). Also accepted: request.asset_path / target.asset_path." 30 }
       $amode = switch ($mode) { 'native_full'{'native-full'} 'python_partial'{'python-partial'} 'offline_asset_scan'{'offline'} default {'auto'} }
       $taskOut = Join-Path $outBase 'analyze'
       $args = @{ ProjectUProject=$proj; AssetPath=$assets[0]; OutputDir=$taskOut; Mode=$amode }
