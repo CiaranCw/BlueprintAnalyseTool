@@ -37,6 +37,8 @@ public class BPParserTestGen : ModuleRules
 			"Slate",               // FUIAction / FExecuteAction
 			"SlateCore",           // FSlateIcon
 			"EditorSubsystem",     // GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() (editor_live open-editor check)
+			"UMG",                 // UWidget/UWidgetTree/UPanelWidget/UPanelSlot/UserWidget (Widget Blueprint creation + IR)
+			"UMGEditor",           // UWidgetBlueprint / UWidgetBlueprintFactory (create WBP asset)
 		});
 	}
 }

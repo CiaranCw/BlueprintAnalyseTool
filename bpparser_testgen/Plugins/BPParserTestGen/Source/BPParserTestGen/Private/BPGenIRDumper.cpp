@@ -17,6 +17,14 @@
 #include "Misc/Paths.h"
 #include "Misc/PackageName.h"
 #include "UObject/UObjectGlobals.h"
+#include "UObject/UnrealType.h"
+
+// UMG (Widget Blueprint IR)
+#include "WidgetBlueprint.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Widget.h"
+#include "Components/PanelWidget.h"
+#include "Components/PanelSlot.h"
 
 namespace
 {
@@ -159,6 +167,71 @@ namespace
 		O->SetArrayField(TEXT("comments"), Comments);
 		return O;
 	}
+
+	// ---- Widget (UMG) IR ------------------------------------------------------------------------
+	// Export the properties (widget or slot) that were CUSTOMIZED away from the class default, as
+	// ExportText strings. This keeps the IR compact yet reflects exactly what a create/edit set, so a
+	// caller can verify Details against the request without dumping hundreds of default values.
+	TSharedPtr<FJsonObject> DumpChangedEditProps(UObject* Obj)
+	{
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		if (!Obj) { return O; }
+		UObject* CDO = Obj->GetClass()->GetDefaultObject();
+		for (TFieldIterator<FProperty> It(Obj->GetClass()); It; ++It)
+		{
+			FProperty* P = *It;
+			if (!P->HasAnyPropertyFlags(CPF_Edit) || P->HasAnyPropertyFlags(CPF_Transient)) { continue; }
+			// Structural backrefs captured elsewhere (the slot is a dedicated node; a panel's child list is the tree).
+			const FString PN = P->GetName();
+			if (PN == TEXT("Slot") || PN == TEXT("Slots")) { continue; }
+			const void* V = P->ContainerPtrToValuePtr<void>(Obj);
+			const void* D = CDO ? P->ContainerPtrToValuePtr<void>(CDO) : nullptr;
+			if (D && P->Identical(V, D)) { continue; }   // unchanged from default -> skip
+			FString Out;
+			P->ExportTextItem_Direct(Out, V, D, nullptr, PPF_None);
+			if (!Out.IsEmpty()) { O->SetStringField(P->GetName(), Out); }
+		}
+		return O;
+	}
+
+	TSharedPtr<FJsonObject> DumpWidget(UWidget* W)
+	{
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		if (!W) { return O; }
+		O->SetStringField(TEXT("name"), W->GetName());
+		O->SetStringField(TEXT("class"), W->GetClass()->GetPathName());
+		O->SetBoolField(TEXT("is_variable"), W->bIsVariable);
+		if (W->Slot)
+		{
+			TSharedPtr<FJsonObject> S = MakeShared<FJsonObject>();
+			S->SetStringField(TEXT("class"), W->Slot->GetClass()->GetPathName());
+			S->SetObjectField(TEXT("properties"), DumpChangedEditProps(W->Slot));
+			O->SetObjectField(TEXT("slot"), S);
+		}
+		else { O->SetField(TEXT("slot"), MakeShared<FJsonValueNull>()); }
+		O->SetObjectField(TEXT("properties"), DumpChangedEditProps(W));
+		TArray<TSharedPtr<FJsonValue>> Kids;
+		if (UPanelWidget* P = Cast<UPanelWidget>(W))
+		{
+			for (int32 i = 0; i < P->GetChildrenCount(); ++i)
+			{
+				if (UWidget* C = P->GetChildAt(i)) { Kids.Add(MakeShared<FJsonValueObject>(DumpWidget(C))); }
+			}
+		}
+		O->SetArrayField(TEXT("children"), Kids);
+		return O;
+	}
+
+	TSharedPtr<FJsonObject> DumpWidgetTree(UWidgetBlueprint* WBP)
+	{
+		TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+		if (WBP && WBP->WidgetTree && WBP->WidgetTree->RootWidget)
+		{
+			O->SetObjectField(TEXT("root"), DumpWidget(WBP->WidgetTree->RootWidget));
+		}
+		else { O->SetField(TEXT("root"), MakeShared<FJsonValueNull>()); }
+		return O;
+	}
 }
 
 TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
@@ -231,6 +304,12 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 		if (I.Interface) { Ifaces.Add(MakeShared<FJsonValueString>(I.Interface->GetPathName())); }
 	}
 	Root->SetArrayField(TEXT("interfaces"), Ifaces);
+
+	// Widget Blueprint: also emit the visual WidgetTree (hierarchy / slots / customized Details).
+	if (UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP))
+	{
+		Root->SetObjectField(TEXT("widget_tree"), DumpWidgetTree(WBP));
+	}
 
 	return Root;
 }

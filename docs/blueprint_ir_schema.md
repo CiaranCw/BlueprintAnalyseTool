@@ -223,3 +223,33 @@ UE 来源：`UBlueprint::SimpleConstructionScript->GetRootNodes()` 递归。每�
 - `schema_version` 采用 SemVer；`0.x.y` 内允许新增字段，重命名 / 语义变更 → bump minor。
 - `node_id` / `pin_id` / `edge_id` 必须**在同一蓝图同一 schema 版本下稳定**：相同输入应产出相同 id，便于 IR diff 与 golden 测试。
 - 不允许字段同名但语义改变。
+
+---
+
+## 10. widget_tree（仅 Widget Blueprint / UMG）
+
+当资产是 `UWidgetBlueprint` 时，根级额外输出 `widget_tree`，镜像 `UWidgetTree` 的可视化层级
+（UE 来源：`UWidgetBlueprint::WidgetTree` → `UWidget` / `UPanelWidget` / `UPanelSlot`）。
+
+```json
+"widget_tree": {
+  "root": {
+    "name": "RootCanvas",                     // UWidget::GetName()
+    "class": "/Script/UMG.CanvasPanel",        // UWidget::GetClass()->GetPathName()
+    "is_variable": true,                        // UWidget::bIsVariable
+    "slot": {                                   // 该控件在其父面板中的槽（无父则为 null）
+      "class": "/Script/UMG.CanvasPanelSlot",
+      "properties": { "LayoutData": "(Offsets=(Left=40.000000,Top=40.000000,Right=400.000000,Bottom=60.000000))" }
+    },
+    "properties": { "Text": "Main Menu", "Visibility": "HitTestInvisible" },
+    "children": [ { "name": "...", "class": "...", "slot": {}, "properties": {}, "children": [] } ]
+  }
+}
+```
+
+约定：
+- `properties` / `slot.properties` 仅包含**相对类默认值发生改变**的可编辑属性（`CPF_Edit` 且与 CDO 不同），
+  以 `ExportText` 字符串形式给出，保证紧凑且能反映 create/edit 实际写入的值（便于 expected↔actual 对比）。
+- 结构性反向引用（`Slot` / `Slots`）不进入 `properties`（槽已作为独立 `slot` 节点，子级即 `children`）。
+- Canvas 槽的 Position/Size/Anchors/Alignment 落在 `LayoutData`（通过 setter 写入）；Box 槽的
+  `Padding`/`Size`/对齐为直接属性。

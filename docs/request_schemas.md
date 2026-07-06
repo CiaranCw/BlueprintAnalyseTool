@@ -115,9 +115,15 @@ baseline_ir.json / modified_ir.json / summary.md / viz/*`. See `docs/agent_edit_
 ```
 Supported `node_type`: `event, call_function (function="/Script/Pkg.Class.Func"), branch, sequence,
 variable_get, variable_set, comment`. Edges reference `local_id.PinName`. Unsupported node types →
-warning + `manual_check_required` (never silently dropped). `blueprint_type` Actor/ActorComponent/Interface
-supported; WidgetBlueprint/AnimBlueprint creation is not yet supported (clear failure). Outputs:
+warning + `manual_check_required` (never silently dropped). `blueprint_type` Actor/ActorComponent/Interface/**Widget**
+supported (AnimBlueprint creation not yet). Outputs:
 `create_result.json, created_ir.json, summary.md, viz/created.dot, manifest.json`. See `docs/agent_create_contract.md`.
+
+For `blueprint_type:"Widget"` add a `widget.hierarchy` (recursive WidgetTree: `type`/`name`/`properties`/`slot`/
+`children`); Details + slot props are set by reflection (+ `Set<Key>` setter fallback for CanvasPanel Position/
+Size/Anchors/Alignment). Output adds `created_ir.json.widget_tree` + `viz/hierarchy.dot|.mmd`. Deferred
+(warn/manual): event/property binding, custom UserWidget children, UMG animation, pixel render. Full schema:
+`docs/widget_blueprint_schema.md`.
 
 ## task_type = validate  →  scripts/validate_outputs.ps1
 Static validation of prior deliverables (JSON well-formed, edge referential integrity, viz presence).

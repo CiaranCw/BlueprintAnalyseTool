@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "task_type": "create",
+  "project": {
+    "ue_root": "",
+    "uproject": "<PATH>/YourProject.uproject",
+    "output_dir": "<PATH>/YourProject/Saved/BPParserAgentReports"
+  },
+  "execution": { "mode": "native_full" },
+  "request": {
+    "asset": {
+      "asset_path": "/Game/Generated/WBP_AgentMenu",
+      "blueprint_type": "Widget",
+      "parent_class": "/Script/UMG.UserWidget",
+      "overwrite_policy": "fail_if_exists"
+    },
+    "widget": {
+      "hierarchy": {
+        "root": {
+          "type": "CanvasPanel",
+          "name": "RootCanvas",
+          "children": [
+            {
+              "type": "TextBlock",
+              "name": "TitleText",
+              "properties": { "Text": "Main Menu", "Visibility": "HitTestInvisible" },
+              "slot": { "type": "CanvasPanelSlot", "properties": { "Position": { "X": 40, "Y": 40 }, "Size": { "X": 400, "Y": 60 } } }
+            },
+            {
+              "type": "Button",
+              "name": "PlayButton",
+              "slot": { "type": "CanvasPanelSlot", "properties": { "Position": { "X": 40, "Y": 120 }, "Size": { "X": 200, "Y": 48 } } }
+            }
+          ]
+        }
+      }
+    },
+    "validation": { "compile": true, "save": true, "redump_ir": true, "render_preview": true }
+  }
+}

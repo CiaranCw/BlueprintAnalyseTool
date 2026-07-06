@@ -19,9 +19,10 @@ warnings), 20 failed, 30 bad input, 41 exists_refused`.
 
 ## Spec (request.request)
 See the `create` section of `docs/request_schemas.md`. Summary:
-- `asset{ asset_path, blueprint_type(Actor|ActorComponent|Interface), parent_class, overwrite_policy }`.
+- `asset{ asset_path, blueprint_type(Actor|ActorComponent|Interface|Widget), parent_class, overwrite_policy }`.
 - `variables[]`, `components[]`, `functions[]` (signatures), `event_dispatchers[]`,
   `graphs[]{ nodes[], edges[], comments[] }`.
+- `blueprint_type="Widget"`: add `widget.hierarchy` (recursive WidgetTree) — see `docs/widget_blueprint_schema.md`.
 - Node authoring supported for the EventGraph: `event, call_function, branch, sequence, variable_get,
   variable_set, comment`. Edges use `local_id.PinName`.
 
@@ -44,7 +45,11 @@ viz/created.dot
   compilable assets.
 - Function `body` graphs and component `attach_to` hierarchy are recorded as `manual_check_required`
   (signatures/flat components are created; deep body wiring is not auto-generated in this version).
-- WidgetBlueprint / AnimBlueprint creation → clear `failed` (needs their factories); use Actor/Component/Interface.
+- **Widget Blueprint (UMG)**: supported (Phase 1-3) — WidgetTree hierarchy, slots, and Details via reflection;
+  `created_ir.json` gains `widget_tree` and `viz/hierarchy.dot|.mmd` is produced. Deferred (warn/manual):
+  event binding (`widget.events`), property binding (`widget.bindings`), custom `UserWidget` children, UMG
+  animation, and pixel-accurate render. See `docs/widget_blueprint_schema.md`.
+- AnimBlueprint creation → clear `failed` (needs its factory); use Actor/Component/Interface/Widget.
 - Unsupported `node_type` → warning + `manual_check_required`, never silently dropped.
 - After creation, open the asset in the editor to visually confirm.
 

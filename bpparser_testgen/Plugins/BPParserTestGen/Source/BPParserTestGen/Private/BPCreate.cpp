@@ -2,6 +2,7 @@
 #include "BPCreate.h"
 #include "BPParserTestGenModule.h"
 #include "BPGen.h"
+#include "BPWidgetGen.h"
 #include "BPGenIRDumper.h"
 #include "BPGenUECompat.h"
 
@@ -9,6 +10,10 @@
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
 #include "Components/SceneComponent.h"
+#include "WidgetBlueprint.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/Widget.h"
+#include "Components/PanelSlot.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
@@ -43,6 +48,21 @@ namespace
 
 	UClass* ResolveClass(const FString& Path){ if(Path.IsEmpty()) return nullptr; return LoadObject<UClass>(nullptr,*Path); }
 
+	// Emit a widget-hierarchy graph (DOT + Mermaid) from the created_ir widget_tree node (recursive).
+	void EmitWidgetDot(const TSharedPtr<FJsonObject>& Node, FString& Dot, FString& Mmd, int32& Counter, const FString& ParentId)
+	{
+		if(!Node.IsValid()) return;
+		const FString Name = JStr(Node,TEXT("name"),TEXT("?"));
+		FString Cls = JStr(Node,TEXT("class")); int32 d; if(Cls.FindLastChar('.',d)) Cls=Cls.Mid(d+1); Cls.RemoveFromEnd(TEXT("_C"));
+		const FString Id = FString::Printf(TEXT("w%d"), Counter++);
+		FString Label = Name + TEXT("\\n") + Cls; Label.ReplaceInline(TEXT("\""),TEXT("'"));
+		Dot += FString::Printf(TEXT("  %s [label=\"%s\"];\n"), *Id, *Label);
+		Mmd += FString::Printf(TEXT("  %s[\"%s : %s\"]\n"), *Id, *Name, *Cls);
+		if(!ParentId.IsEmpty()){ Dot += FString::Printf(TEXT("  %s -> %s;\n"),*ParentId,*Id); Mmd += FString::Printf(TEXT("  %s --> %s\n"),*ParentId,*Id); }
+		const TArray<TSharedPtr<FJsonValue>>* Kids=nullptr;
+		if(Node->TryGetArrayField(TEXT("children"),Kids)) for(const auto& k:*Kids){ if(auto ko=k->AsObject()) EmitWidgetDot(ko,Dot,Mmd,Counter,Id); }
+	}
+
 	FEdGraphPinType PinTypeFromSpec(const TSharedPtr<FJsonObject>& S, FString& Err)
 	{
 		const FString Cat=JStr(S,TEXT("category"),TEXT("int")).ToLower();
@@ -72,6 +92,7 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 {
 	auto Log=[](const FString& m){ UE_LOG(LogBPParserTestGen,Display,TEXT("BPCreate: %s"),*m); };
 	TArray<FString> Warn, Err, Manual;
+	bool bWidgetAsset=false;
 
 	FString Text;
 	if(!FFileHelper::LoadFileToString(Text,*SpecFile)){ Log(TEXT("cannot read spec file")); return 30; }
@@ -112,7 +133,8 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 		Out->SetStringField(TEXT("created_ir"),TEXT("created_ir.json"));
 		Out->SetStringField(TEXT("create_result"),TEXT("create_result.json"));
 		Out->SetStringField(TEXT("summary"),TEXT("summary.md"));
-		Out->SetStringField(TEXT("dot"),TEXT("viz/created.dot"));
+		Out->SetStringField(TEXT("dot"), bWidgetAsset ? TEXT("viz/hierarchy.dot") : TEXT("viz/created.dot"));
+		if(bWidgetAsset){ Out->SetStringField(TEXT("hierarchy_dot"),TEXT("viz/hierarchy.dot")); Out->SetStringField(TEXT("hierarchy_mmd"),TEXT("viz/hierarchy.mmd")); }
 		M->SetObjectField(TEXT("outputs"),Out);
 		if(BP){ M->SetStringField(TEXT("created_asset"),BP->GetPathName()); }
 		WriteJson(FPaths::Combine(OutDir,TEXT("manifest.json")),M);
@@ -141,7 +163,52 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 	if(T==TEXT("interface")) BP=FBPGen::CreateInterfaceBlueprint(AssetPath);
 	else if(T.Contains(TEXT("component"))|| (Parent&&Parent->IsChildOf(UActorComponent::StaticClass())))
 		BP=FBPGen::CreateComponentBlueprint(AssetPath, Parent?Parent:USceneComponent::StaticClass());
-	else if(T==TEXT("widget")||T==TEXT("widgetblueprint")||T==TEXT("wbp")){ Err.Add(TEXT("WidgetBlueprint creation not supported by this worker (needs UWidgetBlueprintFactory); use Actor/Component/Interface.")); return Finish(TEXT("failed"),20,nullptr); }
+	else if(T==TEXT("widget")||T==TEXT("widgetblueprint")||T==TEXT("wbp"))
+	{
+		UClass* WParent = (Parent && Parent->IsChildOf(UUserWidget::StaticClass())) ? Parent : UUserWidget::StaticClass();
+		UWidgetBlueprint* WBP = FBPWidgetGen::CreateWidgetBlueprint(AssetPath, WParent);
+		if(!WBP){ Err.Add(TEXT("Widget Blueprint creation failed (UWidgetBlueprintFactory)")); return Finish(TEXT("failed"),20,nullptr); }
+		BP = WBP; bWidgetAsset = true;
+
+		// Build the visual hierarchy from widget.hierarchy (either the root node directly or a { "root": <node> } wrapper).
+		if(const TSharedPtr<FJsonObject>* WObj = JObj(Req,TEXT("widget")))
+		{
+			if(JArr(*WObj,TEXT("bindings")))   Manual.Add(TEXT("widget.bindings deferred (property binding is a later phase; not applied)."));
+			if(JArr(*WObj,TEXT("events")))     Manual.Add(TEXT("widget.events (event binding, e.g. OnClicked) deferred to a later phase."));
+			if(JArr(*WObj,TEXT("animations"))) Manual.Add(TEXT("widget.animations deferred to a later phase."));
+			if(const TSharedPtr<FJsonObject>* Hier = JObj(*WObj,TEXT("hierarchy")))
+			{
+				const TSharedPtr<FJsonObject>* RootWrap = JObj(*Hier,TEXT("root"));
+				TSharedPtr<FJsonObject> RootNode = RootWrap ? *RootWrap : *Hier;
+				TFunction<UWidget*(const TSharedPtr<FJsonObject>&, UWidget*)> Build;
+				Build = [&](const TSharedPtr<FJsonObject>& Node, UWidget* ParentW) -> UWidget*
+				{
+					const FString WType = JStr(Node,TEXT("type"));
+					const FString WName = JStr(Node,TEXT("name"));
+					UClass* WClass = FBPWidgetGen::ResolveWidgetClass(WType);
+					if(!WClass){ Warn.Add(FString::Printf(TEXT("widget type unresolved: '%s' (name=%s)"),*WType,*WName)); return (UWidget*)nullptr; }
+					UWidget* W = FBPWidgetGen::ConstructWidget(WBP, WClass, WName.IsEmpty()?NAME_None:FName(*WName));
+					if(!W){ Warn.Add(FString::Printf(TEXT("construct failed for type '%s'"),*WType)); return (UWidget*)nullptr; }
+					if(!ParentW) { FBPWidgetGen::SetRoot(WBP, W); }
+					else
+					{
+						UPanelSlot* Slot = FBPWidgetGen::AddChild(ParentW, W);
+						if(!Slot){ Warn.Add(FString::Printf(TEXT("AddChild failed (parent '%s' is not a panel?) for '%s'"),*ParentW->GetName(),*WName)); }
+						else if(const TSharedPtr<FJsonObject>* SlotObj = JObj(Node,TEXT("slot")))
+							if(const TSharedPtr<FJsonObject>* SP = JObj(*SlotObj,TEXT("properties")))
+								for(const auto& kv : (*SP)->Values){ const FString e=FBPWidgetGen::SetPropertyFromJson(Slot,kv.Key,kv.Value); if(!e.IsEmpty()) Warn.Add(TEXT("slot prop '")+kv.Key+TEXT("' on ")+WName+TEXT(": ")+e); }
+					}
+					if(const TSharedPtr<FJsonObject>* Props = JObj(Node,TEXT("properties")))
+						for(const auto& kv : (*Props)->Values){ const FString e=FBPWidgetGen::SetPropertyFromJson(W,kv.Key,kv.Value); if(!e.IsEmpty()) Warn.Add(TEXT("prop '")+kv.Key+TEXT("' on ")+WName+TEXT(": ")+e); }
+					if(const TArray<TSharedPtr<FJsonValue>>* Kids = JArr(Node,TEXT("children")))
+						for(const auto& kv : *Kids){ if(auto ko=kv->AsObject()) Build(ko, W); }
+					return W;
+				};
+				Build(RootNode, (UWidget*)nullptr);
+			}
+			else { Manual.Add(TEXT("widget: no hierarchy provided; created an empty WidgetTree.")); }
+		}
+	}
 	else BP=FBPGen::CreateActorBlueprint(AssetPath, Parent?Parent:AActor::StaticClass());
 	if(!BP){ Err.Add(TEXT("asset creation failed")); return Finish(TEXT("failed"),20,nullptr); }
 	Log(FString::Printf(TEXT("created %s (type=%s parent=%s)"),*AssetPath,*BpType,Parent?*Parent->GetName():TEXT("<default>")));
@@ -228,6 +295,20 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 			*AssetPath,*BpType,ParentPath.IsEmpty()?TEXT("<default>"):*ParentPath,*Compile,bSaved,gc,nc,Warn.Num(),Manual.Num());
 		FFileHelper::SaveStringToFile(sm,*FPaths::Combine(OutDir,TEXT("summary.md")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 		FFileHelper::SaveStringToFile(FString::Printf(TEXT("digraph Created { label=\"%s\"; node[shape=box,style=rounded]; }\n"),*AssetPath),*FPaths::Combine(OutDir,TEXT("viz\\created.dot")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	}
+
+	// Widget hierarchy preview (DOT + Mermaid) from the created_ir widget_tree.
+	if(bWidgetAsset)
+	{
+		TSharedPtr<FJsonObject> RootNode; const TSharedPtr<FJsonObject>* WT=nullptr;
+		if(IR->TryGetObjectField(TEXT("widget_tree"),WT) && WT){ if(const TSharedPtr<FJsonObject>* rn=JObj(*WT,TEXT("root"))) RootNode=*rn; }
+		FString Dot=TEXT("digraph WidgetTree {\n  rankdir=TB;\n  node[shape=box,style=rounded];\n");
+		FString Mmd=TEXT("flowchart TB\n");
+		int32 counter=0;
+		if(RootNode.IsValid()) EmitWidgetDot(RootNode,Dot,Mmd,counter,FString());
+		Dot+=TEXT("}\n");
+		FFileHelper::SaveStringToFile(Dot,*FPaths::Combine(OutDir,TEXT("viz\\hierarchy.dot")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+		FFileHelper::SaveStringToFile(Mmd,*FPaths::Combine(OutDir,TEXT("viz\\hierarchy.mmd")),FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 
 	const bool bBad = Compile.Contains(TEXT("error"))||Compile.Contains(TEXT("fail"));
