@@ -83,7 +83,7 @@ private:
 	int32 HandleCreate (const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir);
 
 	// --- report writers / helpers ---
-	/** Wrap the raw dumper object into the unified IR shape (asset.*/blueprint.*/graphs) used by native_full. */
+	/** Wrap the raw dumper object into the unified IR shape (asset / blueprint / graphs) used by native_full. */
 	static TSharedPtr<FJsonObject> BuildUnifiedIR(const TSharedPtr<FJsonObject>& Raw, const FString& PackagePath, const FString& ShortName);
 
 	/** True if the given asset is currently open in an asset editor tab. */
