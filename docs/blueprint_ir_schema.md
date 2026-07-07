@@ -290,17 +290,34 @@ WBP 根级的 `settable_properties` 为该 WBP **自身生成类**的可设置�
   （`input`→`resolved_to`）。见 `docs/issue_patterns.md` P16。
 
 ### 10.2 widget_event_bindings（Widget Blueprint 根级）
-已在图中创建的绑定事件节点（`UK2Node_ComponentBoundEvent`）的 redump（UE 来源：遍历 `UbergraphPages`/`FunctionGraphs`）：
+已在图中创建的绑定事件节点（`UK2Node_ComponentBoundEvent`）的 redump（UE 来源：遍历 `UbergraphPages`/`FunctionGraphs`），
+每条含 **`handler`**（Phase 4 P2 —— 事件 exec/参数接线的真实回读，沿 bound-event 的 `then` 追踪到下游 Call 节点）：
 ```json
 "widget_event_bindings": [
-  { "widget": "QualityComboBox", "event": "OnSelectionChanged", "delegate_property": "OnSelectionChanged",
-    "node_class": "K2Node_ComponentBoundEvent", "node_title": "On Selection Changed (QualityComboBox)",
-    "graph": "EventGraph", "parameters": [ "SelectedItem", "SelectionType" ], "status": "bound" }
+  { "widget": "QualityCombo", "event": "OnSelectionChanged", "delegate_property": "OnSelectionChanged",
+    "node_class": "K2Node_ComponentBoundEvent", "node_title": "On Selection Changed (QualityCombo)",
+    "graph": "EventGraph", "parameters": [ "SelectedItem", "SelectionType" ], "status": "bound",
+    "handler": {
+      "type": "function",                 // bound_event | custom_event | function
+      "name": "HandleQualityChanged",
+      "connected": true,                    // handler 已接到 bound event（exec）
+      "exec_connected": true,
+      "parameters_connected": [
+        { "from": "SelectedItem",  "to": "SelectedItem",  "status": "connected" },
+        { "from": "SelectionType", "to": "SelectionType", "status": "connected" }
+      ]
+    } }
 ]
 ```
-create 侧另在 `manifest.json`/`create_result.json` 写入 `widget_event_bindings`（含每个请求事件的
+`handler.type` 判定：下游 Call 节点目标是图中同名 `UK2Node_CustomEvent` → `custom_event`，否则 `function`；无下游 Call →
+`bound_event`（bound-event 自身即入口）。参数 `status`：`connected | not_connected`（redump 视角）。
+
+create 侧另在 `manifest.json`/`create_result.json` 写入 `widget_event_bindings`（含每个请求事件的绑定
 `status`：`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`
-及 `handler_type`/`handler_name`）。两者可交叉核对（请求结果 vs 图内实际节点）。
+以及 `handler` 对象，其 `status`/`parameters_connected[].status` 覆盖接线分类：`connected|already_connected|
+parameter_pin_missing|parameter_type_mismatch|ambiguous_parameter_match`，handler 级失败：`handler_not_found|
+handler_create_failed|function_is_pure|exec_pin_missing|exec_connection_failed`）。两者可交叉核对（请求结果 vs 图内实际节点）。
+Graph IR（`graphs[]`）中也能看到真实的 Custom Event / Call Function 节点与 exec/data 边。
 
 ### 10.3 dependencies（Widget Blueprint 根级 — 自定义控件）
 WidgetTree 中引用的项目自定义控件（class path 以 `/Game/` 开头）会去重记录：

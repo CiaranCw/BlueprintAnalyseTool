@@ -193,6 +193,18 @@ properties often carry a `b` prefix (Details `Default Checked` → property `bDe
 deprecated, `current_value`, `set_supported`, `notes`) is documented in `docs/blueprint_ir_schema.md` §10.1;
 the resolution rules and rationale are in `docs/issue_patterns.md` P16.
 
+### Widget event handler wiring (Phase 4 P2)
+
+Widget event binding **and** handler exec/data wiring is implemented (currently exercised through the `create`
+path; see `docs/agent_create_contract.md` and `docs/widget_blueprint_schema.md`). An `events[]` entry with a
+`handler` (`bound_event` | `custom_event` | `function`, plus `create_if_missing`/`connect_exec`/`connect_parameters`)
+creates/reuses the handler entry, connects the bound-event exec first, then matches data params by name→type. All
+outcomes are classified in `widget_event_bindings[].handler` (`connected`/`exec_connected`/`parameters_connected[]`
++ failure codes `handler_not_found|function_is_pure|exec_connection_failed|parameter_*`) and re-derivable from the
+redumped graph. The wiring is idempotent — re-applying reuses the bound event, the custom event/function, and the
+call node without duplicating links. Redump (`blueprint_ir_schema.md` §10.2) exposes the same `handler` flow so a
+diff can confirm exec + parameter edges. Handler *body logic* is not auto-generated.
+
 ---
 
 ## 9. Known limitations (need manual UE confirmation or future work)

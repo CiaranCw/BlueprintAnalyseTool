@@ -16,6 +16,8 @@ class UWidget;
 class UPanelSlot;
 class UClass;
 class FJsonValue;
+class FJsonObject;
+class UK2Node_ComponentBoundEvent;
 
 class FBPWidgetGen
 {
@@ -77,7 +79,26 @@ public:
 	 *  compiled once first (so the widget variable exists). Fills OutResult (widget/widget_class/event/
 	 *  delegate_property/node_title/node_class/graph/parameters/status/reused). Returns "" on success or a
 	 *  classified error string; OutResult.status is one of bound|reused|widget_not_found|not_variable|
-	 *  property_missing|delegate_not_found|pins_incomplete|error. */
+	 *  property_missing|delegate_not_found|pins_incomplete|error. OutNode (optional) receives the bound-event node. */
 	static FString BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName,
-		TSharedPtr<FJsonObject>& OutResult);
+		TSharedPtr<FJsonObject>& OutResult, UK2Node_ComponentBoundEvent** OutNode = nullptr);
+
+	// ---- Phase 4 P2 (handler exec/data wiring) ----
+
+	/** ENTRY step: ensure the handler node/graph exists (idempotent). HandlerSpec: { type, name, create_if_missing }.
+	 *  For `custom_event` -> a UK2Node_CustomEvent named `name` (params mirror the bound event); for `function` ->
+	 *  a function graph `name` (params mirror the bound event). Signatures mirror BoundNode's data-output pins.
+	 *  Does NOT compile or create the call node (call `WireEventHandlerCall` after a compile). Fills OutHandler
+	 *  (type/name/created). Returns "" or a classified error: handler_not_found | handler_create_failed |
+	 *  function_is_pure | handler_signature_mismatch. `bound_event` returns "" with nothing to create. */
+	static FString EnsureEventHandlerEntry(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+		const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler);
+
+	/** WIRE step (run AFTER a compile so the handler UFunction exists): create/reuse a Call node to the handler
+	 *  and connect BoundNode's exec (then connect_parameters data pins by name then type). Idempotent (reuses an
+	 *  existing call linked from the bound event; never double-links). Fills OutHandler.connected/exec_connected/
+	 *  parameters_connected[{from,to,status}]. Returns "" or a classified error: bound_event_missing |
+	 *  handler_not_found | exec_pin_missing | exec_connection_failed. For `bound_event` type it is a no-op success. */
+	static FString WireEventHandlerCall(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+		const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler);
 };

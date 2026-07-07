@@ -23,7 +23,12 @@
 #include "Misc/PackageName.h"
 
 #include "EdGraph/EdGraph.h"
+#include "EdGraph/EdGraphPin.h"
+#include "EdGraphSchema_K2.h"
 #include "K2Node_ComponentBoundEvent.h"
+#include "K2Node_CustomEvent.h"
+#include "K2Node_CallFunction.h"
+#include "K2Node_FunctionEntry.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 
@@ -356,8 +361,9 @@ TArray<TSharedPtr<FJsonValue>> FBPWidgetGen::DescribeDelegateParams(const FMulti
 }
 
 FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& WidgetName, const FString& EventName,
-	TSharedPtr<FJsonObject>& OutResult)
+	TSharedPtr<FJsonObject>& OutResult, UK2Node_ComponentBoundEvent** OutNode)
 {
+	if (OutNode) { *OutNode = nullptr; }
 	if (!OutResult.IsValid()) { OutResult = MakeShared<FJsonObject>(); }
 	OutResult->SetStringField(TEXT("widget"), WidgetName);
 	OutResult->SetStringField(TEXT("event"), EventName);
@@ -398,6 +404,7 @@ FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& Widg
 	// Idempotent: reuse an existing bound-event node for this widget+delegate.
 	if (const UK2Node_ComponentBoundEvent* Existing = FKismetEditorUtilities::FindBoundEventForComponent(WBP, DelProp->GetFName(), WidgetProp->GetFName()))
 	{
+		if (OutNode) { *OutNode = const_cast<UK2Node_ComponentBoundEvent*>(Existing); }
 		OutResult->SetStringField(TEXT("node_class"), TEXT("K2Node_ComponentBoundEvent"));
 		OutResult->SetStringField(TEXT("node_title"), Existing->GetNodeTitle(ENodeTitleType::ListView).ToString());
 		OutResult->SetStringField(TEXT("graph"), Existing->GetGraph() ? Existing->GetGraph()->GetName() : TEXT(""));
@@ -420,11 +427,226 @@ FString FBPWidgetGen::BindWidgetEvent(UWidgetBlueprint* WBP, const FString& Widg
 		return Fail(TEXT("pins_incomplete"), FString::Printf(TEXT("bound-event node for %s.%s created but has no pins"), *WidgetName, *EventName));
 	}
 
+	if (OutNode) { *OutNode = Node; }
 	OutResult->SetStringField(TEXT("node_class"), TEXT("K2Node_ComponentBoundEvent"));
 	OutResult->SetStringField(TEXT("node_title"), Node->GetNodeTitle(ENodeTitleType::ListView).ToString());
 	OutResult->SetStringField(TEXT("graph"), EventGraph->GetName());
 	OutResult->SetBoolField(TEXT("reused"), false);
 	OutResult->SetStringField(TEXT("status"), TEXT("bound"));
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+	return FString();
+}
+
+// ---- Phase 4 P2: handler exec/data wiring helpers ----
+namespace
+{
+	// bound-event data OUTPUT pins = the delegate params (skip exec + delegate output).
+	TArray<UEdGraphPin*> BoundEventParamPins(UEdGraphNode* Node)
+	{
+		TArray<UEdGraphPin*> Out;
+		if (!Node) { return Out; }
+		for (UEdGraphPin* P : Node->Pins)
+		{
+			if (!P || P->Direction != EGPD_Output) { continue; }
+			if (P->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { continue; }
+			if (P->PinType.PinCategory == UEdGraphSchema_K2::PC_Delegate) { continue; }
+			if (P->PinName == TEXT("OutputDelegate")) { continue; }
+			Out.Add(P);
+		}
+		return Out;
+	}
+
+	// call-node data INPUT pins that can accept event params (skip exec + self + hidden).
+	TArray<UEdGraphPin*> CallInputDataPins(UEdGraphNode* Node)
+	{
+		TArray<UEdGraphPin*> Out;
+		if (!Node) { return Out; }
+		for (UEdGraphPin* P : Node->Pins)
+		{
+			if (!P || P->Direction != EGPD_Input) { continue; }
+			if (P->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { continue; }
+			if (P->bHidden) { continue; }
+			if (P->PinName == UEdGraphSchema_K2::PN_Self) { continue; }
+			Out.Add(P);
+		}
+		return Out;
+	}
+
+	bool PinsLinked(UEdGraphPin* A, UEdGraphPin* B) { return A && B && A->LinkedTo.Contains(B); }
+
+	bool SameCoreType(const FEdGraphPinType& X, const FEdGraphPinType& Y)
+	{
+		return X.PinCategory == Y.PinCategory && X.PinSubCategory == Y.PinSubCategory
+			&& X.PinSubCategoryObject == Y.PinSubCategoryObject && X.ContainerType == Y.ContainerType;
+	}
+
+	UK2Node_CustomEvent* FindCustomEventByName(UEdGraph* G, const FName Name)
+	{
+		if (!G) { return nullptr; }
+		for (UEdGraphNode* N : G->Nodes)
+		{
+			if (UK2Node_CustomEvent* CE = Cast<UK2Node_CustomEvent>(N)) { if (CE->CustomFunctionName == Name) { return CE; } }
+		}
+		return nullptr;
+	}
+}
+
+FString FBPWidgetGen::EnsureEventHandlerEntry(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+	const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler)
+{
+	if (!OutHandler.IsValid()) { OutHandler = MakeShared<FJsonObject>(); }
+	auto HStr = [&](const TCHAR* K, const FString& D) -> FString { FString v; return (HandlerSpec.IsValid() && HandlerSpec->TryGetStringField(K, v)) ? v : D; };
+	auto HBool = [&](const TCHAR* K, bool D) -> bool { bool v; return (HandlerSpec.IsValid() && HandlerSpec->TryGetBoolField(K, v)) ? v : D; };
+
+	const FString Type = HStr(TEXT("type"), TEXT("bound_event"));
+	const FString Name = HStr(TEXT("name"), TEXT(""));
+	const bool bCreateIfMissing = HBool(TEXT("create_if_missing"), true);
+	OutHandler->SetStringField(TEXT("type"), Type);
+	OutHandler->SetStringField(TEXT("name"), Name);
+	OutHandler->SetBoolField(TEXT("created"), false);
+	auto Fail = [&](const TCHAR* St, const FString& Msg) -> FString { OutHandler->SetStringField(TEXT("status"), St); return Msg; };
+
+	if (Type == TEXT("bound_event")) { return FString(); }  // the bound-event node is itself the entry
+	if (!WBP) { return Fail(TEXT("handler_create_failed"), TEXT("null WBP")); }
+	if (!BoundNode) { return Fail(TEXT("bound_event_missing"), TEXT("no bound-event node")); }
+	if (Name.IsEmpty()) { return Fail(TEXT("handler_not_found"), FString::Printf(TEXT("handler.name required for type '%s'"), *Type)); }
+	UEdGraph* EG = BoundNode->GetGraph();
+	if (!EG) { return Fail(TEXT("handler_create_failed"), TEXT("bound node has no graph")); }
+
+	// signature mirrors the bound event's data-output pins (name + type)
+	TArray<FBPGenParam> Params;
+	for (UEdGraphPin* P : BoundEventParamPins(BoundNode)) { FBPGenParam Pr; Pr.Name = P->PinName; Pr.Type = P->PinType; Pr.bIsReturn = false; Params.Add(Pr); }
+
+	if (Type == TEXT("custom_event"))
+	{
+		UK2Node_CustomEvent* CE = FindCustomEventByName(EG, FName(*Name));
+		if (!CE)
+		{
+			if (!bCreateIfMissing) { return Fail(TEXT("handler_not_found"), FString::Printf(TEXT("custom event '%s' not found and create_if_missing=false"), *Name)); }
+			int32 MaxY = 0; for (UEdGraphNode* N : EG->Nodes) { if (N) { MaxY = FMath::Max(MaxY, N->NodePosY + 180); } }
+			CE = FBPGen::SpawnCustomEvent(EG, FName(*Name), Params, 480, MaxY);
+			if (!CE) { return Fail(TEXT("handler_create_failed"), FString::Printf(TEXT("failed to create custom event '%s'"), *Name)); }
+			OutHandler->SetBoolField(TEXT("created"), true);
+		}
+		OutHandler->SetStringField(TEXT("handler_kind"), TEXT("custom_event"));
+		return FString();
+	}
+	if (Type == TEXT("function"))
+	{
+		UEdGraph* FG = nullptr;
+		for (UEdGraph* G : WBP->FunctionGraphs) { if (G && G->GetFName() == FName(*Name)) { FG = G; break; } }
+		if (!FG)
+		{
+			if (!bCreateIfMissing) { return Fail(TEXT("handler_not_found"), FString::Printf(TEXT("function '%s' not found and create_if_missing=false"), *Name)); }
+			FG = FBPGen::AddFunctionGraph(WBP, FName(*Name), Params, /*bPure*/ false);
+			if (!FG) { return Fail(TEXT("handler_create_failed"), FString::Printf(TEXT("failed to create function '%s'"), *Name)); }
+			OutHandler->SetBoolField(TEXT("created"), true);
+		}
+		else if (UK2Node_FunctionEntry* Entry = Cast<UK2Node_FunctionEntry>(FBPGen::FindFunctionEntry(FG)))
+		{
+			if (Entry->GetFunctionFlags() & FUNC_BlueprintPure) { return Fail(TEXT("function_is_pure"), FString::Printf(TEXT("function '%s' is pure; cannot be an exec handler"), *Name)); }
+		}
+		OutHandler->SetStringField(TEXT("handler_kind"), TEXT("function"));
+		return FString();
+	}
+	return Fail(TEXT("handler_not_found"), FString::Printf(TEXT("unknown handler type '%s' (use bound_event|custom_event|function)"), *Type));
+}
+
+FString FBPWidgetGen::WireEventHandlerCall(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+	const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler)
+{
+	if (!OutHandler.IsValid()) { OutHandler = MakeShared<FJsonObject>(); }
+	auto HStr = [&](const TCHAR* K, const FString& D) -> FString { FString v; return (HandlerSpec.IsValid() && HandlerSpec->TryGetStringField(K, v)) ? v : D; };
+	auto HBool = [&](const TCHAR* K, bool D) -> bool { bool v; return (HandlerSpec.IsValid() && HandlerSpec->TryGetBoolField(K, v)) ? v : D; };
+
+	const FString Type = HStr(TEXT("type"), TEXT("bound_event"));
+	const FString Name = HStr(TEXT("name"), TEXT(""));
+	const bool bConnectExec = HBool(TEXT("connect_exec"), true);
+	const bool bConnectParams = HBool(TEXT("connect_parameters"), true);
+	OutHandler->SetStringField(TEXT("type"), Type);
+	OutHandler->SetStringField(TEXT("name"), Name);
+	auto Fail = [&](const TCHAR* St, const FString& Msg) -> FString { OutHandler->SetStringField(TEXT("status"), St); OutHandler->SetBoolField(TEXT("connected"), false); return Msg; };
+
+	if (Type == TEXT("bound_event"))
+	{
+		OutHandler->SetBoolField(TEXT("exec_connected"), true);
+		OutHandler->SetBoolField(TEXT("connected"), true);
+		OutHandler->SetStringField(TEXT("status"), TEXT("connected"));
+		return FString();
+	}
+	if (!BoundNode) { return Fail(TEXT("bound_event_missing"), TEXT("no bound-event node")); }
+	UEdGraph* EG = BoundNode->GetGraph();
+
+	// resolve the handler UFunction (custom event or function) - must exist post-compile
+	UClass* FnOwner = WBP && WBP->GeneratedClass ? WBP->GeneratedClass.Get() : nullptr;
+	UFunction* Fn = FnOwner ? FnOwner->FindFunctionByName(FName(*Name)) : nullptr;
+	if (!Fn && WBP && WBP->SkeletonGeneratedClass) { FnOwner = WBP->SkeletonGeneratedClass.Get(); Fn = FnOwner ? FnOwner->FindFunctionByName(FName(*Name)) : nullptr; }
+	if (!Fn) { return Fail(TEXT("handler_not_found"), FString::Printf(TEXT("handler function '%s' not found after compile"), *Name)); }
+
+	// find/reuse a call node to <Name> already linked from this bound event, else create one
+	UEdGraphPin* BoundThen = FBPGen::FindExecOut(BoundNode);
+	UK2Node_CallFunction* Call = nullptr;
+	for (UEdGraphNode* N : EG->Nodes)
+	{
+		UK2Node_CallFunction* CF = Cast<UK2Node_CallFunction>(N);
+		if (!CF || CF->FunctionReference.GetMemberName() != FName(*Name)) { continue; }
+		UEdGraphPin* Ci = FBPGen::FindExecIn(CF);
+		if (BoundThen && Ci && Ci->LinkedTo.Contains(BoundThen)) { Call = CF; break; }
+	}
+	bool bCreatedCall = false;
+	if (!Call)
+	{
+		Call = FBPGen::SpawnCallFunc(EG, FnOwner, FName(*Name), BoundNode->NodePosX + 340, BoundNode->NodePosY);
+		if (!Call) { return Fail(TEXT("handler_create_failed"), FString::Printf(TEXT("could not spawn call node for '%s'"), *Name)); }
+		bCreatedCall = true;
+	}
+	OutHandler->SetBoolField(TEXT("call_created"), bCreatedCall);
+
+	// exec (idempotent)
+	bool bExec = false;
+	if (bConnectExec)
+	{
+		UEdGraphPin* CallExecIn = FBPGen::FindExecIn(Call);
+		if (!BoundThen || !CallExecIn) { return Fail(TEXT("exec_pin_missing"), TEXT("exec pin missing on bound event or call node")); }
+		if (PinsLinked(BoundThen, CallExecIn)) { bExec = true; }
+		else { FBPGen::Connect(BoundThen, CallExecIn); bExec = PinsLinked(BoundThen, CallExecIn); }
+		if (!bExec) { return Fail(TEXT("exec_connection_failed"), TEXT("could not connect bound-event exec to handler")); }
+	}
+	OutHandler->SetBoolField(TEXT("exec_connected"), bExec);
+
+	// data params (name -> case-insensitive -> unique type), idempotent + classified
+	TArray<TSharedPtr<FJsonValue>> ParamsOut;
+	if (bConnectParams)
+	{
+		const TArray<UEdGraphPin*> Ins = CallInputDataPins(Call);
+		for (UEdGraphPin* Out : BoundEventParamPins(BoundNode))
+		{
+			TSharedRef<FJsonObject> PR = MakeShared<FJsonObject>();
+			PR->SetStringField(TEXT("from"), Out->PinName.ToString());
+			UEdGraphPin* Target = nullptr; FString Status;
+			for (UEdGraphPin* In : Ins) { if (In->PinName.ToString().Equals(Out->PinName.ToString(), ESearchCase::IgnoreCase)) { Target = In; break; } }
+			if (!Target)
+			{
+				TArray<UEdGraphPin*> TypeMatches;
+				for (UEdGraphPin* In : Ins) { if (SameCoreType(In->PinType, Out->PinType) && In->LinkedTo.Num() == 0) { TypeMatches.Add(In); } }
+				if (TypeMatches.Num() == 1) { Target = TypeMatches[0]; }
+				else if (TypeMatches.Num() > 1) { Status = TEXT("ambiguous_parameter_match"); }
+				else { Status = TEXT("parameter_pin_missing"); }
+			}
+			if (Target)
+			{
+				PR->SetStringField(TEXT("to"), Target->PinName.ToString());
+				if (PinsLinked(Out, Target)) { Status = TEXT("already_connected"); }
+				else { FBPGen::Connect(Out, Target); Status = (Out->LinkedTo.Num() > 0 && Target->LinkedTo.Num() > 0) ? TEXT("connected") : TEXT("parameter_type_mismatch"); }
+			}
+			else { PR->SetStringField(TEXT("to"), TEXT("")); if (Status.IsEmpty()) { Status = TEXT("parameter_pin_missing"); } }
+			PR->SetStringField(TEXT("status"), Status);
+			ParamsOut.Add(MakeShared<FJsonValueObject>(PR));
+		}
+	}
+	OutHandler->SetArrayField(TEXT("parameters_connected"), ParamsOut);
+	OutHandler->SetBoolField(TEXT("connected"), bExec);
+	OutHandler->SetStringField(TEXT("status"), bExec ? TEXT("connected") : TEXT("not_connected"));
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
 	return FString();
 }

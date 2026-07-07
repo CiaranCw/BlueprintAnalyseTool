@@ -27,6 +27,10 @@ param(
   [string] $Mode = 'auto',
   [switch] $AllowPluginInstall,   # gates native-full's invasive plugin copy into a foreign project
   [switch] $AllowBuild,           # gates native-full's incremental compile of the target project
+  # Widget IR discovery arrays (default on). Set false to omit per-widget settable_properties /
+  # bindable_events for large WBPs. Maps to request include.widget_settable_properties / widget_bindable_events.
+  [bool] $WidgetSettableProps = $true,
+  [bool] $WidgetBindableEvents = $true,
   [switch] $Strict
 )
 $ErrorActionPreference = 'Continue'
@@ -339,7 +343,9 @@ function Run-Native {
   $rawDir = Join-Path $OutDir 'native_raw'
   New-Item -ItemType Directory -Force -Path $rawDir,(Join-Path $OutDir 'logs') | Out-Null
   Info "native-full: running BPParserTestDump commandlet..."
-  & $cmdExe "$ProjectUProject" -run=BPParserTestDump -AssetPath="$pkgPath" -OutputDir="$rawDir" -unattended -nopause -stdout *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\native_run.txt')
+  $wsp = if ($WidgetSettableProps) { 'true' } else { 'false' }
+  $wbe = if ($WidgetBindableEvents) { 'true' } else { 'false' }
+  & $cmdExe "$ProjectUProject" -run=BPParserTestDump -AssetPath="$pkgPath" -OutputDir="$rawDir" -WidgetSettableProps=$wsp -WidgetBindableEvents=$wbe -unattended -nopause -stdout *>&1 | Out-File -Encoding utf8 (Join-Path $OutDir 'logs\native_run.txt')
   $short = ($pkgPath -replace '.*/','')
   $irFile = Join-Path $rawDir "$short.ir.json"
   if (-not (Test-Path $irFile)) { [void]$err.Add("native-full: dumper produced no IR (see logs/native_run.txt)"); return $null }

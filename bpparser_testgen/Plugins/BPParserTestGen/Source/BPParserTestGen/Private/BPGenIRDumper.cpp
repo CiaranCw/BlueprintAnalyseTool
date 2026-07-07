@@ -27,9 +27,17 @@
 #include "Components/PanelSlot.h"
 #include "BPWidgetGen.h"
 #include "K2Node_ComponentBoundEvent.h"
+#include "K2Node_CallFunction.h"
+#include "K2Node_CustomEvent.h"
+#include "EdGraphSchema_K2.h"
+#include "EdGraph/EdGraphPin.h"
 
 namespace
 {
+	// Widget IR discovery-array include toggles (see FBPGenIRDumper::SetWidgetIncludeOptions).
+	bool GIncludeWidgetSettableProps = true;
+	bool GIncludeWidgetBindableEvents = true;
+
 	FString ContainerStr(EPinContainerType C)
 	{
 		switch (C)
@@ -213,6 +221,7 @@ namespace
 		else { O->SetField(TEXT("slot"), MakeShared<FJsonValueNull>()); }
 		O->SetObjectField(TEXT("properties"), DumpChangedEditProps(W));
 		// bindable events (reflection: BlueprintAssignable multicast delegates on the widget class)
+		if (GIncludeWidgetBindableEvents)
 		{
 			TArray<TSharedPtr<FJsonValue>> Be;
 			for (FMulticastDelegateProperty* D : FBPWidgetGen::GetBindableDelegates(W->GetClass()))
@@ -226,9 +235,12 @@ namespace
 			O->SetArrayField(TEXT("bindable_events"), Be);
 		}
 		// settable (editable) properties on the widget + on its slot (for accurate create/edit requests)
-		O->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(W->GetClass(), W));
-		O->SetArrayField(TEXT("slot_settable_properties"),
-			W->Slot ? FBPWidgetGen::ListSettableProperties(W->Slot->GetClass(), W->Slot) : TArray<TSharedPtr<FJsonValue>>());
+		if (GIncludeWidgetSettableProps)
+		{
+			O->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(W->GetClass(), W));
+			O->SetArrayField(TEXT("slot_settable_properties"),
+				W->Slot ? FBPWidgetGen::ListSettableProperties(W->Slot->GetClass(), W->Slot) : TArray<TSharedPtr<FJsonValue>>());
+		}
 		TArray<TSharedPtr<FJsonValue>> Kids;
 		if (UPanelWidget* P = Cast<UPanelWidget>(W))
 		{
@@ -316,6 +328,53 @@ namespace
 				}
 				O->SetArrayField(TEXT("parameters"), Params);
 				O->SetStringField(TEXT("status"), TEXT("bound"));
+
+				// Handler flow (P2): follow the bound-event exec-out to a downstream Call node (custom event / function).
+				TSharedPtr<FJsonObject> H = MakeShared<FJsonObject>();
+				UEdGraphPin* ThenPin = nullptr;
+				for (UEdGraphPin* P : BE->Pins) { if (P && P->Direction == EGPD_Output && P->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { ThenPin = P; break; } }
+				UK2Node_CallFunction* CallNode = nullptr;
+				if (ThenPin) { for (UEdGraphPin* L : ThenPin->LinkedTo) { if (L && Cast<UK2Node_CallFunction>(L->GetOwningNodeUnchecked())) { CallNode = Cast<UK2Node_CallFunction>(L->GetOwningNode()); break; } } }
+				if (CallNode)
+				{
+					const FString FnName = CallNode->FunctionReference.GetMemberName().ToString();
+					// custom_event if a UK2Node_CustomEvent with this name exists in the graph; else function.
+					bool bIsCustomEvent = false;
+					for (UEdGraphNode* M : G->Nodes) { if (UK2Node_CustomEvent* CE = Cast<UK2Node_CustomEvent>(M)) { if (CE->CustomFunctionName.ToString() == FnName) { bIsCustomEvent = true; break; } } }
+					H->SetStringField(TEXT("type"), bIsCustomEvent ? TEXT("custom_event") : TEXT("function"));
+					H->SetStringField(TEXT("name"), FnName);
+					H->SetBoolField(TEXT("exec_connected"), true);
+					H->SetBoolField(TEXT("connected"), true);
+					TArray<TSharedPtr<FJsonValue>> PC;
+					for (UEdGraphPin* Pin : BE->Pins)
+					{
+						if (!Pin || Pin->Direction != EGPD_Output) { continue; }
+						if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) { continue; }
+						if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Delegate) { continue; }
+						if (Pin->PinName == TEXT("OutputDelegate")) { continue; }
+						TSharedPtr<FJsonObject> PR = MakeShared<FJsonObject>();
+						PR->SetStringField(TEXT("from"), Pin->PinName.ToString());
+						FString ToName; bool bConn = false;
+						for (UEdGraphPin* L : Pin->LinkedTo)
+						{
+							if (!L) { continue; }
+							UEdGraphNode* Owner = L->GetOwningNodeUnchecked();
+							if (Owner == CallNode) { ToName = L->PinName.ToString(); bConn = true; break; }
+							if (ToName.IsEmpty()) { ToName = L->PinName.ToString(); bConn = true; }  // via autocast/knot
+						}
+						PR->SetStringField(TEXT("to"), ToName);
+						PR->SetStringField(TEXT("status"), bConn ? TEXT("connected") : TEXT("not_connected"));
+						PC.Add(MakeShared<FJsonValueObject>(PR));
+					}
+					H->SetArrayField(TEXT("parameters_connected"), PC);
+				}
+				else
+				{
+					H->SetStringField(TEXT("type"), TEXT("bound_event"));
+					H->SetBoolField(TEXT("connected"), ThenPin && ThenPin->LinkedTo.Num() > 0);
+					H->SetBoolField(TEXT("exec_connected"), ThenPin && ThenPin->LinkedTo.Num() > 0);
+				}
+				O->SetObjectField(TEXT("handler"), H);
 				Out.Add(MakeShared<FJsonValueObject>(O));
 			}
 		}
@@ -402,13 +461,22 @@ TSharedPtr<FJsonObject> FBPGenIRDumper::DumpBlueprint(UBlueprint* BP)
 		Root->SetArrayField(TEXT("widget_event_bindings"), DumpWidgetEventBindings(WBP));
 		Root->SetArrayField(TEXT("dependencies"), DumpWidgetDependencies(WBP));
 		// this WBP's OWN exposed (instance-editable) properties -> what callers can set on instances of it
-		if (UClass* GC = WBP->GeneratedClass ? WBP->GeneratedClass.Get() : (WBP->SkeletonGeneratedClass ? WBP->SkeletonGeneratedClass.Get() : nullptr))
+		if (GIncludeWidgetSettableProps)
 		{
-			Root->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(GC, GC->GetDefaultObject()));
+			if (UClass* GC = WBP->GeneratedClass ? WBP->GeneratedClass.Get() : (WBP->SkeletonGeneratedClass ? WBP->SkeletonGeneratedClass.Get() : nullptr))
+			{
+				Root->SetArrayField(TEXT("settable_properties"), FBPWidgetGen::ListSettableProperties(GC, GC->GetDefaultObject()));
+			}
 		}
 	}
 
 	return Root;
+}
+
+void FBPGenIRDumper::SetWidgetIncludeOptions(bool bIncludeSettableProps, bool bIncludeBindableEvents)
+{
+	GIncludeWidgetSettableProps = bIncludeSettableProps;
+	GIncludeWidgetBindableEvents = bIncludeBindableEvents;
 }
 
 FString FBPGenIRDumper::DumpAssetToFile(const FString& AssetPath, const FString& OutDir)

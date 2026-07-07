@@ -141,6 +141,46 @@ request `include.widget_bindable_events` to enumerate an existing WBP's events.
 `widget_not_found | not_variable | property_missing | delegate_not_found | pins_incomplete | error` (all surfaced in
 `warnings` + `manual_check_required`, never silent). `delegate_not_found` also lists the widget's available events.
 
+## Widget Event Handler Connection (Phase 4 P2)
+The `handler` object controls what the bound-event's exec (and its data params) connect to. Three kinds:
+
+| `handler.type` | behaviour |
+|---|---|
+| `bound_event` (default) | the bound-event node **is** the entry; no extra node/wiring. |
+| `custom_event` | ensure a `Custom Event` named `handler.name` (params mirror the delegate), then route the bound event into it via a self-call node (exec + data). |
+| `function` | ensure a function graph `handler.name` (params mirror the delegate), then create a call node and wire exec + data. Pure functions are rejected (`function_is_pure`). |
+
+```json
+"events": [
+  { "widget": "PlayButton",   "event": "OnClicked",          "handler": { "type": "custom_event", "name": "OnPlayClicked",       "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+  { "widget": "QualityCombo", "event": "OnSelectionChanged", "handler": { "type": "function",     "name": "HandleQualityChanged", "create_if_missing": true } }
+]
+```
+`create_if_missing` (default `true`), `connect_exec` (default `true`), `connect_parameters` (default `true`). If
+`create_if_missing=false` and the handler does not exist → `handler_not_found` (bound event still created; no wiring).
+
+**Wiring order (matters in UE):** bind/find the bound-event node → ensure the handler entry (custom event / function
+signature) → **compile** (so the handler UFunction exists) → create/reuse the call node → connect exec → connect data
+pins → compile → redump. Data pins are matched **by name (case-insensitive) then by unique type**; a same-type tie is
+`ambiguous_parameter_match` (skipped, warned), an incompatible type is `parameter_type_mismatch`, a missing target is
+`parameter_pin_missing`. **Idempotent**: the bound-event node, the custom event / function, and the call node are all
+reused on repeat, and existing links are never duplicated.
+
+Result (per event) is recorded under `widget_event_bindings[].handler`:
+```json
+"handler": { "type": "function", "name": "HandleQualityChanged", "connected": true, "exec_connected": true,
+  "parameters_connected": [ { "from": "SelectedItem", "to": "SelectedItem", "status": "connected" },
+                            { "from": "SelectionType", "to": "SelectionType", "status": "connected" } ] }
+```
+Handler failure classes (surfaced in `warnings` + `manual_check_required`): `bound_event_missing | handler_not_found |
+handler_create_failed | handler_signature_mismatch | function_is_pure | exec_pin_missing | exec_connection_failed`,
+plus per-param `parameter_pin_missing | parameter_type_mismatch | ambiguous_parameter_match`.
+
+Verified (UE 5.4, `WBP_Agent_EventHandlerMatrix`): Button.OnClicked→custom_event; CheckBox.OnCheckStateChanged→
+custom_event (bool `bIsChecked`); ComboBoxString.OnSelectionChanged→function (`SelectedItem`+`SelectionType` enum);
+Slider.OnValueChanged→function (`Value`); EditableTextBox.OnTextChanged→custom_event (`Text`) — all exec+params
+connected, idempotent on re-run.
+
 ### Verified capability matrix (UE 5.4)
 | Widget class | Event bound | Parameters (redumped) |
 |---|---|---|
@@ -192,9 +232,8 @@ Verified (UE 5.4, AClient real project): `/Game/Assets/Widget/Settings/WBP_Setti
 new WBP — class loaded, constructed, slot geometry applied, dependency recorded, events discovered, compile/save OK.
 
 ## Deferred (will warn / `manual_check_required`)
-- **Handler exec-wiring (P2)** — for `handler.type` `custom_event`/`function`, connecting the bound event's exec to
-  a named custom event / function. The bound-event node is created; the wiring is recorded as
-  `manual_check_required`. `bound_event` (default) needs no wiring (the node is the entry).
+- **Handler body logic** — the exec/param wiring (Phase 4 P2) is done, but the *contents* of the custom event /
+  function body (business logic beyond the entry + parameter inputs) are not auto-generated.
 - **Property binding** (`widget.bindings`, e.g. Text→getter) — accepted, not applied.
 - **Custom widget internal expansion** — the custom widget is a black box (its own child tree is not recursed).
 - **UMG Animation** (`widget.animations`) — accepted, not applied.

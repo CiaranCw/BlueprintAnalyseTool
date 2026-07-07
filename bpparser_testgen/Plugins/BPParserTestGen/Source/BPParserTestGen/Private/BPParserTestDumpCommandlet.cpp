@@ -18,6 +18,15 @@ int32 UBPParserTestDumpCommandlet::Main(const FString& Params)
 		return 30;
 	}
 
+	// Widget IR discovery-array include toggles (default true). -WidgetSettableProps=false / -WidgetBindableEvents=false
+	// map to request include.widget_settable_properties / include.widget_bindable_events (omit for large WBPs).
+	auto BoolParam = [&](const TCHAR* Key, bool Default) -> bool
+	{
+		if (const FString* V = ParamsMap.Find(Key)) { return !(V->Equals(TEXT("false"), ESearchCase::IgnoreCase) || V->Equals(TEXT("0"))); }
+		return Default;
+	};
+	FBPGenIRDumper::SetWidgetIncludeOptions(BoolParam(TEXT("WidgetSettableProps"), true), BoolParam(TEXT("WidgetBindableEvents"), true));
+
 	FString OutDir;
 	if (const FString* OutPtr = ParamsMap.Find(TEXT("OutputDir")))
 	{

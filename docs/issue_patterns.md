@@ -451,3 +451,49 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 ### Cross-version note
 - `CPF_Edit`/`GetDisplayNameText`/`ExportTextItem_Direct` are stable across UE versions; the `b`-prefix and
   DisplayName aliases are heuristic conveniences — the internal `name` remains the canonical, version-safe key.
+
+## P17: Widget Event Handler Connection (bound event -> custom_event / function exec+data)
+
+### Typical symptom
+- A widget event was *bound* (a `UK2Node_ComponentBoundEvent` existed) but nothing ran: the bound event's exec was
+  not connected to the named handler, so the created UI had no behaviour. Naive attempts fail because (a) a Custom
+  Event is an entry (no exec input) so you cannot "connect into it" directly, and (b) a call node to a
+  newly-created custom event / function cannot be spawned until that UFunction exists on the generated class.
+
+### Affected families
+- `widget.events[].handler` with `type` = `custom_event` or `function` on any widget (native or custom UserWidget).
+
+### Root cause
+- Custom events / functions become callable `UFunction`s only **after a compile**. Spawning the call node before
+  that compile fails (`FindFunctionByName` returns null). Also, wiring data pins before the handler signature is
+  finalized risks pin churn on reconstruct.
+
+### Generalized fix
+- Two-phase, compile-in-between flow (`FBPWidgetGen::EnsureEventHandlerEntry` then `WireEventHandlerCall`):
+  1. bind/find the bound-event node (`BindWidgetEvent`, now returns the node);
+  2. ensure the handler entry — a `UK2Node_CustomEvent` (params mirror the delegate) or a function graph
+     (`AddFunctionGraph`, params mirror the delegate; reject pure with `function_is_pure`);
+  3. **compile** so the handler UFunction exists;
+  4. create/reuse a `UK2Node_CallFunction` to the handler (a custom event is called the same way as a function);
+  5. connect the bound-event `then` → call exec **first**, then data pins by name (case-insensitive) → unique type;
+  6. compile + redump.
+- Idempotent: the bound event (`FindBoundEventForComponent`), the custom event (by `CustomFunctionName`), and the
+  call node (a call to `name` already linked from this bound event) are all reused; existing links are not
+  duplicated. Classified statuses: handler `handler_not_found|handler_create_failed|function_is_pure|
+  exec_pin_missing|exec_connection_failed`; per-param `connected|already_connected|parameter_pin_missing|
+  parameter_type_mismatch|ambiguous_parameter_match` — all surfaced in `widget_event_bindings[].handler` +
+  `warnings`/`manual_check_required`, never silent.
+- Redump (`DumpWidgetEventBindings`) traces the bound-event exec to the downstream call node to re-derive
+  `handler.type/name/connected/exec_connected/parameters_connected`, so create-result and redump cross-check.
+
+### Validation
+- BPTest `WBP_Agent_EventHandlerMatrix`: Button→custom_event (no params), CheckBox→custom_event (`bIsChecked`),
+  ComboBoxString→function (`SelectedItem`+`SelectionType` enum), Slider→function (`Value`), EditableTextBox→
+  custom_event (`Text`) — all exec+params connected; compile up_to_date; 0 manual_check_required.
+- Idempotency: the same event listed twice produced exactly one bound event, one custom event, and one call node.
+- Negative: `function` handler with `create_if_missing=false` → `handler_not_found`, bound event still created, no
+  wiring, surfaced in `manual_check_required`. UE 5.4.
+
+### Cross-version note
+- Uses stable editor APIs (`SpawnCustomEvent`/`AddFunctionGraph`/`SetFromFunction`/schema `TryCreateConnection`).
+  The compile-between-phases requirement is inherent to Blueprint codegen and holds across UE 5.x.

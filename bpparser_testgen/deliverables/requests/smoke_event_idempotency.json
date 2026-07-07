@@ -1,0 +1,13 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_EventIdem", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": { "name": "RootCanvas", "type": "CanvasPanel",
+        "children": [ { "name": "PlayButton", "type": "Button", "slot": { "properties": { "Position": { "X": 20, "Y": 20 }, "Size": { "X": 200, "Y": 40 } } } } ] }
+    },
+    "events": [
+      { "widget": "PlayButton", "event": "OnClicked", "handler": { "type": "custom_event", "name": "OnPlayClicked" } },
+      { "widget": "PlayButton", "event": "OnClicked", "handler": { "type": "custom_event", "name": "OnPlayClicked" } }
+    ]
+  }
+}

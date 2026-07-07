@@ -1,0 +1,24 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_EventHandlerMatrix", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": {
+        "name": "RootCanvas", "type": "CanvasPanel",
+        "children": [
+          { "name": "PlayButton",   "type": "Button",          "slot": { "properties": { "Position": { "X": 20, "Y": 20 },  "Size": { "X": 220, "Y": 40 } } } },
+          { "name": "EnableCheck",  "type": "CheckBox",         "slot": { "properties": { "Position": { "X": 20, "Y": 80 },  "Size": { "X": 220, "Y": 40 } } } },
+          { "name": "QualityCombo", "type": "ComboBoxString",   "slot": { "properties": { "Position": { "X": 20, "Y": 140 }, "Size": { "X": 220, "Y": 40 } } } },
+          { "name": "VolumeSlider", "type": "Slider",           "slot": { "properties": { "Position": { "X": 20, "Y": 200 }, "Size": { "X": 220, "Y": 40 } } } },
+          { "name": "NameInput",    "type": "EditableTextBox",  "slot": { "properties": { "Position": { "X": 20, "Y": 260 }, "Size": { "X": 220, "Y": 40 } } } }
+        ]
+      }
+    },
+    "events": [
+      { "widget": "PlayButton",   "event": "OnClicked",           "handler": { "type": "custom_event", "name": "OnPlayClicked",         "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+      { "widget": "EnableCheck",  "event": "OnCheckStateChanged", "handler": { "type": "custom_event", "name": "OnEnableChanged",        "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+      { "widget": "QualityCombo", "event": "OnSelectionChanged",  "handler": { "type": "function",     "name": "HandleQualityChanged",   "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+      { "widget": "VolumeSlider", "event": "OnValueChanged",      "handler": { "type": "function",     "name": "HandleVolumeChanged",    "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+      { "widget": "NameInput",    "event": "OnTextChanged",       "handler": { "type": "custom_event", "name": "OnNameChanged",          "create_if_missing": true, "connect_exec": true, "connect_parameters": true } }
+    ]
+  }
+}

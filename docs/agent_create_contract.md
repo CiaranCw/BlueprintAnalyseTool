@@ -53,9 +53,15 @@ viz/created.dot
   manifest/create_result, and the redumped nodes + per-widget `bindable_events` appear in `created_ir.json`. **Custom `UserWidget` children**:
 reference a project widget by class/asset path in `hierarchy.type` (`/Game/..._C`, object, or package form — all
 normalized to the `_C` generated class); it is constructed as a black box with slot/Details/events + recorded under
-`dependencies` (`type=custom_user_widget`). Deferred (warn/manual): handler exec-wiring to a named
-custom_event/function, property binding (`widget.bindings`), custom-widget internal expansion, UMG animation,
-pixel-accurate render. See `docs/widget_blueprint_schema.md`.
+`dependencies` (`type=custom_user_widget`). See `docs/widget_blueprint_schema.md`.
+- **Widget event handler wiring (Phase 4 P2)**: `events[].handler.type` = `bound_event` (default; the bound-event
+  node is the entry) | `custom_event` (ensure a Custom Event `name`, route bound event → it) | `function` (ensure a
+  function `name`, wire a call node). Flags: `create_if_missing`/`connect_exec`/`connect_parameters` (all default
+  true). Exec is connected first, then data params matched by name→type; results (per-param connected/mismatch/
+  ambiguous/missing + handler-level `handler_not_found|function_is_pure|exec_*`) are recorded under
+  `widget_event_bindings[].handler` and redumped in `created_ir.json`. Idempotent (bound event, custom event/
+  function, and call node all reused). Deferred (warn/manual): handler *body logic*, property binding
+  (`widget.bindings`), custom-widget internal expansion, UMG animation, pixel-accurate render.
 - **Widget property names**: keys in a widget/slot `properties` object are resolved with **alias matching**
   (exact → case-insensitive → bool `b` prefix → Details DisplayName → strip space/underscore), then a `Set<Key>`
   setter fallback. An aliased write is reported as `property_alias_matched` and a miss as `property_not_found`

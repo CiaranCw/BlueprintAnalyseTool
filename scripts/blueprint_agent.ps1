@@ -198,6 +198,12 @@ if (-not $handledByLive) {
       if ($pol.allow_project_plugin_install) { $args.AllowPluginInstall=$true }
       if ($pol.allow_incremental_compile) { $args.AllowBuild=$true }
       if ($exec.strict) { $args.Strict=$true }
+      # Widget IR discovery-array include toggles (default on; omit for very large WBPs).
+      $inc = $req.request.include
+      if ($inc) {
+        if ($null -ne $inc.widget_settable_properties) { $args.WidgetSettableProps=[bool]$inc.widget_settable_properties }
+        if ($null -ne $inc.widget_bindable_events)     { $args.WidgetBindableEvents=[bool]$inc.widget_bindable_events }
+      }
       & (Join-Path $scripts 'analyze_blueprint.ps1') @args
       $rc=$LASTEXITCODE; $reqId=San($assets[0]); $subOut=Join-Path $taskOut $reqId
       if ($usedMode -eq 'editor_live') {} else { $usedMode='native_full'; if($fallbackFrom){$fallbackTo='native_full'} }

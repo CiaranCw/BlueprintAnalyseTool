@@ -132,14 +132,24 @@ blueprint_visible, blueprint_read_only, deprecated, current_value, set_supported
 `name` (bool props often carry a `b` prefix, e.g. `Default Checked` → `bDefaultChecked`). See
 `docs/blueprint_ir_schema.md` §10.1 and `docs/issue_patterns.md` P16.
 
-`widget.events` binds widget delegates **generically by reflection** (any BlueprintAssignable multicast delegate):
+`widget.events` binds widget delegates **generically by reflection** (any BlueprintAssignable multicast delegate)
+and wires the bound-event exec/params to a handler (Phase 4 P2):
 ```json
-"events": [ { "widget": "QualityComboBox", "event": "OnSelectionChanged", "handler": { "type": "bound_event", "name": "OnQualityChanged" } } ]
+"events": [
+  { "widget": "PlayButton",   "event": "OnClicked",          "handler": { "type": "custom_event", "name": "OnPlayClicked",       "create_if_missing": true, "connect_exec": true, "connect_parameters": true } },
+  { "widget": "QualityCombo", "event": "OnSelectionChanged", "handler": { "type": "function",     "name": "HandleQualityChanged" } }
+]
 ```
-Each result → `widget_event_bindings` (manifest/create_result/created_ir) with `status`
-(`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`) and
-`parameters`. Idempotent (repeat = `reused`). Analyze may set `include.widget_bindable_events` to enumerate a
-WBP's bindable events (every widget in the IR also carries `bindable_events`).
+`handler.type`: `bound_event` (default; bound-event node is the entry) | `custom_event` (create/reuse a Custom Event
+`name`, route the bound event into it) | `function` (create/reuse a function `name`, wire a call node; pure →
+`function_is_pure`). Flags `create_if_missing`/`connect_exec`/`connect_parameters` default true; `create_if_missing=false`
++ missing handler → `handler_not_found`. Data params are matched by name→type. Each result → `widget_event_bindings`
+(manifest/create_result/created_ir) with bind `status`
+(`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`), `parameters`,
+and a nested `handler` object (`connected/exec_connected/parameters_connected[{from,to,status}]` + handler failure
+codes). Idempotent (bound event, handler entry, and call node all reused). Analyze may set
+`include.widget_bindable_events` / `include.widget_settable_properties` (default true) to control the per-widget
+discovery arrays for large WBPs (every widget in the IR carries `bindable_events` and `settable_properties`).
 
 **Custom UserWidget children**: set a hierarchy node's `type` to a project widget's class/asset path
 (`/Game/UI/WBP_X.WBP_X_C`, `/Game/UI/WBP_X.WBP_X`, or `/Game/UI/WBP_X` — all normalized to `_C`). It is inserted

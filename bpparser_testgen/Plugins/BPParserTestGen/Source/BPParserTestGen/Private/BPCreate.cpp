@@ -19,6 +19,7 @@
 #include "EdGraph/EdGraphPin.h"
 
 #include "K2Node_Event.h"
+#include "K2Node_ComponentBoundEvent.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_IfThenElse.h"
 #include "K2Node_ExecutionSequence.h"
@@ -238,30 +239,67 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 			}
 			else { Manual.Add(TEXT("widget: no hierarchy provided; created an empty WidgetTree.")); }
 
-			// Phase 4 (generalized): bind widget events by reflection. Needs widget variables -> compile once.
+			// Phase 4 (generalized) + P2 (handler exec/data wiring): bind widget events by reflection and wire
+			// the bound-event exec (+ data params) to a bound_event | custom_event | function handler. Two passes:
+			// (A) bind bound-event nodes + ensure handler entry (custom event/function graph), (B) after a compile
+			// so handler UFunctions exist, create/reuse the call node and connect exec + params. Idempotent.
 			if(const TArray<TSharedPtr<FJsonValue>>* Events = JArr(*WObj,TEXT("events")))
 			{
-				FBPGen::CompileBlueprint(WBP);
+				FBPGen::CompileBlueprint(WBP);   // so widget variables exist for binding
+				struct FEvSt { TSharedPtr<FJsonObject> res; UK2Node_ComponentBoundEvent* node=nullptr; TSharedPtr<FJsonObject> hspec; TSharedPtr<FJsonObject> hout; bool wire=false; FString wn, en; };
+				TArray<FEvSt> EvStates;
+				bool bAnyHandlerEntry=false;
+				// Pass A
 				for(const auto& ev : *Events)
 				{
 					const TSharedPtr<FJsonObject> eo=ev->AsObject(); if(!eo) continue;
-					const FString wn=JStr(eo,TEXT("widget")); const FString en=JStr(eo,TEXT("event"),TEXT("OnClicked"));
-					TSharedPtr<FJsonObject> res;
-					const FString e=FBPWidgetGen::BindWidgetEvent(WBP, wn, en, res);
-					// record requested handler (exec-wiring to custom_event/function is P2 / deferred)
-					if(const TSharedPtr<FJsonObject>* h=JObj(eo,TEXT("handler")))
-					{
-						const FString ht=JStr(*h,TEXT("type"),TEXT("bound_event")); const FString hn=JStr(*h,TEXT("name"));
-						res->SetStringField(TEXT("handler_type"),ht); res->SetStringField(TEXT("handler_name"),hn);
-						if(e.IsEmpty() && ht!=TEXT("bound_event")) { Manual.Add(FString::Printf(TEXT("event %s.%s: bound-event node created; exec-wiring to %s '%s' is deferred (P2)."),*wn,*en,*ht,*hn)); }
-					}
-					EventBindings.Add(MakeShared<FJsonValueObject>(res));
+					FEvSt S; S.wn=JStr(eo,TEXT("widget")); S.en=JStr(eo,TEXT("event"),TEXT("OnClicked"));
+					const FString e=FBPWidgetGen::BindWidgetEvent(WBP, S.wn, S.en, S.res, &S.node);
+					if(const TSharedPtr<FJsonObject>* h=JObj(eo,TEXT("handler"))) S.hspec=*h;
+					const FString ht = S.hspec.IsValid() ? JStr(S.hspec,TEXT("type"),TEXT("bound_event")) : TEXT("bound_event");
 					if(!e.IsEmpty())
 					{
-						const FString st=JStr(res,TEXT("status"),TEXT("error"));
-						Warn.Add(FString::Printf(TEXT("event bind %s.%s [%s]: %s"),*wn,*en,*st,*e));
-						Manual.Add(FString::Printf(TEXT("event %s.%s not bound (%s): %s"),*wn,*en,*st,*e));
+						const FString st=JStr(S.res,TEXT("status"),TEXT("error"));
+						Warn.Add(FString::Printf(TEXT("event bind %s.%s [%s]: %s"),*S.wn,*S.en,*st,*e));
+						Manual.Add(FString::Printf(TEXT("event %s.%s not bound (%s): %s"),*S.wn,*S.en,*st,*e));
 					}
+					else if(S.hspec.IsValid())
+					{
+						S.hout=MakeShared<FJsonObject>();
+						const FString ee=FBPWidgetGen::EnsureEventHandlerEntry(WBP, S.node, S.hspec, S.hout);
+						S.res->SetObjectField(TEXT("handler"), S.hout);
+						if(ee.IsEmpty()) { S.wire=true; if(ht!=TEXT("bound_event")) bAnyHandlerEntry=true; }
+						else
+						{
+							const FString hst=JStr(S.hout,TEXT("status"),TEXT("error"));
+							Warn.Add(FString::Printf(TEXT("event handler %s.%s [%s]: %s"),*S.wn,*S.en,*hst,*ee));
+							Manual.Add(FString::Printf(TEXT("event %s.%s handler not prepared (%s): %s"),*S.wn,*S.en,*hst,*ee));
+						}
+					}
+					EvStates.Add(S);
+				}
+				// Compile so newly-created custom events / functions become callable UFunctions.
+				if(bAnyHandlerEntry) FBPGen::CompileBlueprint(WBP);
+				// Pass B
+				for(FEvSt& S : EvStates)
+				{
+					if(S.wire && S.hspec.IsValid())
+					{
+						const FString we=FBPWidgetGen::WireEventHandlerCall(WBP, S.node, S.hspec, S.hout);
+						if(!we.IsEmpty())
+						{
+							const FString hst=JStr(S.hout,TEXT("status"),TEXT("error"));
+							Warn.Add(FString::Printf(TEXT("event handler wire %s.%s [%s]: %s"),*S.wn,*S.en,*hst,*we));
+							Manual.Add(FString::Printf(TEXT("event %s.%s handler not wired (%s): %s"),*S.wn,*S.en,*hst,*we));
+						}
+						else if(const TArray<TSharedPtr<FJsonValue>>* pc = JArr(S.hout,TEXT("parameters_connected")))
+						{
+							for(const auto& pv:*pc){ auto po=pv->AsObject(); if(!po) continue; const FString ps=JStr(po,TEXT("status"));
+								if(ps!=TEXT("connected") && ps!=TEXT("already_connected"))
+									Warn.Add(FString::Printf(TEXT("event %s.%s param '%s'->'%s': %s"),*S.wn,*S.en,*JStr(po,TEXT("from")),*JStr(po,TEXT("to")),*ps)); }
+						}
+					}
+					EventBindings.Add(MakeShared<FJsonValueObject>(S.res));
 				}
 			}
 		}
