@@ -1,0 +1,26 @@
+{
+  "intent": "Existing-WBP combined edit acceptance on a /Game/Generated copy of WBP_Settings_Graphics",
+  "operations": [
+    { "op_id": "e1", "operation": "set_widget_property", "widget": "BP_Sharpness", "property": "Visibility", "value": "HitTestInvisible" },
+    { "op_id": "e2", "operation": "set_widget_property", "widget": "BP_Sharpness", "property": "TextName", "value": "Sharpness (edited)" },
+    { "op_id": "e3", "operation": "set_slot_property", "widget": "ScrollBox_List", "property": "Size", "value": { "X": 900, "Y": 620 } },
+    { "op_id": "e4", "operation": "add_widget", "parent": "CanvasPanel_86",
+      "widget": { "name": "EditAcceptanceNote", "type": "TextBlock", "properties": { "Text": "Edited by Agent", "Visibility": "HitTestInvisible" },
+                  "slot": { "properties": { "Position": { "X": 40, "Y": 12 }, "Size": { "X": 400, "Y": 32 } } } } },
+    { "op_id": "e5", "operation": "add_widget", "parent": "ScrollBox_List",
+      "widget": { "name": "BP_EditAcceptanceCheck", "type": "/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem",
+                  "properties": { "TextName": "Acceptance Toggle", "ItemId": "agent_accept", "bDefaultChecked": true } } },
+    { "op_id": "e6", "operation": "add_widget", "parent": "CanvasPanel_86",
+      "widget": { "name": "AcceptanceButton", "type": "Button",
+                  "slot": { "properties": { "Position": { "X": 40, "Y": 700 }, "Size": { "X": 200, "Y": 44 } } } } },
+    { "op_id": "e7", "operation": "bind_widget_event", "widget": "AcceptanceButton", "event": "OnClicked",
+      "handler": { "type": "custom_event", "name": "OnAcceptanceClicked",
+        "body": [ { "op": "print_string", "text": "acceptance clicked" },
+                  { "op": "set_text", "target": "EditAcceptanceNote", "text": "Clicked" } ] } },
+    { "op_id": "e8", "operation": "add_widget", "parent": "CanvasPanel_86",
+      "widget": { "name": "TempRemoveMe", "type": "TextBlock", "properties": { "Text": "temp" },
+                  "slot": { "properties": { "Position": { "X": 500, "Y": 12 }, "Size": { "X": 100, "Y": 24 } } } } },
+    { "op_id": "e9", "operation": "remove_widget", "widget": "TempRemoveMe" },
+    { "op_id": "e10", "operation": "move_widget", "widget": "EditAcceptanceNote", "new_parent": "ScrollBox_List" }
+  ]
+}

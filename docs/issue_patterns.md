@@ -566,3 +566,40 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 ### Cross-version note
 - `CanCreateBlueprintOfClass`, `RefreshAllNodes`, `ParentClass` are stable UE editor APIs; family checks use base
   engine classes (`AActor`/`UActorComponent`/`UUserWidget`).
+
+## P20: Editing an existing WBP's widget tree (create-only capabilities reused in edit)
+
+### Typical symptom
+- The widget capabilities (add/set widget, slot, Details, events, handler bodies) existed only in the `create`
+  path (`FBPWidgetGen`), so there was no way to add/modify/remove/move a widget, set a slot/Details property, or
+  bind an event on an *already-existing* WBP through the atomic `edit` pipeline; and the edit `diff_report` had no
+  widget-aware categories.
+
+### Affected families
+- Any `UWidgetBlueprint` edit (existing settings panels, HUDs, menus).
+
+### Root cause
+- `BPATEdit` only had graph/variable/reparent ops. Widget-tree mutation + widget diff were never wired into edit.
+
+### Generalized fix
+- Added `set_widget_property`, `set_slot_property`, `add_widget` (native + custom UserWidget), `bind_widget_event`
+  (safe) and `remove_widget`, `move_widget` (destructive) to `FBPATEdit::ApplyOne`, reusing `FBPWidgetGen`
+  (`SetPropertyFromJson`, `ResolveWidgetClassEx`, `ConstructWidget`/`AddChild`, `BindWidgetEvent`/
+  `EnsureEventHandlerEntry`/`WireEventHandlerCall`/`AddHandlerBody`). `bind_widget_event` runs self-contained
+  compiles so a just-added widget's variable and a new handler's UFunction exist before wiring. Extended `BuildDiff`
+  to flatten before/after `widget_tree` + `widget_event_bindings` into `added/removed/moved_widgets`,
+  `modified_widget_properties`, `modified_slot_properties`, `added_event_bindings`, `modified_event_handlers`
+  (+ `modified_variables/functions`, `modified_parent_class`); added `WidgetTreeToDot` for
+  `viz/hierarchy.before/after.dot`. All wrapped by the existing backup / compile-verify / rollback framework.
+- Diff is before→after *state*: a widget added then moved/removed in the same batch nets into `added_widgets` (or
+  nothing), not `moved/removed_widgets` — this is correct, not a miss.
+
+### Validation (UE 5.4, AClient)
+- 10-op combined edit on a `/Game/Generated` copy of `WBP_Settings_Graphics`: set widget Details (`Visibility`,
+  custom `TextName`) + slot (`Size`→`LayoutData`); add native TextBlock/Button + custom `WBP_Setting_CheckboxItem`;
+  bind `Button.OnClicked` → custom event with `print_string`+`set_text` body; remove + move — all success,
+  compile up_to_date, saved, `unexpected_changes=0`. Illegal reparent on the copy rolled back (parent unchanged).
+  Source asset never modified (read-only analyze + duplicate-then-edit-copy).
+
+### Cross-version note
+- Uses `UWidgetTree::FindWidget/RemoveWidget`, `UPanelWidget::AddChild/RemoveChild`, `UWidget::GetParent` — stable UMG APIs.

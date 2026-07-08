@@ -91,7 +91,13 @@ Outputs (per asset): `manifest.json`, `blueprint_ir.json`|`partial_ir.json`, `su
 }
 ```
 Operations: `set_pin_default_value, connect_pins, disconnect_pins, add_node, insert_node_between,
-remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default, set_parent_class`. Node selectors:
+remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default, set_parent_class`.
+Widget-Blueprint tree ops (edit an existing WBP; see `agent_edit_contract.md` §3c):
+`set_widget_property{widget,property,value}, set_slot_property{widget,property,value},
+add_widget{parent,widget{name,type,properties?,slot?}}, bind_widget_event{widget,event,handler?},
+remove_widget{widget} (destructive), move_widget{widget,new_parent} (destructive)`. The edit `diff_report.json`
+then also carries `added/removed/moved_widgets, modified_widget_properties, modified_slot_properties,
+added_event_bindings, modified_event_handlers`, and WBP edits emit `viz/hierarchy.before|after.dot`. Node selectors:
 `node_class / node_title / node_title_contains / function_name / node_id / match_index /
 exec_out_connected / exec_in_connected`. Destructive ops need `allow_destructive_edit` (apply modes);
 `plan-only`/`dry-run` always preview safely. Outputs: `edit_plan.json / edit_result.json / diff_report.json /

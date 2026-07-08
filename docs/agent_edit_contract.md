@@ -97,6 +97,16 @@ Safe (allowed in any mode):
 - `set_variable_default` — `{ var_name, default_value }`
 - `set_parent_class` (alias `reparent_blueprint`) — `{ new_parent_class, options?{create_backup,compile,rollback_on_failure} }` (change the Blueprint's parent; see §3b)
 
+Widget Blueprint tree edits (safe; reuse the create-side reflection — see §3c):
+- `set_widget_property` — `{ widget, property, value }` (fuzzy name resolution; emits `property_alias_matched`)
+- `set_slot_property` — `{ widget, property, value }` (the widget's slot; e.g. `Position`/`Size`/`Padding`)
+- `add_widget` — `{ parent, widget:{ name, type, properties?, slot?{properties} } }` (`type` = native short name / `/Script/...` / custom `/Game/...` UserWidget)
+- `bind_widget_event` — `{ widget, event, handler?{ type, name, create_if_missing, connect_exec, connect_parameters, body } }`
+
+Destructive Widget edits (need `AllowDestructiveEdit` in apply modes):
+- `remove_widget` — `{ widget }` (cannot remove the root)
+- `move_widget` — `{ widget, new_parent }` (reparent within the WidgetTree; `new_parent` must be a panel)
+
 Destructive (need `AllowDestructiveEdit` in apply modes; freely previewable in plan/dry):
 - `disconnect_pins` — `{ from_node, from_pin, to_node, to_pin }`
 - `insert_node_between` — `{ from_node, to_node[, from_pin, to_pin], new_node }` (splices an exec edge: break A→B, connect A→New→B)
@@ -145,6 +155,36 @@ is restored (op fails → the framework does not save → on-disk asset unchange
 `rollback_performed`; `diff_report.json` gains `modified_asset.parent_class{before,after}` + `risk_notes`.
 Failure classes: `parent_class_load_failed | unsupported_blueprint_type | parent_is_self | circular_inheritance |
 parent_not_blueprintable | incompatible_parent_type` + compile-failure rollback.
+
+---
+
+## 3c. Widget Blueprint tree edits (edit an existing WBP)
+
+Edit the WidgetTree of an **existing** `UWidgetBlueprint` — the same capabilities as create, but applied to a loaded
+asset, wrapped in the backup / compile-verify / rollback framework. Widgets are addressed by their `name` (as shown
+in the analyze `widget_tree`); properties should use the internal names from each widget's `settable_properties`
+(the ops apply the same alias resolution as create, and non-exact matches emit `property_alias_matched`).
+
+- `set_widget_property` / `set_slot_property` — reflection write on the widget or its slot object.
+- `add_widget` — construct a native or custom UserWidget under a panel `parent`, with optional `properties` + `slot.properties`.
+- `remove_widget` (destructive) — remove a non-root widget; `move_widget` (destructive) — reparent within the tree.
+- `bind_widget_event` — bind a widget delegate on the existing WBP and (optionally) create/reuse the handler
+  (`custom_event`/`function`), wire exec + params, and generate a `body` (`print_string`/`set_text`). Self-contained
+  compiles run as needed so a just-added widget's variable and a new handler's UFunction exist before wiring.
+
+The edit `diff_report.json` gains widget-aware categories (all always present, empty when unchanged):
+`added_widgets`, `removed_widgets`, `moved_widgets`, `modified_widget_properties`, `modified_slot_properties`,
+`added_event_bindings`, `modified_event_handlers`, plus `modified_variables`, `modified_functions`,
+`modified_parent_class`, and the graph `added/removed_nodes` / `added/removed_edges`. For WBPs the edit output also
+writes `viz/hierarchy.before.dot` and `viz/hierarchy.after.dot` (widget-hierarchy preview) alongside the graph
+`before.dot`/`after.dot`. Note: `moved_widgets`/`removed_widgets` reflect the before→after *state* — a widget that
+is added and then moved/removed in the same batch nets into `added_widgets` (or nothing), not `moved/removed`.
+
+Verified (UE 5.4, AClient): a 10-op combined edit on a `/Game/Generated` copy of `WBP_Settings_Graphics`
+(set widget Details + slot; add native TextBlock/Button; add custom `WBP_Setting_CheckboxItem`; bind
+`Button.OnClicked` → custom event with a body; remove + move) — all ops success, compile up_to_date, saved,
+0 unexpected changes; a follow-up illegal reparent rolled back with the copy unchanged; the source asset was never
+modified.
 
 ---
 

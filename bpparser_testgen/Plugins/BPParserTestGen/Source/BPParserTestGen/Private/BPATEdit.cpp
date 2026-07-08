@@ -11,7 +11,13 @@
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Widget.h"
+#include "Components/PanelWidget.h"
+#include "Components/PanelSlot.h"
 #include "WidgetBlueprint.h"
+#include "BPWidgetGen.h"
+#include "K2Node_ComponentBoundEvent.h"
 #include "Animation/AnimBlueprint.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
@@ -271,6 +277,55 @@ namespace
 		return O;
 	}
 
+	// ---- Widget-tree diff helpers ----
+	void FlattenWidgetsRec(const TSharedPtr<FJsonObject>& Node, const FString& ParentName,
+		TMap<FString, TSharedPtr<FJsonObject>>& Out, TMap<FString, FString>& Parent)
+	{
+		if (!Node.IsValid()) { return; }
+		FString Name; Node->TryGetStringField(TEXT("name"), Name);
+		if (!Name.IsEmpty()) { Out.Add(Name, Node); Parent.Add(Name, ParentName); }
+		const TArray<TSharedPtr<FJsonValue>>* Kids = nullptr;
+		if (Node->TryGetArrayField(TEXT("children"), Kids)) { for (const auto& K : *Kids) { if (K->AsObject().IsValid()) { FlattenWidgetsRec(K->AsObject(), Name, Out, Parent); } } }
+	}
+	void FlattenWidgets(const TSharedPtr<FJsonObject>& IR, TMap<FString, TSharedPtr<FJsonObject>>& Out, TMap<FString, FString>& Parent)
+	{
+		if (!IR.IsValid()) { return; }
+		const TSharedPtr<FJsonObject>* WT = nullptr;
+		if (!IR->TryGetObjectField(TEXT("widget_tree"), WT) || !WT) { return; }
+		const TSharedPtr<FJsonObject>* Root = nullptr;
+		if ((*WT)->TryGetObjectField(TEXT("root"), Root) && Root && (*Root).IsValid()) { FlattenWidgetsRec(*Root, FString(), Out, Parent); }
+	}
+	TMap<FString, FString> WidgetPropMap(const TSharedPtr<FJsonObject>& Node, bool bSlot)
+	{
+		TMap<FString, FString> M;
+		const TSharedPtr<FJsonObject>* Src = nullptr;
+		if (bSlot) { const TSharedPtr<FJsonObject>* Slot = nullptr; if (Node->TryGetObjectField(TEXT("slot"), Slot) && Slot && (*Slot).IsValid()) { (*Slot)->TryGetObjectField(TEXT("properties"), Src); } }
+		else { Node->TryGetObjectField(TEXT("properties"), Src); }
+		if (Src) { for (const auto& KV : (*Src)->Values) { FString V; KV.Value->TryGetString(V); M.Add(KV.Key, V); } }
+		return M;
+	}
+	// widget name -> class
+	TMap<FString, FString> NamesToClass(const TMap<FString, TSharedPtr<FJsonObject>>& W)
+	{
+		TMap<FString, FString> M; for (const auto& KV : W) { FString C; KV.Value->TryGetStringField(TEXT("class"), C); M.Add(KV.Key, C); } return M;
+	}
+	// event bindings keyed by "widget.event" -> binding object
+	void FlattenBindings(const TSharedPtr<FJsonObject>& IR, TMap<FString, TSharedPtr<FJsonObject>>& Out)
+	{
+		if (!IR.IsValid()) { return; }
+		const TArray<TSharedPtr<FJsonValue>>* B = nullptr;
+		if (!IR->TryGetArrayField(TEXT("widget_event_bindings"), B)) { return; }
+		for (const auto& V : *B) { const TSharedPtr<FJsonObject> O = V->AsObject(); if (!O.IsValid()) { continue; } FString W, E; O->TryGetStringField(TEXT("widget"), W); O->TryGetStringField(TEXT("event"), E); Out.Add(W + TEXT(".") + E, O); }
+	}
+	// member (variable/function) names from an IR array of {name:...}
+	TSet<FString> MemberNames(const TSharedPtr<FJsonObject>& IR, const TCHAR* Field)
+	{
+		TSet<FString> S; if (!IR.IsValid()) { return S; }
+		const TArray<TSharedPtr<FJsonValue>>* A = nullptr;
+		if (IR->TryGetArrayField(Field, A)) { for (const auto& V : *A) { if (V->AsObject().IsValid()) { FString N; V->AsObject()->TryGetStringField(TEXT("name"), N); if (!N.IsEmpty()) { S.Add(N); } } } }
+		return S;
+	}
+
 	TSharedPtr<FJsonObject> BuildDiff(const FString& AssetPath,
 		const TSharedPtr<FJsonObject>& Before, const TSharedPtr<FJsonObject>& After)
 	{
@@ -304,26 +359,85 @@ namespace
 		D->SetArrayField(TEXT("added_edges"), AddedE);
 		D->SetArrayField(TEXT("removed_edges"), RemovedE);
 		D->SetArrayField(TEXT("modified_pins"), {});
-		D->SetArrayField(TEXT("modified_variables"), {});
 		D->SetArrayField(TEXT("modified_graphs"), {});
-		D->SetArrayField(TEXT("unexpected_changes"), {});
 
-		// asset-level diff: parent_class before/after (reparent) + risk notes
 		TArray<TSharedPtr<FJsonValue>> RiskNotes;
+
+		// ---- asset-level: parent_class before/after (reparent) ----
 		TSharedPtr<FJsonObject> ModifiedAsset = MakeShared<FJsonObject>();
+		TSharedPtr<FJsonObject> ModifiedParent = MakeShared<FJsonObject>();
 		const FString BeforeParent = Before.IsValid() ? Before->GetStringField(TEXT("parent_class")) : FString();
 		const FString AfterParent  = After.IsValid()  ? After->GetStringField(TEXT("parent_class"))  : FString();
 		if (BeforeParent != AfterParent)
 		{
-			TSharedPtr<FJsonObject> PC = MakeShared<FJsonObject>();
-			PC->SetStringField(TEXT("before"), BeforeParent);
-			PC->SetStringField(TEXT("after"), AfterParent);
-			ModifiedAsset->SetObjectField(TEXT("parent_class"), PC);
+			ModifiedParent->SetStringField(TEXT("before"), BeforeParent);
+			ModifiedParent->SetStringField(TEXT("after"), AfterParent);
+			ModifiedAsset->SetObjectField(TEXT("parent_class"), ModifiedParent);
 			RiskNotes.Add(MakeShared<FJsonValueString>(FString::Printf(
-				TEXT("parent_class changed: %s -> %s (reparent can invalidate nodes referencing old-parent members; verify compile)"),
-				*BeforeParent, *AfterParent)));
+				TEXT("parent_class changed: %s -> %s (reparent can invalidate nodes referencing old-parent members; verify compile)"), *BeforeParent, *AfterParent)));
 		}
 		D->SetObjectField(TEXT("modified_asset"), ModifiedAsset);
+		D->SetObjectField(TEXT("modified_parent_class"), ModifiedParent);
+
+		// ---- widget-tree diff ----
+		TMap<FString, TSharedPtr<FJsonObject>> BW, AW; TMap<FString, FString> BP, AP;
+		FlattenWidgets(Before, BW, BP); FlattenWidgets(After, AW, AP);
+		TArray<TSharedPtr<FJsonValue>> AddedW, RemovedW, MovedW, ModWProps, ModSlotProps;
+		for (const auto& KV : AW)
+		{
+			if (!BW.Contains(KV.Key)) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), KV.Key); FString C; KV.Value->TryGetStringField(TEXT("class"), C); O->SetStringField(TEXT("class"), C); O->SetStringField(TEXT("parent"), AP.FindRef(KV.Key)); AddedW.Add(MakeShared<FJsonValueObject>(O)); continue; }
+			// moved (parent changed)
+			if (BP.FindRef(KV.Key) != AP.FindRef(KV.Key)) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), KV.Key); O->SetStringField(TEXT("before_parent"), BP.FindRef(KV.Key)); O->SetStringField(TEXT("after_parent"), AP.FindRef(KV.Key)); MovedW.Add(MakeShared<FJsonValueObject>(O)); }
+			// property diffs (widget + slot)
+			auto DiffProps = [&](bool bSlot, TArray<TSharedPtr<FJsonValue>>& Sink)
+			{
+				TMap<FString, FString> Bp = WidgetPropMap(BW[KV.Key], bSlot); TMap<FString, FString> Ap = WidgetPropMap(KV.Value, bSlot);
+				TSet<FString> Keys; for (const auto& P : Bp) { Keys.Add(P.Key); } for (const auto& P : Ap) { Keys.Add(P.Key); }
+				for (const FString& K : Keys) { const FString Bv = Bp.FindRef(K); const FString Av = Ap.FindRef(K); if (Bv != Av) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("widget"), KV.Key); O->SetStringField(TEXT("property"), K); O->SetStringField(TEXT("before"), Bv); O->SetStringField(TEXT("after"), Av); Sink.Add(MakeShared<FJsonValueObject>(O)); } }
+			};
+			DiffProps(false, ModWProps);
+			DiffProps(true, ModSlotProps);
+		}
+		for (const auto& KV : BW) { if (!AW.Contains(KV.Key)) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), KV.Key); FString C; KV.Value->TryGetStringField(TEXT("class"), C); O->SetStringField(TEXT("class"), C); RemovedW.Add(MakeShared<FJsonValueObject>(O)); } }
+		D->SetArrayField(TEXT("added_widgets"), AddedW);
+		D->SetArrayField(TEXT("removed_widgets"), RemovedW);
+		D->SetArrayField(TEXT("moved_widgets"), MovedW);
+		D->SetArrayField(TEXT("modified_widget_properties"), ModWProps);
+		D->SetArrayField(TEXT("modified_slot_properties"), ModSlotProps);
+
+		// ---- widget event bindings diff ----
+		TMap<FString, TSharedPtr<FJsonObject>> BB, AB; FlattenBindings(Before, BB); FlattenBindings(After, AB);
+		TArray<TSharedPtr<FJsonValue>> AddedEB, ModEH;
+		for (const auto& KV : AB)
+		{
+			if (!BB.Contains(KV.Key)) { AddedEB.Add(MakeShared<FJsonValueObject>(KV.Value)); continue; }
+			// handler change (type/name/connected)
+			const TSharedPtr<FJsonObject>* BhP = nullptr; const TSharedPtr<FJsonObject>* AhP = nullptr;
+			BB[KV.Key]->TryGetObjectField(TEXT("handler"), BhP); KV.Value->TryGetObjectField(TEXT("handler"), AhP);
+			auto HStr = [](const TSharedPtr<FJsonObject>* H, const TCHAR* K) -> FString { FString V; if (H && (*H).IsValid()) { (*H)->TryGetStringField(K, V); } return V; };
+			if (HStr(BhP, TEXT("type")) != HStr(AhP, TEXT("type")) || HStr(BhP, TEXT("name")) != HStr(AhP, TEXT("name")))
+			{
+				TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("binding"), KV.Key);
+				O->SetStringField(TEXT("before"), HStr(BhP, TEXT("type")) + TEXT(":") + HStr(BhP, TEXT("name")));
+				O->SetStringField(TEXT("after"), HStr(AhP, TEXT("type")) + TEXT(":") + HStr(AhP, TEXT("name")));
+				ModEH.Add(MakeShared<FJsonValueObject>(O));
+			}
+		}
+		D->SetArrayField(TEXT("added_event_bindings"), AddedEB);
+		D->SetArrayField(TEXT("modified_event_handlers"), ModEH);
+
+		// ---- members (variables / functions) added/removed ----
+		auto MemberDiff = [&](const TCHAR* Field) -> TArray<TSharedPtr<FJsonValue>>
+		{
+			TArray<TSharedPtr<FJsonValue>> Out; TSet<FString> Bs = MemberNames(Before, Field); TSet<FString> As = MemberNames(After, Field);
+			for (const FString& N : As) { if (!Bs.Contains(N)) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), N); O->SetStringField(TEXT("change"), TEXT("added")); Out.Add(MakeShared<FJsonValueObject>(O)); } }
+			for (const FString& N : Bs) { if (!As.Contains(N)) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("name"), N); O->SetStringField(TEXT("change"), TEXT("removed")); Out.Add(MakeShared<FJsonValueObject>(O)); } }
+			return Out;
+		};
+		D->SetArrayField(TEXT("modified_variables"), MemberDiff(TEXT("variables")));
+		D->SetArrayField(TEXT("modified_functions"), MemberDiff(TEXT("functions")));
+
+		D->SetArrayField(TEXT("unexpected_changes"), {});
 		D->SetArrayField(TEXT("risk_notes"), RiskNotes);
 		return D;
 	}
@@ -352,6 +466,35 @@ namespace
 		S += TEXT("}\n");
 		return S;
 	}
+
+	// Widget hierarchy DOT from an IR's widget_tree (before/after preview for WBP edits).
+	FString WidgetTreeToDot(const TSharedPtr<FJsonObject>& IR, const FString& Title)
+	{
+		FString S = FString::Printf(TEXT("digraph WT {\n  rankdir=TB;\n  label=\"%s\";\n  node[shape=box,style=rounded];\n"), *Title);
+		int32 Ctr = 0;
+		TFunction<void(const TSharedPtr<FJsonObject>&, const FString&)> Rec;
+		Rec = [&](const TSharedPtr<FJsonObject>& N, const FString& ParentId)
+		{
+			if (!N.IsValid()) { return; }
+			FString Name; N->TryGetStringField(TEXT("name"), Name);
+			FString Cls; N->TryGetStringField(TEXT("class"), Cls);
+			FString Short = Cls; int32 D; if (Short.FindLastChar(TEXT('.'), D)) { Short = Short.Mid(D + 1); } Short.RemoveFromEnd(TEXT("_C"));
+			const FString Id = FString::Printf(TEXT("w%d"), Ctr++);
+			FString Lbl = Name + TEXT("\\n") + Short; Lbl.ReplaceInline(TEXT("\""), TEXT("'"));
+			S += FString::Printf(TEXT("  %s [label=\"%s\"];\n"), *Id, *Lbl);
+			if (!ParentId.IsEmpty()) { S += FString::Printf(TEXT("  %s -> %s;\n"), *ParentId, *Id); }
+			const TArray<TSharedPtr<FJsonValue>>* Kids = nullptr;
+			if (N->TryGetArrayField(TEXT("children"), Kids)) { for (const auto& K : *Kids) { if (K->AsObject().IsValid()) { Rec(K->AsObject(), Id); } } }
+		};
+		const TSharedPtr<FJsonObject>* WT = nullptr;
+		if (IR.IsValid() && IR->TryGetObjectField(TEXT("widget_tree"), WT) && WT)
+		{
+			const TSharedPtr<FJsonObject>* Root = nullptr;
+			if ((*WT)->TryGetObjectField(TEXT("root"), Root) && Root && (*Root).IsValid()) { Rec(*Root, FString()); }
+		}
+		S += TEXT("}\n");
+		return S;
+	}
 }
 
 bool FBPATEdit::IsDestructiveOperation(const FString& Op)
@@ -360,7 +503,8 @@ bool FBPATEdit::IsDestructiveOperation(const FString& Op)
 		TEXT("remove_node"), TEXT("disconnect_pins"), TEXT("insert_node_between"),
 		TEXT("replace_edge"), TEXT("rewire_data_dependency"), TEXT("add_reroute_on_edge"),
 		TEXT("remove_variable"), TEXT("change_variable_type"), TEXT("replace_node"),
-		TEXT("disconnect_all_input_links"), TEXT("disconnect_all_output_links")
+		TEXT("disconnect_all_input_links"), TEXT("disconnect_all_output_links"),
+		TEXT("remove_widget"), TEXT("move_widget")
 	};
 	return Destructive.Contains(Op);
 }
@@ -417,6 +561,13 @@ namespace
 		if (!C) { OutErr = TEXT("parent_class_load_failed"); return nullptr; }
 		OutSource = C->IsNative() ? TEXT("cpp") : TEXT("blueprint");
 		return C;
+	}
+
+	UWidget* FindWidgetIn(UBlueprint* BP, const FString& Name)
+	{
+		UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP);
+		if (!WBP || !WBP->WidgetTree || Name.IsEmpty()) { return nullptr; }
+		return WBP->WidgetTree->FindWidget(FName(*Name));
 	}
 
 	// Applies one operation. Returns true on success; fills R.
@@ -564,6 +715,122 @@ namespace
 			}
 			if (!bFound) { return Fail(FString::Printf(TEXT("variable '%s' not found"), *Var.ToString())); }
 			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
+			R.Status = TEXT("success"); return true;
+		}
+
+		// ---- Widget Blueprint tree edits (reuse FBPWidgetGen) ----
+		auto SetPropReport = [&](UObject* Target, const FString& Key, const TSharedPtr<FJsonValue>& Val, const FString& Ctx) -> bool
+		{
+			FString Resolved; TArray<TSharedPtr<FJsonValue>> Sugg;
+			const FString E = FBPWidgetGen::SetPropertyFromJson(Target, Key, Val, Resolved, Sugg);
+			if (!E.IsEmpty()) { R.Outputs->SetStringField(TEXT("code"), TEXT("property_not_found")); R.Outputs->SetStringField(TEXT("input"), Key); R.Outputs->SetArrayField(TEXT("suggestions"), Sugg); return Fail(FString::Printf(TEXT("%s '%s': %s"), *Ctx, *Key, *E)); }
+			R.Outputs->SetStringField(TEXT("property"), Key);
+			R.Outputs->SetStringField(TEXT("resolved_to"), Resolved);
+			if (!Resolved.Equals(Key, ESearchCase::CaseSensitive) && !Resolved.Equals(FString(TEXT("Set")) + Key)) { R.Warnings.Add(FString::Printf(TEXT("property_alias_matched: '%s' -> '%s'"), *Key, *Resolved)); }
+			return true;
+		};
+
+		if (OpName == TEXT("set_widget_property"))
+		{
+			UWidget* W = FindWidgetIn(BP, JStr(Op, TEXT("widget")));
+			if (!W) { return Fail(FString::Printf(TEXT("widget_not_found: %s"), *JStr(Op, TEXT("widget")))); }
+			R.Outputs->SetStringField(TEXT("widget"), JStr(Op, TEXT("widget")));
+			if (!SetPropReport(W, JStr(Op, TEXT("property")), Op->TryGetField(TEXT("value")), TEXT("widget property"))) { return false; }
+			R.Status = TEXT("success"); return true;
+		}
+		if (OpName == TEXT("set_slot_property"))
+		{
+			UWidget* W = FindWidgetIn(BP, JStr(Op, TEXT("widget")));
+			if (!W) { return Fail(FString::Printf(TEXT("widget_not_found: %s"), *JStr(Op, TEXT("widget")))); }
+			if (!W->Slot) { return Fail(FString::Printf(TEXT("widget_has_no_slot: %s"), *JStr(Op, TEXT("widget")))); }
+			R.Outputs->SetStringField(TEXT("widget"), JStr(Op, TEXT("widget")));
+			if (!SetPropReport(W->Slot, JStr(Op, TEXT("property")), Op->TryGetField(TEXT("value")), TEXT("slot property"))) { return false; }
+			R.Status = TEXT("success"); return true;
+		}
+		if (OpName == TEXT("add_widget"))
+		{
+			UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP);
+			if (!WBP) { return Fail(TEXT("not_widget_blueprint")); }
+			const TSharedPtr<FJsonObject>* WO = JObj(Op, TEXT("widget"));
+			if (!WO) { return Fail(TEXT("add_widget requires a 'widget' object {name,type,...}")); }
+			const FString WName = JStr(*WO, TEXT("name"));
+			const FString WType = JStr(*WO, TEXT("type"));
+			if (WName.IsEmpty() || WType.IsEmpty()) { return Fail(TEXT("widget.name and widget.type required")); }
+			if (FindWidgetIn(BP, WName)) { return Fail(FString::Printf(TEXT("widget_name_exists: %s"), *WName)); }
+			FString ClsErr, Asset, Gen; bool bCustom = false;
+			UClass* Cls = FBPWidgetGen::ResolveWidgetClassEx(WType, ClsErr, bCustom, Asset, Gen);
+			if (!Cls) { R.Outputs->SetStringField(TEXT("code"), ClsErr); return Fail(FString::Printf(TEXT("widget class resolve failed (%s): %s"), *ClsErr, *WType)); }
+			UWidget* NewW = FBPWidgetGen::ConstructWidget(WBP, Cls, FName(*WName));
+			if (!NewW) { return Fail(TEXT("construct_widget_failed")); }
+			const FString ParentName = JStr(Op, TEXT("parent"));
+			UWidget* Parent = FindWidgetIn(BP, ParentName);
+			if (!Parent) { return Fail(FString::Printf(TEXT("parent_not_found: %s"), *ParentName)); }
+			UPanelSlot* Slot = FBPWidgetGen::AddChild(Parent, NewW);
+			if (!Slot) { return Fail(FString::Printf(TEXT("parent_not_panel_or_add_failed: %s"), *ParentName)); }
+			if (const TSharedPtr<FJsonObject>* Props = JObj(*WO, TEXT("properties"))) { for (const auto& KV : (*Props)->Values) { SetPropReport(NewW, KV.Key, KV.Value, TEXT("widget property")); } }
+			if (const TSharedPtr<FJsonObject>* SlotO = JObj(*WO, TEXT("slot"))) { if (const TSharedPtr<FJsonObject>* SP = JObj(*SlotO, TEXT("properties"))) { for (const auto& KV : (*SP)->Values) { SetPropReport(Slot, KV.Key, KV.Value, TEXT("slot property")); } } }
+			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+			R.Outputs->SetStringField(TEXT("widget"), WName);
+			R.Outputs->SetStringField(TEXT("class"), Cls->GetPathName());
+			R.Outputs->SetBoolField(TEXT("custom"), bCustom);
+			R.Status = TEXT("success"); return true;
+		}
+		if (OpName == TEXT("remove_widget"))
+		{
+			UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP);
+			if (!WBP || !WBP->WidgetTree) { return Fail(TEXT("not_widget_blueprint")); }
+			UWidget* W = FindWidgetIn(BP, JStr(Op, TEXT("widget")));
+			if (!W) { return Fail(FString::Printf(TEXT("widget_not_found: %s"), *JStr(Op, TEXT("widget")))); }
+			if (WBP->WidgetTree->RootWidget == W) { return Fail(TEXT("cannot_remove_root")); }
+			if (!WBP->WidgetTree->RemoveWidget(W)) { return Fail(TEXT("remove_widget_failed")); }
+			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+			R.Outputs->SetStringField(TEXT("widget"), JStr(Op, TEXT("widget")));
+			R.Status = TEXT("success"); return true;
+		}
+		if (OpName == TEXT("move_widget"))
+		{
+			UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP);
+			if (!WBP || !WBP->WidgetTree) { return Fail(TEXT("not_widget_blueprint")); }
+			UWidget* W = FindWidgetIn(BP, JStr(Op, TEXT("widget")));
+			UWidget* NP = FindWidgetIn(BP, JStr(Op, TEXT("new_parent")));
+			if (!W) { return Fail(FString::Printf(TEXT("widget_not_found: %s"), *JStr(Op, TEXT("widget")))); }
+			if (!NP) { return Fail(FString::Printf(TEXT("new_parent_not_found: %s"), *JStr(Op, TEXT("new_parent")))); }
+			UPanelWidget* NewParent = Cast<UPanelWidget>(NP);
+			if (!NewParent) { return Fail(TEXT("new_parent_not_panel")); }
+			if (WBP->WidgetTree->RootWidget == W) { return Fail(TEXT("cannot_move_root")); }
+			if (UPanelWidget* Old = W->GetParent()) { Old->RemoveChild(W); }
+			UPanelSlot* Slot = NewParent->AddChild(W);
+			if (!Slot) { return Fail(TEXT("move_add_failed")); }
+			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+			R.Outputs->SetStringField(TEXT("widget"), JStr(Op, TEXT("widget")));
+			R.Outputs->SetStringField(TEXT("new_parent"), JStr(Op, TEXT("new_parent")));
+			R.Status = TEXT("success"); return true;
+		}
+		if (OpName == TEXT("bind_widget_event"))
+		{
+			UWidgetBlueprint* WBP = Cast<UWidgetBlueprint>(BP);
+			if (!WBP) { return Fail(TEXT("not_widget_blueprint")); }
+			const FString WName = JStr(Op, TEXT("widget"));
+			const FString EName = JStr(Op, TEXT("event"), TEXT("OnClicked"));
+			TSharedPtr<FJsonObject> Bind; UK2Node_ComponentBoundEvent* Node = nullptr;
+			FString E = FBPWidgetGen::BindWidgetEvent(WBP, WName, EName, Bind, &Node);
+			if (!E.IsEmpty() && JStr(Bind, TEXT("status")) == TEXT("property_missing")) { FBPGen::CompileBlueprint(WBP); Bind.Reset(); Node = nullptr; E = FBPWidgetGen::BindWidgetEvent(WBP, WName, EName, Bind, &Node); }
+			R.Outputs->SetObjectField(TEXT("binding"), Bind);
+			if (!E.IsEmpty()) { return Fail(FString::Printf(TEXT("event bind %s.%s: %s"), *WName, *EName, *E)); }
+			if (const TSharedPtr<FJsonObject>* H = JObj(Op, TEXT("handler")))
+			{
+				TSharedPtr<FJsonObject> HOut;
+				const FString EE = FBPWidgetGen::EnsureEventHandlerEntry(WBP, Node, *H, HOut);
+				R.Outputs->SetObjectField(TEXT("handler"), HOut);
+				if (!EE.IsEmpty()) { return Fail(FString::Printf(TEXT("handler entry %s.%s: %s"), *WName, *EName, *EE)); }
+				FBPGen::CompileBlueprint(WBP);   // so the handler UFunction exists before wiring the call node
+				const FString WE = FBPWidgetGen::WireEventHandlerCall(WBP, Node, *H, HOut);
+				if (!WE.IsEmpty()) { return Fail(FString::Printf(TEXT("handler wire %s.%s: %s"), *WName, *EName, *WE)); }
+				FBPWidgetGen::AddHandlerBody(WBP, Node, *H, HOut);
+			}
+			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+			R.Outputs->SetStringField(TEXT("widget"), WName);
+			R.Outputs->SetStringField(TEXT("event"), EName);
 			R.Status = TEXT("success"); return true;
 		}
 
@@ -745,6 +1012,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 	TSharedPtr<FJsonObject> Baseline = FBPGenIRDumper::DumpBlueprint(BP);
 	WriteJson(FPaths::Combine(OutDir, TEXT("baseline_ir.json")), Baseline);
 	WriteText(FPaths::Combine(VizDir, TEXT("before.dot")), IRToDot(Baseline, TEXT("before")));
+	if (Cast<UWidgetBlueprint>(BP)) { WriteText(FPaths::Combine(VizDir, TEXT("hierarchy.before.dot")), WidgetTreeToDot(Baseline, TEXT("before"))); }
 
 	// --- Parse operations + classify ---
 	const TArray<TSharedPtr<FJsonValue>>* Ops = nullptr;
@@ -877,6 +1145,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 
 		TSharedPtr<FJsonObject> Modified = FBPGenIRDumper::DumpBlueprint(BP);
 		WriteJson(FPaths::Combine(OutDir, TEXT("modified_ir.json")), Modified);   // in-memory (not persisted)
+		if (Cast<UWidgetBlueprint>(BP)) { WriteText(FPaths::Combine(VizDir, TEXT("hierarchy.after.dot")), WidgetTreeToDot(Modified, TEXT("after (rolled back)"))); }
 		TSharedPtr<FJsonObject> Diff = BuildDiff(EditedPath, Baseline, Modified);
 		WriteJson(FPaths::Combine(OutDir, TEXT("diff_report.json")), Diff);
 		Result->SetObjectField(TEXT("diff"), Diff);
@@ -896,6 +1165,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 	TSharedPtr<FJsonObject> Modified = FBPGenIRDumper::DumpBlueprint(BP);
 	WriteJson(FPaths::Combine(OutDir, TEXT("modified_ir.json")), Modified);
 	WriteText(FPaths::Combine(VizDir, TEXT("after.dot")), IRToDot(Modified, TEXT("after")));
+	if (Cast<UWidgetBlueprint>(BP)) { WriteText(FPaths::Combine(VizDir, TEXT("hierarchy.after.dot")), WidgetTreeToDot(Modified, TEXT("after"))); }
 	Validation->SetStringField(TEXT("ir_redump_status"), TEXT("success"));
 
 	TSharedPtr<FJsonObject> Diff = BuildDiff(EditedPath, Baseline, Modified);

@@ -1,0 +1,15 @@
+{
+  "intent": "smoke: widget-tree edit ops on an existing WBP copy",
+  "operations": [
+    { "op_id": "e1", "operation": "set_widget_property", "widget": "EnableCheck", "property": "IsEnabled", "value": false },
+    { "op_id": "e2", "operation": "set_slot_property", "widget": "PlayButton", "property": "Position", "value": { "X": 60, "Y": 60 } },
+    { "op_id": "e3", "operation": "add_widget", "parent": "RootCanvas",
+      "widget": { "name": "SmokeText", "type": "TextBlock", "properties": { "Text": "Added by edit" },
+                  "slot": { "properties": { "Position": { "X": 20, "Y": 320 }, "Size": { "X": 240, "Y": 40 } } } } },
+    { "op_id": "e4", "operation": "add_widget", "parent": "RootCanvas",
+      "widget": { "name": "SmokeBtn", "type": "Button",
+                  "slot": { "properties": { "Position": { "X": 20, "Y": 370 }, "Size": { "X": 160, "Y": 40 } } } } },
+    { "op_id": "e5", "operation": "bind_widget_event", "widget": "SmokeBtn", "event": "OnClicked",
+      "handler": { "type": "custom_event", "name": "OnSmokeClicked", "body": [ { "op": "print_string", "text": "smoke clicked" } ] } }
+  ]
+}
