@@ -60,8 +60,18 @@ normalized to the `_C` generated class); it is constructed as a black box with s
   true). Exec is connected first, then data params matched by name→type; results (per-param connected/mismatch/
   ambiguous/missing + handler-level `handler_not_found|function_is_pure|exec_*`) are recorded under
   `widget_event_bindings[].handler` and redumped in `created_ir.json`. Idempotent (bound event, custom event/
-  function, and call node all reused). Deferred (warn/manual): handler *body logic*, property binding
-  (`widget.bindings`), custom-widget internal expansion, UMG animation, pixel-accurate render.
+  function, and call node all reused). An optional `handler.body` generates MVP logic inside the handler
+  (`print_string` / `set_text`, literal or `from_param`; recorded as `handler.body_ops[]`). Deferred (warn/manual):
+  richer handler body logic, property binding (`widget.bindings`), custom-widget internal expansion, UMG animation,
+  pixel-accurate render.
+- **Full-spec create**: a single request can build a complete interactive WBP (root + title + custom Setting Items +
+  native widgets + slots + Details via `settable_properties` names + events + handlers + bodies). Outputs add
+  `viz/graph.dot|.mmd` (event-graph preview) alongside `viz/hierarchy.dot|.mmd`; `scripts/compare_widget_spec.ps1`
+  emits an expected-vs-actual `compare_report.json` (verified UE 5.4 AClient: `WBP_Agent_FullSpec_SettingsPanel`,
+  widgets 8/8 + events 4/4 match).
+- **Post-write shutdown crash**: `scripts/create_blueprint.ps1` never fakes failure — if the commandlet crashes in
+  engine teardown *after* writing complete artifacts with `status=success`, it reports `success_with_exit_warning`
+  (exit 0), records the raw exit code + `logs/create_stdout.txt` and a `post_exit` block + warning in the manifest.
 - **Widget property names**: keys in a widget/slot `properties` object are resolved with **alias matching**
   (exact → case-insensitive → bool `b` prefix → Details DisplayName → strip space/underscore), then a `Set<Key>`
   setter fallback. An aliased write is reported as `property_alias_matched` and a miss as `property_not_found`

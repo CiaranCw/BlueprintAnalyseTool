@@ -292,11 +292,19 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 							Warn.Add(FString::Printf(TEXT("event handler wire %s.%s [%s]: %s"),*S.wn,*S.en,*hst,*we));
 							Manual.Add(FString::Printf(TEXT("event %s.%s handler not wired (%s): %s"),*S.wn,*S.en,*hst,*we));
 						}
-						else if(const TArray<TSharedPtr<FJsonValue>>* pc = JArr(S.hout,TEXT("parameters_connected")))
+						else
 						{
-							for(const auto& pv:*pc){ auto po=pv->AsObject(); if(!po) continue; const FString ps=JStr(po,TEXT("status"));
-								if(ps!=TEXT("connected") && ps!=TEXT("already_connected"))
-									Warn.Add(FString::Printf(TEXT("event %s.%s param '%s'->'%s': %s"),*S.wn,*S.en,*JStr(po,TEXT("from")),*JStr(po,TEXT("to")),*ps)); }
+							if(const TArray<TSharedPtr<FJsonValue>>* pc = JArr(S.hout,TEXT("parameters_connected")))
+								for(const auto& pv:*pc){ auto po=pv->AsObject(); if(!po) continue; const FString ps=JStr(po,TEXT("status"));
+									if(ps!=TEXT("connected") && ps!=TEXT("already_connected"))
+										Warn.Add(FString::Printf(TEXT("event %s.%s param '%s'->'%s': %s"),*S.wn,*S.en,*JStr(po,TEXT("from")),*JStr(po,TEXT("to")),*ps)); }
+							// handler body logic template (print_string / set_text) — MVP
+							const FString be=FBPWidgetGen::AddHandlerBody(WBP, S.node, S.hspec, S.hout);
+							if(!be.IsEmpty()) { Warn.Add(FString::Printf(TEXT("event %s.%s handler body: %s"),*S.wn,*S.en,*be)); Manual.Add(FString::Printf(TEXT("event %s.%s handler body not applied: %s"),*S.wn,*S.en,*be)); }
+							else if(const TArray<TSharedPtr<FJsonValue>>* bo = JArr(S.hout,TEXT("body_ops")))
+								for(const auto& bv:*bo){ auto boj=bv->AsObject(); if(!boj) continue; const FString bs=JStr(boj,TEXT("status"));
+									if(bs!=TEXT("connected") && bs!=TEXT("reused"))
+										Warn.Add(FString::Printf(TEXT("event %s.%s body op '%s': %s (%s)"),*S.wn,*S.en,*JStr(boj,TEXT("op")),*bs,*JStr(boj,TEXT("detail")))); }
 						}
 					}
 					EventBindings.Add(MakeShared<FJsonValueObject>(S.res));

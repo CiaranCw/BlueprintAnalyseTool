@@ -176,6 +176,30 @@ Handler failure classes (surfaced in `warnings` + `manual_check_required`): `bou
 handler_create_failed | handler_signature_mismatch | function_is_pure | exec_pin_missing | exec_connection_failed`,
 plus per-param `parameter_pin_missing | parameter_type_mismatch | ambiguous_parameter_match`.
 
+### Handler body logic template (MVP)
+A handler may carry a `body` array of simple logic ops that are generated **inside** the handler entry (the Custom
+Event, the function entry, or the bound event), chained by exec. MVP ops:
+
+| op | fields | effect |
+|---|---|---|
+| `print_string` | `text` OR `from_param` | `KismetSystemLibrary::PrintString`; `from_param` wires the event/handler param (autocast to string). |
+| `set_text` | `target` (widget name), `text` OR `from_param` | `<target>.SetText(...)`; `from_param` wires a param (autocast to text). Target must expose `SetText`. |
+
+```json
+"handler": { "type": "custom_event", "name": "OnApplyClicked",
+  "body": [ { "op": "print_string", "text": "Settings applied" },
+            { "op": "set_text", "target": "TitleText", "text": "Applied" } ] }
+```
+```json
+"handler": { "type": "function", "name": "HandleQualityChanged",
+  "body": [ { "op": "set_text", "target": "TitleText", "from_param": "SelectedItem" } ] }
+```
+Each op's exec chains off the previous; `from_param` connects the entry's matching data-out pin (auto-inserting a
+conversion node when types differ, e.g. `bool`/`float`→string, `string`→text). Results are recorded in the create-side
+`widget_event_bindings[].handler.body_ops[{op,status,detail}]` + `body_applied` (statuses `connected | reused |
+param_not_connected | spawn_failed | target_no_settext | unsupported_op`). Idempotent (skips if the entry already
+drives a chain). The handler *body business logic beyond these templates* is out of scope (see Deferred).
+
 Verified (UE 5.4, `WBP_Agent_EventHandlerMatrix`): Button.OnClicked→custom_event; CheckBox.OnCheckStateChanged→
 custom_event (bool `bIsChecked`); ComboBoxString.OnSelectionChanged→function (`SelectedItem`+`SelectionType` enum);
 Slider.OnValueChanged→function (`Value`); EditableTextBox.OnTextChanged→custom_event (`Text`) — all exec+params
@@ -232,8 +256,9 @@ Verified (UE 5.4, AClient real project): `/Game/Assets/Widget/Settings/WBP_Setti
 new WBP — class loaded, constructed, slot geometry applied, dependency recorded, events discovered, compile/save OK.
 
 ## Deferred (will warn / `manual_check_required`)
-- **Handler body logic** — the exec/param wiring (Phase 4 P2) is done, but the *contents* of the custom event /
-  function body (business logic beyond the entry + parameter inputs) are not auto-generated.
+- **Rich handler body logic** — MVP body templates (`print_string`, `set_text`; literal or `from_param`) are
+  generated inside the handler (see "Handler body logic template"). Anything beyond these simple ops (branches,
+  variable math, multi-node business logic) is not auto-generated.
 - **Property binding** (`widget.bindings`, e.g. Text→getter) — accepted, not applied.
 - **Custom widget internal expansion** — the custom widget is a black box (its own child tree is not recursed).
 - **UMG Animation** (`widget.animations`) — accepted, not applied.

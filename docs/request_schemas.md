@@ -143,7 +143,16 @@ and wires the bound-event exec/params to a handler (Phase 4 P2):
 `handler.type`: `bound_event` (default; bound-event node is the entry) | `custom_event` (create/reuse a Custom Event
 `name`, route the bound event into it) | `function` (create/reuse a function `name`, wire a call node; pure →
 `function_is_pure`). Flags `create_if_missing`/`connect_exec`/`connect_parameters` default true; `create_if_missing=false`
-+ missing handler → `handler_not_found`. Data params are matched by name→type. Each result → `widget_event_bindings`
++ missing handler → `handler_not_found`. Data params are matched by name→type. An optional `handler.body` array
+generates simple logic inside the handler (MVP: `{op:"print_string", text|from_param}`, `{op:"set_text", target,
+text|from_param}`) — recorded as `handler.body_ops[]`. Example:
+```json
+{ "widget":"ApplyButton", "event":"OnClicked", "handler": { "type":"custom_event", "name":"OnApplyClicked",
+  "body":[ {"op":"print_string","text":"Applied"}, {"op":"set_text","target":"TitleText","from_param":"SelectedItem"} ] } }
+```
+Create writes a widget hierarchy preview (`viz/hierarchy.dot|.mmd`) AND an event-graph preview
+(`viz/graph.dot|.mmd`, nodes+edges, exec solid / data dashed) plus a `compare_report.json` when run via
+`scripts/compare_widget_spec.ps1` (expected-vs-actual widgets + events). Each result → `widget_event_bindings`
 (manifest/create_result/created_ir) with bind `status`
 (`bound|reused|widget_not_found|not_variable|property_missing|delegate_not_found|pins_incomplete|error`), `parameters`,
 and a nested `handler` object (`connected/exec_connected/parameters_connected[{from,to,status}]` + handler failure

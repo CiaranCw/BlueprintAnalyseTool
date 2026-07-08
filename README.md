@@ -104,6 +104,8 @@ editor_live  →  native_full  →  python_partial  →  offline_asset_scan
 - `create`：遵守 `overwrite_policy`，默认不覆盖已存在资产。
 - `warmup`：会改工程（装插件 + 编译），仅在用户授权下进行；仍不修改任何蓝图资产。
 - 编辑器打开时不热替换已加载的插件 DLL。
+- 清理 Agent 自建的测试资产：`scripts/cleanup_test_assets.ps1`（**仅**匹配 `/Game/Generated/WBP_Agent_*`，默认 dry-run，加 `-Execute` 才删除；绝不动用户资产）。
+- create 产物一致性核对：`scripts/compare_widget_spec.ps1`（expected-vs-actual：控件 + 事件/handler，输出 `compare_report.json`）。
 
 只读防护细节见 [`docs/readonly_safety.md`](docs/readonly_safety.md)。
 
@@ -118,7 +120,7 @@ BlueprintAnalyseTool/
 │  ├─ Plugins/BPParserTestGen/     # UE 5.4 C++ Editor 插件：IR 导出 / 原子编辑 / 创建 / 结构 diff / editor_live 服务
 │  └─ deliverables/                # 系统化测试蓝图套件的预期 IR、可视化、覆盖矩阵
 ├─ docs/                           # 契约与指南（见下方索引）
-├─ blueprint_agent.version.json    # 版本与 schema 版本（当前 0.4.0）
+├─ blueprint_agent.version.json    # 版本与 schema 版本（当前 0.4.2）
 └─ AGENTS.md                       # 本仓库对编码 Agent 的工作规范
 ```
 

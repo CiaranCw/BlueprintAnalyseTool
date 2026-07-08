@@ -497,3 +497,33 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 ### Cross-version note
 - Uses stable editor APIs (`SpawnCustomEvent`/`AddFunctionGraph`/`SetFromFunction`/schema `TryCreateConnection`).
   The compile-between-phases requirement is inherent to Blueprint codegen and holds across UE 5.x.
+
+## P18: Commandlet post-write shutdown crash must not be reported as failure
+
+### Typical symptom
+- A create/dump commandlet writes all artifacts and logs `status=success`, then the *process* exits with an
+  abnormal code (e.g. `-1073741819` / `0xC0000005`) during engine teardown (GC / module shutdown). A wrapper that
+  judges success purely by process exit code would report a false failure even though the asset was created/saved.
+
+### Affected families
+- Any headless commandlet wrapper (`create_blueprint.ps1`, and similar dump/edit wrappers) on some projects/engines.
+
+### Root cause
+- UE headless teardown can crash after `Main` returns and artifacts are flushed. The exit code then reflects the
+  teardown crash, not the task outcome. Artifacts + `manifest.status` are the authoritative signal.
+
+### Generalized fix
+- `create_blueprint.ps1`: capture stdout to `logs/create_stdout.txt`; after the run, if the exit code is NOT a known
+  commandlet code (0/10/20/30/41) BUT `manifest.json`+`create_result.json`+`created_ir.json` are complete and
+  `manifest.status` is `success`/`partial`, reclassify as `success_with_exit_warning` (exit 0) /
+  `partial_with_exit_warning` (exit 10): keep the raw exit code + log, and add a `warnings[]` note + a `post_exit`
+  block (`{exit_code, crashed, stdout_log}`) to the manifest. Never fake failure; never hide the crash.
+- Root-causing the teardown crash itself is tracked separately (does not block asset creation).
+
+### Validation
+- AClient `WBP_Agent_FullSpec_SettingsPanel`: one run exited `-1073741819` after writing artifacts → wrapper
+  reported `success_with_exit_warning` (exit 0) with the crash recorded; a later identical run exited 0 cleanly.
+  Both produced identical, complete, compilable assets. UE 5.4.
+
+### Cross-version note
+- The reclassification keys off artifact completeness + `manifest.status`, so it is engine/version-agnostic.

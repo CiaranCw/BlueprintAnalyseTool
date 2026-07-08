@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "task_type": "create",
+  "asset": {
+    "asset_path": "/Game/Generated/WBP_Agent_FullSpec_SettingsPanel",
+    "blueprint_type": "Widget",
+    "parent_class": "/Script/UMG.UserWidget",
+    "overwrite_policy": "overwrite"
+  },
+  "widget": {
+    "hierarchy": {
+      "root": {
+        "name": "RootCanvas", "type": "CanvasPanel",
+        "children": [
+          { "name": "TitleText", "type": "TextBlock",
+            "properties": { "Text": "Settings", "Visibility": "HitTestInvisible" },
+            "slot": { "properties": { "Position": { "X": 40, "Y": 24 }, "Size": { "X": 560, "Y": 48 } } } },
+
+          { "name": "AudioCheckboxItem", "type": "/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem",
+            "properties": { "TextName": "Enable Audio", "ItemId": "audio_enabled", "bDefaultChecked": true },
+            "slot": { "properties": { "Position": { "X": 40, "Y": 90 }, "Size": { "X": 560, "Y": 48 } } } },
+
+          { "name": "VolumeSlideItem", "type": "/Game/Assets/Widget/Settings/WBP_Setting_SlideItem",
+            "properties": { "TextName": "Master Volume", "ItemId": "master_volume", "DisplayMin": 0.0, "DisplayMax": 100.0, "StepSize": 1.0 },
+            "slot": { "properties": { "Position": { "X": 40, "Y": 150 }, "Size": { "X": 560, "Y": 48 } } } },
+
+          { "name": "QualityCombo", "type": "ComboBoxString",
+            "slot": { "properties": { "Position": { "X": 40, "Y": 214 }, "Size": { "X": 300, "Y": 40 } } } },
+
+          { "name": "FullscreenCheck", "type": "CheckBox",
+            "slot": { "properties": { "Position": { "X": 360, "Y": 214 }, "Size": { "X": 40, "Y": 40 } } } },
+
+          { "name": "BrightnessSlider", "type": "Slider",
+            "slot": { "properties": { "Position": { "X": 40, "Y": 268 }, "Size": { "X": 300, "Y": 24 } } } },
+
+          { "name": "ApplyButton", "type": "Button",
+            "slot": { "properties": { "Position": { "X": 40, "Y": 312 }, "Size": { "X": 200, "Y": 44 } } } }
+        ]
+      }
+    },
+    "events": [
+      { "widget": "ApplyButton", "event": "OnClicked",
+        "handler": { "type": "custom_event", "name": "OnApplyClicked",
+          "body": [ { "op": "print_string", "text": "Settings applied" },
+                    { "op": "set_text", "target": "TitleText", "text": "Settings (applied)" } ] } },
+
+      { "widget": "FullscreenCheck", "event": "OnCheckStateChanged",
+        "handler": { "type": "custom_event", "name": "OnFullscreenChanged",
+          "body": [ { "op": "print_string", "from_param": "bIsChecked" } ] } },
+
+      { "widget": "QualityCombo", "event": "OnSelectionChanged",
+        "handler": { "type": "function", "name": "HandleQualityChanged",
+          "body": [ { "op": "set_text", "target": "TitleText", "from_param": "SelectedItem" } ] } },
+
+      { "widget": "BrightnessSlider", "event": "OnValueChanged",
+        "handler": { "type": "function", "name": "HandleBrightnessChanged",
+          "body": [ { "op": "print_string", "from_param": "Value" } ] } }
+    ]
+  },
+  "validation": { "compile": true, "save": true, "redump_ir": true, "render_preview": true }
+}

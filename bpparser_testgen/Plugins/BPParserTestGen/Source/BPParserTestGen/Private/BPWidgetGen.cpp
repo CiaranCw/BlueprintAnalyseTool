@@ -29,6 +29,8 @@
 #include "K2Node_CustomEvent.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_FunctionEntry.h"
+#include "K2Node_VariableGet.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 
@@ -647,6 +649,74 @@ FString FBPWidgetGen::WireEventHandlerCall(UWidgetBlueprint* WBP, UK2Node_Compon
 	OutHandler->SetArrayField(TEXT("parameters_connected"), ParamsOut);
 	OutHandler->SetBoolField(TEXT("connected"), bExec);
 	OutHandler->SetStringField(TEXT("status"), bExec ? TEXT("connected") : TEXT("not_connected"));
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
+	return FString();
+}
+
+FString FBPWidgetGen::AddHandlerBody(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+	const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler)
+{
+	if (!OutHandler.IsValid()) { OutHandler = MakeShared<FJsonObject>(); }
+	auto HStr = [&](const TCHAR* K, const FString& D) -> FString { FString v; return (HandlerSpec.IsValid() && HandlerSpec->TryGetStringField(K, v)) ? v : D; };
+	const FString Type = HStr(TEXT("type"), TEXT("bound_event"));
+	const FString Name = HStr(TEXT("name"), TEXT(""));
+	const TArray<TSharedPtr<FJsonValue>>* Body = nullptr;
+	if (!HandlerSpec.IsValid() || !HandlerSpec->TryGetArrayField(TEXT("body"), Body) || !Body || Body->Num() == 0) { return FString(); }
+	if (!WBP) { return TEXT("null WBP"); }
+
+	// resolve the entry node (its exec-out starts the body chain; its data-out pins expose the params)
+	UEdGraph* Graph = nullptr; UEdGraphNode* EntryNode = nullptr;
+	if (Type == TEXT("custom_event")) { Graph = FBPGen::GetEventGraph(WBP); EntryNode = FindCustomEventByName(Graph, FName(*Name)); }
+	else if (Type == TEXT("function")) { for (UEdGraph* G : WBP->FunctionGraphs) { if (G && G->GetFName() == FName(*Name)) { Graph = G; break; } } if (Graph) { EntryNode = FBPGen::FindFunctionEntry(Graph); } }
+	else { EntryNode = BoundNode; Graph = BoundNode ? BoundNode->GetGraph() : nullptr; }
+
+	TArray<TSharedPtr<FJsonValue>> Ops;
+	auto Rec = [&](const FString& Op, const FString& St, const FString& Detail) { TSharedRef<FJsonObject> R = MakeShared<FJsonObject>(); R->SetStringField(TEXT("op"), Op); R->SetStringField(TEXT("status"), St); if (!Detail.IsEmpty()) { R->SetStringField(TEXT("detail"), Detail); } Ops.Add(MakeShared<FJsonValueObject>(R)); };
+	if (!EntryNode || !Graph) { OutHandler->SetArrayField(TEXT("body_ops"), Ops); return TEXT("handler_body_entry_missing"); }
+
+	UEdGraphPin* ExecSrc = FBPGen::FindExecOut(EntryNode);
+	const bool bAlreadyWired = ExecSrc && ExecSrc->LinkedTo.Num() > 0;   // basic idempotency (fresh assets: empty)
+	int32 Idx = 0; const int32 BaseX = EntryNode->NodePosX + 260; const int32 BaseY = EntryNode->NodePosY + 140;
+
+	for (const auto& Bv : *Body)
+	{
+		const TSharedPtr<FJsonObject> Bo = Bv->AsObject(); if (!Bo) { continue; }
+		FString Op; Bo->TryGetStringField(TEXT("op"), Op); Op = Op.ToLower();
+		FString Text; Bo->TryGetStringField(TEXT("text"), Text);
+		FString FromParam; Bo->TryGetStringField(TEXT("from_param"), FromParam);
+		const int32 X = BaseX + Idx * 320; const int32 Y = BaseY; ++Idx;
+		if (bAlreadyWired) { Rec(Op, TEXT("reused"), TEXT("entry already wired")); continue; }
+
+		if (Op == TEXT("print_string"))
+		{
+			UK2Node_CallFunction* Call = FBPGen::SpawnCallFunc(Graph, UKismetSystemLibrary::StaticClass(), FName(TEXT("PrintString")), X, Y);
+			if (!Call) { Rec(Op, TEXT("spawn_failed"), TEXT("PrintString")); continue; }
+			if (ExecSrc) { FBPGen::Connect(ExecSrc, FBPGen::FindExecIn(Call)); }
+			if (!FromParam.IsEmpty()) { Rec(Op, FBPGen::ConnectData(EntryNode, FromParam, Call, TEXT("InString")) ? TEXT("connected") : TEXT("param_not_connected"), FromParam); }
+			else { FBPGen::SetPinDefault(Call, TEXT("InString"), Text); Rec(Op, TEXT("connected"), TEXT("literal")); }
+			if (UEdGraphPin* Then = FBPGen::FindExecOut(Call)) { ExecSrc = Then; }
+		}
+		else if (Op == TEXT("set_text"))
+		{
+			FString Target; Bo->TryGetStringField(TEXT("target"), Target);
+			UWidget* TW = (WBP->WidgetTree) ? WBP->WidgetTree->FindWidget(FName(*Target)) : nullptr;
+			UClass* TClass = TW ? TW->GetClass() : nullptr;
+			if (!TClass || !TClass->FindFunctionByName(FName(TEXT("SetText")))) { Rec(Op, TEXT("target_no_settext"), Target); continue; }
+			UK2Node_VariableGet* Get = FBPGen::SpawnVarGet(Graph, FName(*Target), X, Y + 130);
+			UK2Node_CallFunction* Call = FBPGen::SpawnCallFunc(Graph, TClass, FName(TEXT("SetText")), X, Y);
+			if (!Get || !Call) { Rec(Op, TEXT("spawn_failed"), Target); continue; }
+			UEdGraphPin* VarOut = FBPGen::FindPin(Get, Target, EGPD_Output);
+			UEdGraphPin* SelfPin = FBPGen::FindPin(Call, TEXT("self"), EGPD_Input);
+			if (VarOut && SelfPin) { FBPGen::Connect(VarOut, SelfPin); }
+			if (ExecSrc) { FBPGen::Connect(ExecSrc, FBPGen::FindExecIn(Call)); }
+			if (!FromParam.IsEmpty()) { Rec(Op, FBPGen::ConnectData(EntryNode, FromParam, Call, TEXT("InText")) ? TEXT("connected") : TEXT("param_not_connected"), FromParam); }
+			else { FBPGen::SetPinDefault(Call, TEXT("InText"), Text); Rec(Op, TEXT("connected"), TEXT("literal")); }
+			if (UEdGraphPin* Then = FBPGen::FindExecOut(Call)) { ExecSrc = Then; }
+		}
+		else { Rec(Op, TEXT("unsupported_op"), Op); }
+	}
+	OutHandler->SetArrayField(TEXT("body_ops"), Ops);
+	OutHandler->SetBoolField(TEXT("body_applied"), !bAlreadyWired && Ops.Num() > 0);
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
 	return FString();
 }

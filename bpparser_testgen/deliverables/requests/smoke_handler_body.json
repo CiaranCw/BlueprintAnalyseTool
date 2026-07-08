@@ -1,0 +1,18 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_HandlerBody", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": { "name": "RootCanvas", "type": "CanvasPanel", "children": [
+        { "name": "TitleText",  "type": "TextBlock",        "properties": { "Text": "Hello" }, "slot": { "properties": { "Position": { "X": 20, "Y": 20 },  "Size": { "X": 320, "Y": 40 } } } },
+        { "name": "PlayButton", "type": "Button",           "slot": { "properties": { "Position": { "X": 20, "Y": 80 },  "Size": { "X": 200, "Y": 40 } } } },
+        { "name": "NameInput",  "type": "EditableTextBox",  "slot": { "properties": { "Position": { "X": 20, "Y": 140 }, "Size": { "X": 200, "Y": 40 } } } }
+      ] }
+    },
+    "events": [
+      { "widget": "PlayButton", "event": "OnClicked", "handler": { "type": "custom_event", "name": "OnPlayClicked",
+        "body": [ { "op": "print_string", "text": "Play clicked" }, { "op": "set_text", "target": "TitleText", "text": "Started" } ] } },
+      { "widget": "NameInput", "event": "OnTextChanged", "handler": { "type": "function", "name": "HandleNameChanged",
+        "body": [ { "op": "set_text", "target": "TitleText", "from_param": "Text" }, { "op": "print_string", "from_param": "Text" } ] } }
+    ]
+  }
+}

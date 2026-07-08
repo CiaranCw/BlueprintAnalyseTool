@@ -101,4 +101,14 @@ public:
 	 *  handler_not_found | exec_pin_missing | exec_connection_failed. For `bound_event` type it is a no-op success. */
 	static FString WireEventHandlerCall(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
 		const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler);
+
+	/** Add a simple handler-body logic template inside the handler entry (custom_event / function / bound_event).
+	 *  Run AFTER WireEventHandlerCall (widget variables exist). HandlerSpec.body is an array of ops (MVP):
+	 *   { "op":"print_string", "text"|"from_param" }
+	 *   { "op":"set_text", "target":"<WidgetName>", "text"|"from_param" }
+	 *  Each op's exec chains off the entry node; `from_param` wires the entry's matching data-out pin. Fills
+	 *  OutHandler.body_ops[{op,status,detail}] + body_applied. Idempotent (skips if the entry already drives a
+	 *  chain). Returns "" or a classified error (handler_body_entry_missing). */
+	static FString AddHandlerBody(UWidgetBlueprint* WBP, UK2Node_ComponentBoundEvent* BoundNode,
+		const TSharedPtr<FJsonObject>& HandlerSpec, TSharedPtr<FJsonObject>& OutHandler);
 };
