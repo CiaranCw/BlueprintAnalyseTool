@@ -1,0 +1,4 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_ReparentToCppBase", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {}
+}

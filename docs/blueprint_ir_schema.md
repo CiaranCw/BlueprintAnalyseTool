@@ -39,7 +39,7 @@ agent_tools/schemas/
 | `asset.asset_name`              | string           | `UBlueprint::GetName()`                                            |                                                   |
 | `asset.blueprint_class`         | string           | `UBlueprint::GetClass()->GetName()`                                | `Blueprint` / `WidgetBlueprint` / `AnimBlueprint` |
 | `asset.generated_class`         | string           | `UBlueprint::GeneratedClass->GetPathName()`                        |                                                   |
-| `asset.parent_class`            | string           | `UBlueprint::ParentClass->GetPathName()`                           |                                                   |
+| `asset.parent_class`            | string           | `UBlueprint::ParentClass->GetPathName()`                           | reparent (`set_parent_class`) changes this; edit `diff_report.modified_asset.parent_class{before,after}` |
 | `asset.blueprint_type`          | string           | `UBlueprint::BlueprintType`                                        | `BPTYPE_Normal` / `BPTYPE_Interface` / ...        |
 | `asset.engine_version`          | string           | `FEngineVersion::Current().ToString()`                             |                                                   |
 | `asset.plugin_dependencies`     | string[]         | `UBlueprint::Dependencies` 解析所属插件                            |                                                   |

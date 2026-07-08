@@ -1,0 +1,4 @@
+{
+  "asset": { "asset_path": "/Game/Generated/BP_Agent_ReparentClash", "blueprint_type": "Actor", "parent_class": "/Script/Engine.Actor", "overwrite_policy": "overwrite" },
+  "variables": [ { "name": "Controller", "type": { "category": "int" } } ]
+}

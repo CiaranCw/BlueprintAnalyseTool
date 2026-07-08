@@ -91,11 +91,23 @@ Outputs (per asset): `manifest.json`, `blueprint_ir.json`|`partial_ir.json`, `su
 }
 ```
 Operations: `set_pin_default_value, connect_pins, disconnect_pins, add_node, insert_node_between,
-remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default`. Node selectors:
+remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default, set_parent_class`. Node selectors:
 `node_class / node_title / node_title_contains / function_name / node_id / match_index /
 exec_out_connected / exec_in_connected`. Destructive ops need `allow_destructive_edit` (apply modes);
 `plan-only`/`dry-run` always preview safely. Outputs: `edit_plan.json / edit_result.json / diff_report.json /
 baseline_ir.json / modified_ir.json / summary.md / viz/*`. See `docs/agent_edit_contract.md`.
+
+**Reparent** (change an existing Blueprint's parent — distinct from create-time `asset.parent_class`):
+```json
+{ "op_id":"rp1", "operation":"set_parent_class",
+  "new_parent_class":"/Script/AClient.RGUserWidget",
+  "options":{ "create_backup":true, "compile":true, "save":true, "rollback_on_failure":true } }
+```
+Alias `reparent_blueprint`. `new_parent_class`: C++ `/Script/Module.Class` or Blueprint `/Game/.../BP.BP_C` (also
+`.BP` / package form). Family-checked (WBP→Actor etc. fail with `incompatible_parent_type`); Interface/Macro/Function
+Library/AnimBlueprint rejected; compile-failure restores the old parent (rolled_back, asset unchanged).
+`edit_result.json` adds `old_parent_class/new_parent_class/new_parent_source/compile_status/rollback_performed`;
+`diff_report.json` adds `modified_asset.parent_class{before,after}`. See `docs/agent_edit_contract.md` §3b.
 
 ## task_type = create  →  scripts/create_blueprint.ps1 (BPCreate)
 ```json

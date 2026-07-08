@@ -1,0 +1,4 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_ReparentBase", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": { "hierarchy": { "root": { "name": "RootCanvas", "type": "CanvasPanel" } } }
+}

@@ -1,0 +1,1 @@
+{ "asset": { "asset_path": "/Game/Generated/BP_Agent_ReparentActor", "blueprint_type": "Actor", "parent_class": "/Script/Engine.Actor", "overwrite_policy": "overwrite" } }

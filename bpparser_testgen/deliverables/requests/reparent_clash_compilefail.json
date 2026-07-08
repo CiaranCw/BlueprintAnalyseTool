@@ -1,0 +1,7 @@
+{
+  "operations": [
+    { "op_id": "rp5", "operation": "set_parent_class",
+      "new_parent_class": "/Script/Engine.Pawn",
+      "options": { "create_backup": true, "compile": true, "save": true, "rollback_on_failure": true } }
+  ]
+}

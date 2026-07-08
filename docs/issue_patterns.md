@@ -527,3 +527,42 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 
 ### Cross-version note
 - The reclassification keys off artifact completeness + `manifest.status`, so it is engine/version-agnostic.
+
+## P19: Blueprint reparent (set_parent_class) — family + compile safety
+
+### Typical symptom
+- Changing an existing Blueprint's parent either (a) needs both C++ (`/Script/Module.Class`) and Blueprint
+  (`/Game/.../BP.BP_C`) parent forms, (b) can be requested with an incompatible family (WBP→Actor) that would
+  corrupt the asset, or (c) compiles with errors after reparent (e.g. a child WBP whose root widget name collides
+  with the inherited parent's root), which must not be saved.
+
+### Affected families
+- `set_parent_class` / `reparent_blueprint` on Actor / ActorComponent / Widget / normal Blueprints.
+
+### Root cause
+- `create` only sets `asset.parent_class` at creation; there was no way to reparent an existing asset. Naive
+  reparent (set `ParentClass` + save) can persist a broken asset or an illegal cross-family parent.
+
+### Generalized fix
+- New atomic edit op (`FBPATEdit`): `ResolveParentClass` normalizes `/Script/Mod.Class`, `/Game/.../BP.BP_C`,
+  `/Game/.../BP.BP`, `/Game/.../BP` to a `UClass` (`new_parent_source` = `cpp|blueprint`); on miss →
+  `parent_class_load_failed` + suggestion. Preconditions (before any mutation): asset exists, current parent
+  readable, new parent loads, not self, no circular inheritance, `CanCreateBlueprintOfClass`, and **family
+  compatibility** (WBP requires a UserWidget-derived parent; other BPs must stay in their actor/component/object
+  family). Reject Interface/Macro/Function-Library/LevelScript/AnimBlueprint. Apply = set `ParentClass` →
+  `RefreshAllNodes` + `MarkBlueprintAsStructurallyModified` → compile; on compile failure (and
+  `rollback_on_failure`, default) restore the old parent and fail the op → the edit framework does not save
+  (on-disk asset unchanged) in any mode. `edit_result` gets `old/new_parent_class`, `new_parent_source`,
+  `compile_status`, `rollback_performed`; `diff_report` gets `modified_asset.parent_class{before,after}` + risk note.
+
+### Validation (UE 5.4)
+- BPTest: Actor BP → `/Script/Engine.Pawn` (C++ subclass) success; empty WBP → `WBP_Agent_ReparentBase_C` (BP gen
+  class) success; WBP → `/Script/Engine.Actor` → `incompatible_parent_type`, asset unchanged; a WBP whose root
+  widget name collided with the target WBP's inherited root → compile error → old parent restored (rolled_back,
+  unchanged).
+- AClient (real): empty WBP → `/Script/AClient.RGUserWidget` (C++ UserWidget subclass) success (`diff` shows
+  `/Script/UMG.UserWidget` → `/Script/AClient.RGUserWidget`). A wrong class name → `parent_class_load_failed`.
+
+### Cross-version note
+- `CanCreateBlueprintOfClass`, `RefreshAllNodes`, `ParentClass` are stable UE editor APIs; family checks use base
+  engine classes (`AActor`/`UActorComponent`/`UUserWidget`).

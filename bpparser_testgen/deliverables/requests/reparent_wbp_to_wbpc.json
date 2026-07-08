@@ -1,0 +1,7 @@
+{
+  "operations": [
+    { "op_id": "rp3", "operation": "reparent_blueprint",
+      "new_parent_class": "/Game/Generated/WBP_Agent_ReparentBase.WBP_Agent_ReparentBase_C",
+      "options": { "create_backup": true, "compile": true, "save": true, "rollback_on_failure": true } }
+  ]
+}

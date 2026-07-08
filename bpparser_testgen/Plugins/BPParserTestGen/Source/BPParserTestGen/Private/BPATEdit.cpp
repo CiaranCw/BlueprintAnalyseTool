@@ -7,6 +7,12 @@
 
 #include "Engine/Blueprint.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Kismet2/KismetEditorUtilities.h"
+#include "GameFramework/Actor.h"
+#include "Components/ActorComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "WidgetBlueprint.h"
+#include "Animation/AnimBlueprint.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
@@ -301,7 +307,24 @@ namespace
 		D->SetArrayField(TEXT("modified_variables"), {});
 		D->SetArrayField(TEXT("modified_graphs"), {});
 		D->SetArrayField(TEXT("unexpected_changes"), {});
-		D->SetArrayField(TEXT("risk_notes"), {});
+
+		// asset-level diff: parent_class before/after (reparent) + risk notes
+		TArray<TSharedPtr<FJsonValue>> RiskNotes;
+		TSharedPtr<FJsonObject> ModifiedAsset = MakeShared<FJsonObject>();
+		const FString BeforeParent = Before.IsValid() ? Before->GetStringField(TEXT("parent_class")) : FString();
+		const FString AfterParent  = After.IsValid()  ? After->GetStringField(TEXT("parent_class"))  : FString();
+		if (BeforeParent != AfterParent)
+		{
+			TSharedPtr<FJsonObject> PC = MakeShared<FJsonObject>();
+			PC->SetStringField(TEXT("before"), BeforeParent);
+			PC->SetStringField(TEXT("after"), AfterParent);
+			ModifiedAsset->SetObjectField(TEXT("parent_class"), PC);
+			RiskNotes.Add(MakeShared<FJsonValueString>(FString::Printf(
+				TEXT("parent_class changed: %s -> %s (reparent can invalidate nodes referencing old-parent members; verify compile)"),
+				*BeforeParent, *AfterParent)));
+		}
+		D->SetObjectField(TEXT("modified_asset"), ModifiedAsset);
+		D->SetArrayField(TEXT("risk_notes"), RiskNotes);
 		return D;
 	}
 
@@ -367,6 +390,34 @@ namespace
 			return O;
 		}
 	};
+
+	// Resolve a parent-class spec to a UClass*, accepting C++ (/Script/Module.Class) and Blueprint forms
+	// (/Game/.../BP.BP_C generated-class, /Game/.../BP.BP object, /Game/.../BP package). OutSource = cpp|blueprint.
+	UClass* ResolveParentClass(const FString& Spec, FString& OutSource, FString& OutErr)
+	{
+		OutSource.Reset(); OutErr.Reset();
+		if (Spec.IsEmpty()) { OutErr = TEXT("empty"); return nullptr; }
+		UClass* C = LoadObject<UClass>(nullptr, *Spec);   // /Script/Mod.Class and /Game/.../X_C
+		if (!C && Spec.StartsWith(TEXT("/Game/")))
+		{
+			if (Spec.Contains(TEXT(".")))                 // object path A.B -> A.B_C
+			{
+				C = LoadObject<UClass>(nullptr, *(Spec + TEXT("_C")));
+			}
+			if (!C)                                       // package path -> <pkg>.<short>_C
+			{
+				const FString Short = FPackageName::GetShortName(Spec);
+				C = LoadObject<UClass>(nullptr, *(Spec + TEXT(".") + Short + TEXT("_C")));
+			}
+			if (!C)                                       // fallback: load the Blueprint, take its generated class
+			{
+				if (UBlueprint* PB = LoadObject<UBlueprint>(nullptr, *Spec)) { C = PB->GeneratedClass; }
+			}
+		}
+		if (!C) { OutErr = TEXT("parent_class_load_failed"); return nullptr; }
+		OutSource = C->IsNative() ? TEXT("cpp") : TEXT("blueprint");
+		return C;
+	}
 
 	// Applies one operation. Returns true on success; fills R.
 	bool ApplyOne(UBlueprint* BP, const TSharedPtr<FJsonObject>& Op, FOpResult& R)
@@ -513,6 +564,99 @@ namespace
 			}
 			if (!bFound) { return Fail(FString::Printf(TEXT("variable '%s' not found"), *Var.ToString())); }
 			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
+			R.Status = TEXT("success"); return true;
+		}
+
+		if (OpName == TEXT("set_parent_class") || OpName == TEXT("reparent_blueprint"))
+		{
+			if (!BP) { return Fail(TEXT("no blueprint")); }
+			const TSharedPtr<FJsonObject>* OptO = nullptr; Op->TryGetObjectField(TEXT("options"), OptO);
+			auto OptBool = [&](const TCHAR* K, bool D) -> bool { bool v; return (OptO && (*OptO)->TryGetBoolField(K, v)) ? v : D; };
+			const bool bDoCompile = OptBool(TEXT("compile"), true);
+			const bool bRollbackOnFail = OptBool(TEXT("rollback_on_failure"), true);
+
+			const FString Spec = JStr(Op, TEXT("new_parent_class"));
+			if (Spec.IsEmpty()) { return Fail(TEXT("new_parent_class required")); }
+
+			// reject high-risk / unsupported blueprint types
+			if (Cast<UAnimBlueprint>(BP)) { return Fail(TEXT("unsupported_blueprint_type: AnimBlueprint")); }
+			switch (BP->BlueprintType)
+			{
+				case BPTYPE_MacroLibrary:    return Fail(TEXT("unsupported_blueprint_type: MacroLibrary"));
+				case BPTYPE_Interface:       return Fail(TEXT("unsupported_blueprint_type: Interface"));
+				case BPTYPE_FunctionLibrary: return Fail(TEXT("unsupported_blueprint_type: FunctionLibrary"));
+				case BPTYPE_LevelScript:     return Fail(TEXT("unsupported_blueprint_type: LevelScript"));
+				default: break;
+			}
+
+			UClass* OldParent = BP->ParentClass;
+			if (!OldParent) { return Fail(TEXT("current parent class unreadable")); }
+
+			FString Source, RErr;
+			UClass* NewParent = ResolveParentClass(Spec, Source, RErr);
+			if (!NewParent)
+			{
+				R.Outputs->SetStringField(TEXT("code"), TEXT("parent_class_load_failed"));
+				R.Outputs->SetStringField(TEXT("input"), Spec);
+				R.Outputs->SetStringField(TEXT("suggestion"), TEXT("Use /Script/Module.Class for C++ classes or /Game/.../BP_Name.BP_Name_C for Blueprint classes."));
+				return Fail(FString::Printf(TEXT("parent_class_load_failed: %s"), *Spec));
+			}
+			R.Outputs->SetStringField(TEXT("old_parent_class"), OldParent->GetPathName());
+			R.Outputs->SetStringField(TEXT("new_parent_class"), NewParent->GetPathName());
+			R.Outputs->SetStringField(TEXT("new_parent_source"), Source);
+
+			// self / circular inheritance
+			UClass* GenC = BP->GeneratedClass ? BP->GeneratedClass.Get() : (BP->SkeletonGeneratedClass ? BP->SkeletonGeneratedClass.Get() : nullptr);
+			if (NewParent == GenC || NewParent == BP->SkeletonGeneratedClass) { return Fail(TEXT("parent_is_self")); }
+			if (GenC && NewParent->IsChildOf(GenC)) { return Fail(TEXT("circular_inheritance: new parent derives from this blueprint")); }
+
+			// must be allowed as a Blueprint parent (Blueprintable, not deprecated / newer-version)
+			if (!FKismetEditorUtilities::CanCreateBlueprintOfClass(NewParent)) { return Fail(FString::Printf(TEXT("parent_not_blueprintable: %s"), *NewParent->GetName())); }
+
+			// family compatibility: keep the blueprint in its class family (WBP->Actor etc. must fail)
+			auto FamilyOf = [](UClass* C) -> FString
+			{
+				if (C->IsChildOf(UUserWidget::StaticClass()))    { return TEXT("userwidget"); }
+				if (C->IsChildOf(AActor::StaticClass()))         { return TEXT("actor"); }
+				if (C->IsChildOf(UActorComponent::StaticClass())){ return TEXT("component"); }
+				return TEXT("object");
+			};
+			const FString OldFam = FamilyOf(OldParent);
+			const FString NewFam = FamilyOf(NewParent);
+			const bool bIsWidgetBP = (Cast<UWidgetBlueprint>(BP) != nullptr);
+			if (bIsWidgetBP && NewFam != TEXT("userwidget"))
+			{
+				R.Outputs->SetStringField(TEXT("code"), TEXT("incompatible_parent_type"));
+				return Fail(FString::Printf(TEXT("incompatible_parent_type: WidgetBlueprint requires a UserWidget-derived parent (got %s / %s)"), *NewParent->GetName(), *NewFam));
+			}
+			if (!bIsWidgetBP && OldFam != TEXT("object") && NewFam != OldFam)
+			{
+				R.Outputs->SetStringField(TEXT("code"), TEXT("incompatible_parent_type"));
+				return Fail(FString::Printf(TEXT("incompatible_parent_type: %s blueprint cannot be reparented to a %s (%s)"), *OldFam, *NewFam, *NewParent->GetName()));
+			}
+
+			// apply reparent
+			BP->ParentClass = NewParent;
+			FBlueprintEditorUtils::RefreshAllNodes(BP);
+			FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
+
+			// self-contained compile validation + restore-on-failure (safe in any mode)
+			if (bDoCompile)
+			{
+				const FString CS = FBPGen::CompileBlueprint(BP);
+				R.Outputs->SetStringField(TEXT("compile_status"), CS);
+				const bool bBad = CS.Contains(TEXT("error")) || CS.Contains(TEXT("fail"));
+				if (bBad && bRollbackOnFail)
+				{
+					BP->ParentClass = OldParent;
+					FBlueprintEditorUtils::RefreshAllNodes(BP);
+					FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
+					FBPGen::CompileBlueprint(BP);
+					R.Outputs->SetBoolField(TEXT("restored_old_parent"), true);
+					return Fail(FString::Printf(TEXT("reparent compile failed (%s); restored old parent"), *CS));
+				}
+				if (bBad) { R.Warnings.Add(FString::Printf(TEXT("reparent compiled with problems (%s); kept because rollback_on_failure=false"), *CS)); }
+			}
 			R.Status = TEXT("success"); return true;
 		}
 
@@ -679,6 +823,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 
 	// --- Apply ops in order ---
 	TArray<TSharedPtr<FJsonValue>> OpResults;
+	TSharedPtr<FJsonObject> ReparentOut;   // captured for top-level edit_result convenience fields
 	bool bAllOk = true;
 	if (Ops)
 	{
@@ -688,12 +833,23 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 			if (!Op.IsValid()) { continue; }
 			FOpResult R; R.OpId = JStr(Op, TEXT("op_id"), TEXT("op")); R.Operation = JStr(Op, TEXT("operation"));
 			const bool bOk = ApplyOne(BP, Op, R);
+			if (R.Operation == TEXT("set_parent_class") || R.Operation == TEXT("reparent_blueprint")) { ReparentOut = R.Outputs; }
 			OpResults.Add(MakeShared<FJsonValueObject>(R.ToJson()));
 			L(FString::Printf(TEXT("op %s [%s] -> %s"), *R.OpId, *R.Operation, *R.Status));
 			if (!bOk) { bAllOk = false; break; }   // on_failure: abort/rollback
 		}
 	}
 	Result->SetArrayField(TEXT("operations"), OpResults);
+	// Promote reparent details to the top level (matches the set_parent_class contract shape).
+	if (ReparentOut.IsValid())
+	{
+		Result->SetStringField(TEXT("operation"), TEXT("set_parent_class"));
+		FString V;
+		if (ReparentOut->TryGetStringField(TEXT("old_parent_class"), V)) { Result->SetStringField(TEXT("old_parent_class"), V); }
+		if (ReparentOut->TryGetStringField(TEXT("new_parent_class"), V)) { Result->SetStringField(TEXT("new_parent_class"), V); }
+		if (ReparentOut->TryGetStringField(TEXT("new_parent_source"), V)) { Result->SetStringField(TEXT("new_parent_source"), V); }
+		if (ReparentOut->TryGetStringField(TEXT("compile_status"), V)) { Result->SetStringField(TEXT("compile_status"), V); }
+	}
 
 	// --- Verify (compile) ---
 	TSharedPtr<FJsonObject> Validation = MakeShared<FJsonObject>();
@@ -705,6 +861,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 	}
 	const bool bCompileBad = CompileStatus.Contains(TEXT("error")) || CompileStatus.Contains(TEXT("fail"));
 	Validation->SetStringField(TEXT("compile_status"), CompileStatus);
+	if (CompileStatus != TEXT("skipped")) { Result->SetStringField(TEXT("compile_status"), CompileStatus); }
 
 	// --- Decide save vs rollback ---
 	const bool bShouldRollback = !bAllOk || (bVerify && bCompileBad);
@@ -716,6 +873,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 		L(TEXT("rollback: not saving; on-disk asset unchanged."));
 		Validation->SetStringField(TEXT("save_status"), TEXT("skipped"));
 		Validation->SetBoolField(TEXT("rolled_back"), true);
+		Result->SetBoolField(TEXT("rollback_performed"), true);
 
 		TSharedPtr<FJsonObject> Modified = FBPGenIRDumper::DumpBlueprint(BP);
 		WriteJson(FPaths::Combine(OutDir, TEXT("modified_ir.json")), Modified);   // in-memory (not persisted)
@@ -731,6 +889,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 	SaveStatus = bSaved ? TEXT("success") : TEXT("failed");
 	Validation->SetStringField(TEXT("save_status"), SaveStatus);
 	Validation->SetBoolField(TEXT("rolled_back"), false);
+	Result->SetBoolField(TEXT("rollback_performed"), false);
 	L(FString::Printf(TEXT("save -> %s"), *SaveStatus));
 
 	// --- Re-dump + diff ---

@@ -95,6 +95,7 @@ Safe (allowed in any mode):
 - `add_node` — `{ new_node }`
 - `add_variable` — `{ var_name, var_type:{category[,sub_category,object_type,container_type]}, default_value?, category?, instance_editable? }`
 - `set_variable_default` — `{ var_name, default_value }`
+- `set_parent_class` (alias `reparent_blueprint`) — `{ new_parent_class, options?{create_backup,compile,rollback_on_failure} }` (change the Blueprint's parent; see §3b)
 
 Destructive (need `AllowDestructiveEdit` in apply modes; freely previewable in plan/dry):
 - `disconnect_pins` — `{ from_node, from_pin, to_node, to_pin }`
@@ -106,6 +107,44 @@ Destructive (need `AllowDestructiveEdit` in apply modes; freely previewable in p
 `K2Node_Knot`, `K2Node_VariableGet`/`K2Node_VariableSet` (`variable_name`),
 `K2Node_CallFunction` (`function_name` + `member_parent` class path), `UEdGraphNode_Comment` (`comment`,`w`,`h`),
 each with an optional `position:{x,y}`.
+
+---
+
+## 3b. Blueprint Reparent / `set_parent_class`
+
+Change an **existing** Blueprint's parent class safely. This is distinct from create-time `asset.parent_class`
+(which only sets the parent when the asset is first made) — `set_parent_class` re-parents an already-existing asset,
+refreshes its nodes, recompiles, and rolls back if the result does not compile.
+
+```json
+{ "operation": "set_parent_class",
+  "new_parent_class": "/Script/AClient.RGUserWidget",
+  "options": { "create_backup": true, "compile": true, "save": true, "rollback_on_failure": true } }
+```
+Alias: `reparent_blueprint`. `options` default to `compile=true`, `rollback_on_failure=true` (safe in any mode).
+
+**`new_parent_class` formats (resolved to a `UClass`):**
+- C++ class: `/Script/Module.Class` (e.g. `/Script/Engine.Pawn`, `/Script/UMG.UserWidget`, `/Script/AClient.RGUserWidget`).
+- Blueprint generated class: `/Game/Path/BP_Base.BP_Base_C` (preferred), `/Game/Path/BP_Base.BP_Base`, or `/Game/Path/BP_Base` (all normalized to `_C`).
+- On failure: op fails with `parent_class_load_failed` + `suggestion` (use `/Script/Module.Class` or `/Game/.../BP.BP_C`).
+
+**Supported / unsupported blueprint kinds:**
+- Supported: Actor BP → Actor/child/C++ Actor subclass; ActorComponent BP → ActorComponent subclass; Widget BP →
+  UserWidget/C++ UserWidget subclass/WBP generated class; normal Blueprint → a Blueprintable class in the same family.
+- Rejected (explicit fail, asset untouched): Interface, MacroLibrary, FunctionLibrary, LevelScript, AnimBlueprint.
+
+**Safety validation (all before any mutation):** asset exists; current parent readable; new parent loads as
+`UClass`; not self; no circular inheritance (new parent must not derive from this BP); allowed as a Blueprint parent
+(`CanCreateBlueprintOfClass`); **family compatibility** — the new parent must stay in the blueprint's class family
+(WBP→Actor, Actor→Component, etc. fail with `incompatible_parent_type`); backup/rollback planned.
+
+**Execution & rollback:** record `old_parent_class` → set `ParentClass` → `RefreshAllNodes` +
+`MarkBlueprintAsStructurallyModified` → compile. If compile fails and `rollback_on_failure` (default), the old parent
+is restored (op fails → the framework does not save → on-disk asset unchanged). `edit_result.json` gains top-level
+`operation`, `old_parent_class`, `new_parent_class`, `new_parent_source` (`cpp|blueprint`), `compile_status`,
+`rollback_performed`; `diff_report.json` gains `modified_asset.parent_class{before,after}` + `risk_notes`.
+Failure classes: `parent_class_load_failed | unsupported_blueprint_type | parent_is_self | circular_inheritance |
+parent_not_blueprintable | incompatible_parent_type` + compile-failure rollback.
 
 ---
 
