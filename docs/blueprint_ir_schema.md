@@ -247,6 +247,20 @@ UE 来源：`UBlueprint::SimpleConstructionScript->GetRootNodes()` 递归。每�
 }
 ```
 
+`CanvasPanelSlot` 额外输出 **`slot.geometry_semantics`**（锚点感知几何语义，供其他 AI 判断该用 Position/Size 还是 Offsets）：
+```json
+"slot": {
+  "class": "/Script/UMG.CanvasPanelSlot",
+  "properties": { "LayoutData": "(Offsets=(Left=72,Top=155,Right=725.5,Bottom=60),Anchors=(Maximum=(X=0,Y=1)))" },
+  "geometry_semantics": {
+    "x_axis": { "stretch": false, "left_semantic": "position_x", "right_semantic": "size_x" },
+    "y_axis": { "stretch": true,  "top_semantic": "top_margin",  "bottom_semantic": "bottom_margin" },
+    "safe_edit_recommendation": [ "Use Offsets for stretch axes ...", "Use Position/Size only on non-stretch axes ..." ]
+  }
+}
+```
+判断规则：轴 `stretch` = `Anchors.Minimum.<axis> != Anchors.Maximum.<axis>`；stretch 轴上 `Offsets` 是**边距（margin）**而非 position/size。edit `diff_report` 会把 `LayoutData` 变更拆解为语义分量（`LayoutData.Offsets.Bottom … semantic=bottom_margin`），并对 stretch 轴上的大幅 margin 变化写入 `risk_notes`。
+
 约定：
 - `properties` / `slot.properties` 仅包含**相对类默认值发生改变**的可编辑属性（`CPF_Edit` 且与 CDO 不同），
   以 `ExportText` 字符串形式给出，保证紧凑且能反映 create/edit 实际写入的值（便于 expected↔actual 对比）。

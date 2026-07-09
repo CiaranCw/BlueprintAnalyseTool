@@ -216,6 +216,8 @@ namespace
 			TSharedPtr<FJsonObject> S = MakeShared<FJsonObject>();
 			S->SetStringField(TEXT("class"), W->Slot->GetClass()->GetPathName());
 			S->SetObjectField(TEXT("properties"), DumpChangedEditProps(W->Slot));
+			// CanvasPanelSlot geometry semantics (which axis is stretch => Offsets are margins, not position/size)
+			if (TSharedPtr<FJsonObject> GeoSem = FBPWidgetGen::CanvasSlotGeometrySemantics(W->Slot)) { S->SetObjectField(TEXT("geometry_semantics"), GeoSem); }
 			O->SetObjectField(TEXT("slot"), S);
 		}
 		else { O->SetField(TEXT("slot"), MakeShared<FJsonValueNull>()); }

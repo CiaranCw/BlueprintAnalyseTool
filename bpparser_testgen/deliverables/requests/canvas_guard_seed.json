@@ -1,0 +1,16 @@
+{
+  "asset": { "asset_path": "/Game/Generated/WBP_Agent_CanvasGuard", "blueprint_type": "Widget", "parent_class": "/Script/UMG.UserWidget", "overwrite_policy": "overwrite" },
+  "widget": {
+    "hierarchy": {
+      "root": { "name": "RootCanvas", "type": "CanvasPanel", "children": [
+        { "name": "StretchChild", "type": "Border",
+          "slot": { "properties": {
+            "Anchors": { "Minimum": { "X": 0, "Y": 0 }, "Maximum": { "X": 0, "Y": 1 } },
+            "Offsets": { "Left": 72, "Top": 155, "Right": 725.5, "Bottom": 60 }
+          } } },
+        { "name": "FixedChild", "type": "Button",
+          "slot": { "properties": { "Position": { "X": 20, "Y": 20 }, "Size": { "X": 100, "Y": 40 } } } }
+      ] }
+    }
+  }
+}

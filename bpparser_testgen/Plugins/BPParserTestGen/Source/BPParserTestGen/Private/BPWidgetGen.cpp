@@ -10,6 +10,7 @@
 #include "Components/Widget.h"               // UWidget
 #include "Components/PanelWidget.h"          // UPanelWidget
 #include "Components/PanelSlot.h"            // UPanelSlot
+#include "Components/CanvasPanelSlot.h"      // UCanvasPanelSlot (anchor-aware geometry)
 
 #include "BPGen.h"                           // FBPGen::GetEventGraph
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -134,6 +135,48 @@ namespace
 	TSharedPtr<FJsonObject> PropTypeObj(FProperty* P);
 	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched);
 	TArray<TSharedPtr<FJsonValue>> SuggestProps(UStruct* Owner, const FString& Name);
+}
+
+bool FBPWidgetGen::CanvasAxisStretched(UPanelSlot* Slot, bool bYAxis)
+{
+	const UCanvasPanelSlot* C = Cast<UCanvasPanelSlot>(Slot);
+	if (!C) { return false; }
+	const FAnchors& A = C->LayoutData.Anchors;
+	return bYAxis ? (A.Minimum.Y != A.Maximum.Y) : (A.Minimum.X != A.Maximum.X);
+}
+
+FString FBPWidgetGen::CanvasSlotStretchGuard(UPanelSlot* Slot, const FString& Key)
+{
+	if (!Cast<UCanvasPanelSlot>(Slot)) { return FString(); }
+	const FString K = Key.ToLower();
+	if (K != TEXT("position") && K != TEXT("size")) { return FString(); }   // Offsets/Anchors/LayoutData are explicit
+	TArray<FString> Axes;
+	if (CanvasAxisStretched(Slot, /*bY*/ false)) { Axes.Add(TEXT("X")); }
+	if (CanvasAxisStretched(Slot, /*bY*/ true))  { Axes.Add(TEXT("Y")); }
+	return FString::Join(Axes, TEXT(","));
+}
+
+TSharedPtr<FJsonObject> FBPWidgetGen::CanvasSlotGeometrySemantics(UPanelSlot* Slot)
+{
+	if (!Cast<UCanvasPanelSlot>(Slot)) { return nullptr; }
+	const bool bXs = CanvasAxisStretched(Slot, false);
+	const bool bYs = CanvasAxisStretched(Slot, true);
+	TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+	TSharedPtr<FJsonObject> X = MakeShared<FJsonObject>();
+	X->SetBoolField(TEXT("stretch"), bXs);
+	X->SetStringField(TEXT("left_semantic"), bXs ? TEXT("left_margin") : TEXT("position_x"));
+	X->SetStringField(TEXT("right_semantic"), bXs ? TEXT("right_margin") : TEXT("size_x"));
+	TSharedPtr<FJsonObject> Y = MakeShared<FJsonObject>();
+	Y->SetBoolField(TEXT("stretch"), bYs);
+	Y->SetStringField(TEXT("top_semantic"), bYs ? TEXT("top_margin") : TEXT("position_y"));
+	Y->SetStringField(TEXT("bottom_semantic"), bYs ? TEXT("bottom_margin") : TEXT("size_y"));
+	O->SetObjectField(TEXT("x_axis"), X);
+	O->SetObjectField(TEXT("y_axis"), Y);
+	TArray<TSharedPtr<FJsonValue>> Rec;
+	Rec.Add(MakeShared<FJsonValueString>(TEXT("Use Offsets for stretch axes (Offsets there are edge margins, not position/size).")));
+	Rec.Add(MakeShared<FJsonValueString>(TEXT("Use Position/Size only on non-stretch axes unless explicitly overriding.")));
+	O->SetArrayField(TEXT("safe_edit_recommendation"), Rec);
+	return O;
 }
 
 TArray<TSharedPtr<FJsonValue>> FBPWidgetGen::ListSettableProperties(UStruct* Owner, UObject* Instance)

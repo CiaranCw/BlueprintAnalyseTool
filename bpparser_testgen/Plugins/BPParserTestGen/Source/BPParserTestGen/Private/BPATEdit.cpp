@@ -326,6 +326,35 @@ namespace
 		return S;
 	}
 
+	// ---- CanvasPanelSlot LayoutData parsing (for semantic slot diffs) ----
+	struct FLayoutParsed { double L=0,T=0,R=0,B=0,MinX=0,MinY=0,MaxX=0,MaxY=0; };
+	FString LDBlock(const FString& S, const FString& Key)
+	{
+		const int32 Start = S.Find(Key + TEXT("=("));
+		if (Start == INDEX_NONE) { return FString(); }
+		int32 i = Start + Key.Len() + 2; int32 Depth = 1; FString Out;
+		while (i < S.Len() && Depth > 0) { const TCHAR C = S[i]; if (C == '(') { Depth++; } else if (C == ')') { Depth--; if (Depth == 0) { break; } } Out.AppendChar(C); i++; }
+		return Out;
+	}
+	double LDNum(const FString& S, const FString& Key, double Def)
+	{
+		const int32 Start = S.Find(Key + TEXT("="));
+		if (Start == INDEX_NONE) { return Def; }
+		int32 i = Start + Key.Len() + 1; FString Num;
+		while (i < S.Len()) { const TCHAR C = S[i]; if ((C >= '0' && C <= '9') || C == '.' || C == '-' || C == '+') { Num.AppendChar(C); i++; } else { break; } }
+		return Num.IsEmpty() ? Def : FCString::Atod(*Num);
+	}
+	FLayoutParsed ParseLayoutData(const FString& S)
+	{
+		FLayoutParsed P;
+		const FString Off = LDBlock(S, TEXT("Offsets"));
+		P.L = LDNum(Off, TEXT("Left"), 0); P.T = LDNum(Off, TEXT("Top"), 0); P.R = LDNum(Off, TEXT("Right"), 0); P.B = LDNum(Off, TEXT("Bottom"), 0);
+		const FString Anc = LDBlock(S, TEXT("Anchors"));
+		const FString Mn = LDBlock(Anc, TEXT("Minimum")); const FString Mx = LDBlock(Anc, TEXT("Maximum"));
+		P.MinX = LDNum(Mn, TEXT("X"), 0); P.MinY = LDNum(Mn, TEXT("Y"), 0); P.MaxX = LDNum(Mx, TEXT("X"), 0); P.MaxY = LDNum(Mx, TEXT("Y"), 0);
+		return P;
+	}
+
 	TSharedPtr<FJsonObject> BuildDiff(const FString& AssetPath,
 		const TSharedPtr<FJsonObject>& Before, const TSharedPtr<FJsonObject>& After)
 	{
@@ -393,7 +422,50 @@ namespace
 			{
 				TMap<FString, FString> Bp = WidgetPropMap(BW[KV.Key], bSlot); TMap<FString, FString> Ap = WidgetPropMap(KV.Value, bSlot);
 				TSet<FString> Keys; for (const auto& P : Bp) { Keys.Add(P.Key); } for (const auto& P : Ap) { Keys.Add(P.Key); }
-				for (const FString& K : Keys) { const FString Bv = Bp.FindRef(K); const FString Av = Ap.FindRef(K); if (Bv != Av) { TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>(); O->SetStringField(TEXT("widget"), KV.Key); O->SetStringField(TEXT("property"), K); O->SetStringField(TEXT("before"), Bv); O->SetStringField(TEXT("after"), Av); Sink.Add(MakeShared<FJsonValueObject>(O)); } }
+				for (const FString& K : Keys)
+				{
+					const FString Bv = Bp.FindRef(K); const FString Av = Ap.FindRef(K);
+					if (Bv == Av) { continue; }
+					if (bSlot && K == TEXT("LayoutData"))
+					{
+						// decompose CanvasPanelSlot LayoutData into anchor-aware, semantic per-component diffs
+						const FLayoutParsed B = ParseLayoutData(Bv); const FLayoutParsed A = ParseLayoutData(Av);
+						const bool bXs = (B.MinX != B.MaxX); const bool bYs = (B.MinY != B.MaxY);
+						auto Emit = [&](const FString& Comp, double BvN, double AvN, const FString& Sem, bool bStretchAxis)
+						{
+							if (FMath::Abs(BvN - AvN) < 0.01) { return; }
+							TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+							O->SetStringField(TEXT("widget"), KV.Key);
+							O->SetStringField(TEXT("property"), TEXT("LayoutData.Offsets.") + Comp);
+							O->SetNumberField(TEXT("before"), BvN); O->SetNumberField(TEXT("after"), AvN);
+							O->SetStringField(TEXT("semantic"), Sem);
+							if (bStretchAxis && FMath::Abs(BvN - AvN) >= 100.0)
+							{
+								O->SetStringField(TEXT("risk"), TEXT("large_margin_change_on_stretch_axis"));
+								RiskNotes.Add(MakeShared<FJsonValueString>(FString::Printf(TEXT("%s.LayoutData.Offsets.%s changed %.1f -> %.1f on a STRETCH axis (semantic=%s); verify this margin change is intended."), *KV.Key, *Comp, BvN, AvN, *Sem)));
+							}
+							Sink.Add(MakeShared<FJsonValueObject>(O));
+						};
+						Emit(TEXT("Left"),   B.L, A.L, bXs ? TEXT("left_margin")   : TEXT("position_x"), bXs);
+						Emit(TEXT("Top"),    B.T, A.T, bYs ? TEXT("top_margin")    : TEXT("position_y"), bYs);
+						Emit(TEXT("Right"),  B.R, A.R, bXs ? TEXT("right_margin")  : TEXT("size_x"),     bXs);
+						Emit(TEXT("Bottom"), B.B, A.B, bYs ? TEXT("bottom_margin") : TEXT("size_y"),     bYs);
+						if (B.MinX != A.MinX || B.MinY != A.MinY || B.MaxX != A.MaxX || B.MaxY != A.MaxY)
+						{
+							TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+							O->SetStringField(TEXT("widget"), KV.Key); O->SetStringField(TEXT("property"), TEXT("LayoutData.Anchors"));
+							O->SetStringField(TEXT("before"), FString::Printf(TEXT("min(%.3f,%.3f) max(%.3f,%.3f)"), B.MinX, B.MinY, B.MaxX, B.MaxY));
+							O->SetStringField(TEXT("after"),  FString::Printf(TEXT("min(%.3f,%.3f) max(%.3f,%.3f)"), A.MinX, A.MinY, A.MaxX, A.MaxY));
+							O->SetStringField(TEXT("semantic"), TEXT("anchors"));
+							Sink.Add(MakeShared<FJsonValueObject>(O));
+						}
+						continue;
+					}
+					TSharedPtr<FJsonObject> O = MakeShared<FJsonObject>();
+					O->SetStringField(TEXT("widget"), KV.Key); O->SetStringField(TEXT("property"), K);
+					O->SetStringField(TEXT("before"), Bv); O->SetStringField(TEXT("after"), Av);
+					Sink.Add(MakeShared<FJsonValueObject>(O));
+				}
 			};
 			DiffProps(false, ModWProps);
 			DiffProps(true, ModSlotProps);
@@ -744,7 +816,22 @@ namespace
 			if (!W) { return Fail(FString::Printf(TEXT("widget_not_found: %s"), *JStr(Op, TEXT("widget")))); }
 			if (!W->Slot) { return Fail(FString::Printf(TEXT("widget_has_no_slot: %s"), *JStr(Op, TEXT("widget")))); }
 			R.Outputs->SetStringField(TEXT("widget"), JStr(Op, TEXT("widget")));
-			if (!SetPropReport(W->Slot, JStr(Op, TEXT("property")), Op->TryGetField(TEXT("value")), TEXT("slot property"))) { return false; }
+			const FString SKey = JStr(Op, TEXT("property"));
+			// anchor-aware guard: Position/Size on a stretch axis would overwrite a margin -> skip (non-fatal) unless override
+			const FString Sg = FBPWidgetGen::CanvasSlotStretchGuard(W->Slot, SKey);
+			const bool bStretchOverride = JBool(Op, TEXT("allow_stretch_axis_size_override"));
+			if (!Sg.IsEmpty() && !bStretchOverride)
+			{
+				R.Outputs->SetStringField(TEXT("code"), TEXT("canvas_slot_stretch_axis_size_warning"));
+				R.Outputs->SetStringField(TEXT("axis"), Sg);
+				R.Outputs->SetStringField(TEXT("input_property"), SKey);
+				R.Outputs->SetStringField(TEXT("reason"), FString::Printf(TEXT("axis [%s] uses stretch anchors, so Offsets there are margins, not position/size."), *Sg));
+				R.Outputs->SetStringField(TEXT("suggestion"), TEXT("Use property 'Offsets' {Left,Top,Right,Bottom} (or 'LayoutData'), or set allow_stretch_axis_size_override=true."));
+				R.Warnings.Add(FString::Printf(TEXT("canvas_slot_stretch_axis_size_warning: '%s' on stretch axis [%s] skipped (margin not overwritten)"), *SKey, *Sg));
+				R.Status = TEXT("skipped"); return true;   // non-fatal: never silently corrupt the margin, never abort the batch
+			}
+			if (!Sg.IsEmpty()) { R.Warnings.Add(FString::Printf(TEXT("canvas_slot_stretch_axis override: applying '%s' over stretch axis [%s]"), *SKey, *Sg)); }
+			if (!SetPropReport(W->Slot, SKey, Op->TryGetField(TEXT("value")), TEXT("slot property"))) { return false; }
 			R.Status = TEXT("success"); return true;
 		}
 		if (OpName == TEXT("add_widget"))

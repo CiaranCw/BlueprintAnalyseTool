@@ -1,0 +1,7 @@
+{
+  "operations": [
+    { "op_id": "g1", "operation": "set_slot_property", "widget": "StretchChild", "property": "Size", "value": { "X": 900, "Y": 620 } },
+    { "op_id": "g2", "operation": "set_slot_property", "widget": "StretchChild", "property": "Offsets", "value": { "Left": 72, "Top": 155, "Right": 725.5, "Bottom": 80 } },
+    { "op_id": "g4", "operation": "set_slot_property", "widget": "FixedChild", "property": "Size", "value": { "X": 150, "Y": 50 } }
+  ]
+}

@@ -172,6 +172,15 @@ in the analyze `widget_tree`); properties should use the internal names from eac
   (`custom_event`/`function`), wire exec + params, and generate a `body` (`print_string`/`set_text`). Self-contained
   compiles run as needed so a just-added widget's variable and a new handler's UFunction exist before wiring.
 
+**CanvasPanelSlot anchor-aware geometry**: `set_slot_property`/`add_widget` guard `Position`/`Size` on a
+**stretched** axis (`Anchors.Minimum != Maximum`), where `Offsets` are margins not size. Such a write is
+`skipped` (non-fatal) with a `canvas_slot_stretch_axis_size_warning` (`axis`,`input_property`,`reason`,`suggestion`)
+so a margin is never silently overwritten. Set stretched axes with `property:"Offsets" {Left,Top,Right,Bottom}` (or
+`"LayoutData"`); force `Position`/`Size` with `allow_stretch_axis_size_override:true` (applies + warns). Analyze
+`slot.geometry_semantics` to know which axis is stretched. `diff_report` decomposes `LayoutData` into semantic
+components (`LayoutData.Offsets.Bottom … semantic=bottom_margin`) and flags large stretch-axis margin deltas in
+`risk_notes`. See `docs/widget_blueprint_schema.md` "CanvasPanelSlot anchor-aware geometry editing".
+
 The edit `diff_report.json` gains widget-aware categories (all always present, empty when unchanged):
 `added_widgets`, `removed_widgets`, `moved_widgets`, `modified_widget_properties`, `modified_slot_properties`,
 `added_event_bindings`, `modified_event_handlers`, plus `modified_variables`, `modified_functions`,

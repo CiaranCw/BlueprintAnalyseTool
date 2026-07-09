@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
-  "agent_version": "0.4.5",
+  "agent_version": "0.4.6",
   "agent_commit": "",
-  "build_id": "2026-07-08T18:00:00Z",
+  "build_id": "2026-07-09T00:00:00Z",
   "schema_versions": {
     "request_schema": "1.0",
     "manifest_schema": "1.0",
@@ -12,7 +12,7 @@
   },
   "plugin": {
     "name": "BPParserTestGen",
-    "version": "0.4.5",
+    "version": "0.4.6",
     "requires_rebuild": true,
     "binary_compatible": false
   },
@@ -26,6 +26,7 @@
     "widget_handler_body_template": true,
     "widget_full_spec_create": true,
     "blueprint_reparent": true,
-    "widget_tree_edit": true
+    "widget_tree_edit": true,
+    "canvas_slot_anchor_guard": true
   }
 }

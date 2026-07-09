@@ -92,7 +92,10 @@ Outputs (per asset): `manifest.json`, `blueprint_ir.json`|`partial_ir.json`, `su
 ```
 Operations: `set_pin_default_value, connect_pins, disconnect_pins, add_node, insert_node_between,
 remove_node(+preserve_exec), add_reroute_on_edge, add_variable, set_variable_default, set_parent_class`.
-Widget-Blueprint tree ops (edit an existing WBP; see `agent_edit_contract.md` §3c):
+Widget-Blueprint tree ops (edit an existing WBP; see `agent_edit_contract.md` §3c). Note: `set_slot_property`
+`Position`/`Size` on a **stretch** CanvasPanelSlot axis is guarded (skipped + `canvas_slot_stretch_axis_size_warning`);
+use `property:"Offsets" {Left,Top,Right,Bottom}` / `"LayoutData"` for stretch axes, or
+`allow_stretch_axis_size_override:true` to force. Analyze `slot.geometry_semantics` first.
 `set_widget_property{widget,property,value}, set_slot_property{widget,property,value},
 add_widget{parent,widget{name,type,properties?,slot?}}, bind_widget_event{widget,event,handler?},
 remove_widget{widget} (destructive), move_widget{widget,new_parent} (destructive)`. The edit `diff_report.json`

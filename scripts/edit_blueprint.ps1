@@ -75,9 +75,29 @@ $args = @(
 if (-not [string]::IsNullOrWhiteSpace($AssetPath)) { $args += "-AssetPath=$AssetPath" }
 if (-not [string]::IsNullOrWhiteSpace($WorkOnCopy)) { $args += "-WorkOnCopy=$WorkOnCopy" }
 
+New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir 'logs') | Out-Null
+$stdoutLog = Join-Path $OutputDir 'logs\edit_stdout.txt'
 Write-Host "BPATEdit ($Mode) $AssetPath ..." -ForegroundColor Cyan
-& $cmd @args | Out-Null
+& $cmd @args *>&1 | Out-File -Encoding utf8 $stdoutLog
 $rc = $LASTEXITCODE
+
+# Post-write teardown crash tolerance (see issue_patterns P18): if the process exits with a code that is NOT a
+# known BPATEdit status code but edit_result.json is complete with a terminal status, trust the artifact and
+# reclassify (record the raw exit code + log), never fake failure.
+$known = @(0,10,20,30,40)
+if ($known -notcontains $rc) {
+  $er = Get-ChildItem $OutputDir -Recurse -Filter edit_result.json -EA SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+  if ($er) {
+    try { $r = [System.IO.File]::ReadAllText($er.FullName, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json } catch { $r = $null }
+    $map = @{ 'success'=0; 'partial'=10; 'failed'=20; 'rolled_back'=40 }
+    if ($r -and $r.status -and $map.ContainsKey("$($r.status)")) {
+      $eff = $map["$($r.status)"]
+      Write-Host "BPATEdit -> $($r.status)_with_exit_warning (raw exit $rc; edit_result complete). Reports under: $OutputDir" -ForegroundColor Yellow
+      Write-Host "  note: post_exit_crash: commandlet exited $rc AFTER writing complete artifacts (status=$($r.status)); engine teardown crash tracked separately (logs/edit_stdout.txt)." -ForegroundColor Yellow
+      exit $eff
+    }
+  }
+}
 
 $statusName = switch ($rc) { 0 {'success'} 10 {'partial'} 20 {'failed'} 30 {'bad_input'} 40 {'rolled_back'} default {"exit_$rc"} }
 $color = if ($rc -eq 0) { 'Green' } else { 'Yellow' }

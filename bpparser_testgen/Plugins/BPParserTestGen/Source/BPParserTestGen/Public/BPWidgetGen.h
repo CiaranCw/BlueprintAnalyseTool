@@ -55,6 +55,21 @@ public:
 	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value,
 		FString& OutResolvedName, TArray<TSharedPtr<FJsonValue>>& OutSuggestions);
 
+	// ---- CanvasPanelSlot anchor-aware geometry ----
+
+	/** True if the CanvasPanelSlot is stretched on the given axis (Anchors.Minimum != Anchors.Maximum on that axis).
+	 *  On a stretched axis the LayoutData Offsets are edge MARGINS, not Position/Size. False for non-canvas slots. */
+	static bool CanvasAxisStretched(UPanelSlot* Slot, bool bYAxis);
+
+	/** For a CanvasPanelSlot + a geometry key ("Position"/"Size"), returns the stretched axes that key would touch
+	 *  as a comma list ("X","Y","X,Y"), or "" when safe / not applicable. Non-empty => Position/Size would overwrite
+	 *  a margin on a stretched axis (caller should warn/skip unless an override is set). */
+	static FString CanvasSlotStretchGuard(UPanelSlot* Slot, const FString& Key);
+
+	/** Geometry-semantics JSON for a CanvasPanelSlot (x_axis/y_axis stretch + per-offset semantic + recommendation),
+	 *  or nullptr for non-canvas slots. Emitted into slot IR so callers pick Offsets vs Position/Size correctly. */
+	static TSharedPtr<FJsonObject> CanvasSlotGeometrySemantics(UPanelSlot* Slot);
+
 	/** Enumerate the editable (CPF_Edit) properties of a widget or slot class (incl. inherited) for discovery:
 	 *  [{ name, display_name, type{category,sub_category,sub_category_object,container_type}, declaring_class,
 	 *     editable, blueprint_visible, blueprint_read_only, deprecated, current_value, set_supported, notes }].

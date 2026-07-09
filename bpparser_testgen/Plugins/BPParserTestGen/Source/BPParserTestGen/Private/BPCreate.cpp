@@ -226,8 +226,28 @@ int32 FBPCreate::Run(const FString& SpecFile, const FString& OutputDirIn)
 						UPanelSlot* Slot = FBPWidgetGen::AddChild(ParentW, W);
 						if(!Slot){ Warn.Add(FString::Printf(TEXT("parent_not_panel: cannot add '%s' under '%s' (not a UPanelWidget)"),*WName,*ParentW->GetName())); Manual.Add(FString::Printf(TEXT("widget '%s': parent_not_panel"),*WName)); }
 						else if(const TSharedPtr<FJsonObject>* SlotObj = JObj(Node,TEXT("slot")))
+						{
+							const bool bStretchOverride = JBool(*SlotObj, TEXT("allow_stretch_axis_size_override"));
 							if(const TSharedPtr<FJsonObject>* SP = JObj(*SlotObj,TEXT("properties")))
-								for(const auto& kv : (*SP)->Values){ SetProp(Slot,kv.Key,kv.Value,WName+TEXT(" (slot)"),Slot->GetClass()->GetPathName()); }
+							{
+								// apply anchor-defining keys first so the Position/Size guard sees the FINAL anchors
+								TArray<FString> OrderKeys; for(const auto& kv:(*SP)->Values){ const FString kl=kv.Key.ToLower(); if(kl==TEXT("anchors")||kl==TEXT("layoutdata")) OrderKeys.Add(kv.Key); }
+								for(const auto& kv:(*SP)->Values){ const FString kl=kv.Key.ToLower(); if(kl!=TEXT("anchors")&&kl!=TEXT("layoutdata")) OrderKeys.Add(kv.Key); }
+								for(const FString& K : OrderKeys)
+								{
+									const TSharedPtr<FJsonValue> V = (*SP)->TryGetField(K);
+									const FString Sg = FBPWidgetGen::CanvasSlotStretchGuard(Slot, K);
+									if(!Sg.IsEmpty() && !bStretchOverride)
+									{
+										Warn.Add(FString::Printf(TEXT("canvas_slot_stretch_axis_size_warning on %s (slot): '%s' touches stretch axis [%s]; Offsets there are margins, not position/size. Use 'Offsets', or set slot.allow_stretch_axis_size_override=true."),*WName,*K,*Sg));
+										Manual.Add(FString::Printf(TEXT("widget '%s' slot: '%s' skipped (stretch axis [%s]); use Offsets/Anchors."),*WName,*K,*Sg));
+										continue;
+									}
+									if(!Sg.IsEmpty()) { Warn.Add(FString::Printf(TEXT("canvas_slot_stretch_axis override on %s (slot): applied '%s' over stretch axis [%s]."),*WName,*K,*Sg)); }
+									SetProp(Slot,K,V,WName+TEXT(" (slot)"),Slot->GetClass()->GetPathName());
+								}
+							}
+						}
 					}
 					if(const TSharedPtr<FJsonObject>* Props = JObj(Node,TEXT("properties")))
 						for(const auto& kv : (*Props)->Values){ SetProp(W,kv.Key,kv.Value,WName,W->GetClass()->GetPathName()); }

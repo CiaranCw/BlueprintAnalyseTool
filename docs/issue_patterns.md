@@ -603,3 +603,38 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 
 ### Cross-version note
 - Uses `UWidgetTree::FindWidget/RemoveWidget`, `UPanelWidget::AddChild/RemoveChild`, `UWidget::GetParent` — stable UMG APIs.
+
+## P21: CanvasPanelSlot Position/Size silently corrupts a stretch-axis margin
+
+### Typical symptom
+- Setting a slot `Size`/`Position` changed an unrelated-looking layout value: e.g. `ScrollBox_List` `Offset Bottom`
+  jumped 60 -> 620 after `set_slot_property Size {X:900,Y:620}`, breaking the layout. Root: the slot's Y axis used
+  stretch anchors, so `Offsets.Bottom` is a **bottom margin**, but `SetSize` wrote it as height.
+
+### Affected families
+- Any `UCanvasPanelSlot` with a stretched axis (`Anchors.Minimum != Maximum`), in create `slot.properties` or edit
+  `set_slot_property`, when `Position`/`Size` is used.
+
+### Root cause
+- `UCanvasPanelSlot::SetSize`/`SetPosition` write `Offsets.Right/Bottom` (and Left/Top) unconditionally. On a
+  stretched axis those offsets are edge margins, so `Size`/`Position` there overwrites a margin. The agent applied
+  the setter blindly (anchor-unaware), silently corrupting the layout.
+
+### Generalized fix
+- `FBPWidgetGen::CanvasAxisStretched` / `CanvasSlotStretchGuard` / `CanvasSlotGeometrySemantics`. Guard in both
+  `BPCreate` slot loop and `BPATEdit::set_slot_property`: `Position`/`Size` touching a stretched axis is **skipped**
+  (non-fatal) with `canvas_slot_stretch_axis_size_warning` (axis/reason/suggestion) unless
+  `allow_stretch_axis_size_override=true` (applies + warns). Explicit `Offsets` (`SetOffsets`) and `LayoutData` are
+  always accepted. Create applies anchor-defining keys (`Anchors`/`LayoutData`) first so the guard sees final
+  anchors. Slot IR emits `geometry_semantics`; the edit diff decomposes `LayoutData` into semantic components
+  (`bottom_margin` etc.) and flags large stretch-axis margin deltas in `risk_notes`.
+
+### Validation (UE 5.4)
+- BPTest `WBP_Agent_CanvasGuard`: non-stretch `Size` applied (size_x/size_y); stretch-Y `Size` skipped (margin
+  preserved); explicit `Offsets.Bottom` applied (bottom_margin); override applied Bottom 80->620 with
+  `risk=large_margin_change_on_stretch_axis` + risk_note.
+- AClient Existing-WBP acceptance re-run: the offending `ScrollBox_List Size` op is now **skipped**; `Offset Bottom`
+  stays 60 (was corrupted to 620); `unexpected_changes=0`, `risk_notes=0`; source untouched.
+
+### Cross-version note
+- `FAnchors.Minimum/Maximum`, `SetOffsets/SetSize/SetPosition` are stable UMG APIs across UE 5.x.

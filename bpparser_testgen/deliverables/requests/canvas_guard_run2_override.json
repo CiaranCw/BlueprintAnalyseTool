@@ -1,0 +1,6 @@
+{
+  "operations": [
+    { "op_id": "g3", "operation": "set_slot_property", "widget": "StretchChild", "property": "Size",
+      "value": { "X": 900, "Y": 620 }, "allow_stretch_axis_size_override": true }
+  ]
+}

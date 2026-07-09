@@ -72,6 +72,11 @@ normalized to the `_C` generated class); it is constructed as a black box with s
 - **Post-write shutdown crash**: `scripts/create_blueprint.ps1` never fakes failure — if the commandlet crashes in
   engine teardown *after* writing complete artifacts with `status=success`, it reports `success_with_exit_warning`
   (exit 0), records the raw exit code + `logs/create_stdout.txt` and a `post_exit` block + warning in the manifest.
+- **CanvasPanelSlot anchor-aware geometry**: setting a slot `Position`/`Size` on a **stretched** axis
+  (`Anchors.Minimum != Maximum`, where `Offsets` are margins) is guarded — it is skipped with a
+  `canvas_slot_stretch_axis_size_warning` unless `slot.allow_stretch_axis_size_override:true`. Use `Offsets`/
+  `LayoutData` for stretch axes; anchor-defining keys are applied first so the guard sees the final anchors. Slot IR
+  carries `slot.geometry_semantics`. See `docs/widget_blueprint_schema.md`.
 - **Widget property names**: keys in a widget/slot `properties` object are resolved with **alias matching**
   (exact → case-insensitive → bool `b` prefix → Details DisplayName → strip space/underscore), then a `Set<Key>`
   setter fallback. An aliased write is reported as `property_alias_matched` and a miss as `property_not_found`

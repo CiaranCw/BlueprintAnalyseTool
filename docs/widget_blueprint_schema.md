@@ -64,6 +64,35 @@ Properties are applied by reflection, so **any real `FProperty` name works**:
 - Unknown key (no property, alias, or `Set<Key>` setter) → `property_not_found` in `property_notes` **with a
   `suggestions` list** (candidate `{name,display_name,type}`) + a `warning` + `manual_check_required` (never silent).
 
+## CanvasPanelSlot anchor-aware geometry editing
+`CanvasPanelSlot` geometry is **anchor-dependent**. When a slot's `Anchors.Minimum != Anchors.Maximum` on an axis,
+that axis is **stretched** and its `LayoutData.Offsets` are **edge margins**, not Position/Size:
+
+| axis state | `Offsets.Left`/`Right` (X) · `Offsets.Top`/`Bottom` (Y) |
+|---|---|
+| non‑stretch (min==max) | Left=`position_x`, Right=`size_x` · Top=`position_y`, Bottom=`size_y` |
+| stretch (min!=max) | Left=`left_margin`, Right=`right_margin` · Top=`top_margin`, Bottom=`bottom_margin` |
+
+Because of this, the `Position`/`Size` convenience setters are **guarded**: if a `Position`/`Size` slot property
+would touch a **stretched** axis, it is **not applied** (would overwrite a margin) — instead a
+`canvas_slot_stretch_axis_size_warning` (`axis`, `input_property`, `reason`, `suggestion`) is emitted and the op is
+`skipped`/manual (never silently corrupts the margin). To change a stretched axis, set the margin explicitly:
+
+```json
+{ "operation": "set_slot_property", "widget": "ScrollBox_List", "property": "Offsets",
+  "value": { "Left": 72, "Top": 155, "Right": 725.5, "Bottom": 60 } }
+```
+`Offsets` (→ `SetOffsets(FMargin)`) and the whole `LayoutData` (`{Offsets,Anchors,Alignment}`) are always accepted
+(explicit, margin-aware). To force `Position`/`Size` on a stretched axis anyway, pass
+`allow_stretch_axis_size_override: true` (on the op, or `slot.allow_stretch_axis_size_override` in create) — the write
+then applies **with** a warning. **Recommended flow**: read `slot.geometry_semantics` from analyze first, then use
+`Offsets` for stretch axes and `Position`/`Size` only on non‑stretch axes.
+
+Each widget's slot IR carries `slot.geometry_semantics` (`x_axis`/`y_axis` `stretch` + per‑offset semantic +
+`safe_edit_recommendation`). In edit `diff_report.json`, a `LayoutData` change is decomposed into semantic
+components (`LayoutData.Offsets.Bottom … semantic=bottom_margin`) and a large stretch‑axis margin change is flagged
+in `risk_notes`.
+
 Verified (redumped): `TextBlock.Text`, `Visibility`, `CanvasPanelSlot` Position+Size (→ `LayoutData.Offsets`),
 and on custom `WBP_Setting_CheckboxItem`: `TextName` (exact), `DefaultChecked`→`bDefaultChecked` (alias), `NopeXYZ`
 (not found → suggestions).
