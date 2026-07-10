@@ -14,9 +14,9 @@ Current Status: idle; awaiting next-phase decision (see Priority Queue / `HANDOF
 - [ ] (none)
 
 ### P1
-- [ ] Real business-asset editing: run `plan-only`/`dry-run` on a user-chosen real WBP (read-only preview),
-      review diff (incl. `geometry_semantics`, semantic slot diff, `risk_notes`) before any apply. Still copy
-      to `/Game/Generated/` before `apply-and-verify`.
+- [~] Real business-asset editing: `plan-only` preview DONE for `WBP_Settings_Graphics` (16 ops, read-only,
+      asset untouched; reports under AClient `Saved/BPParserAgentReports/planonly_*`). Awaiting user review;
+      if approved, apply on a `/Game/Generated/` COPY (create compatible reparent base first). See `HANDOFF.md`.
 - [ ] Complex full WBP spec generation (nested Box/Overlay, stretch-anchored panels using Offsets/Anchors).
 
 ### P2

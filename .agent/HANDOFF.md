@@ -3,18 +3,23 @@
 Updated: 2026-07-10  (overwrite this file each session — do not append)
 
 ## Immediate Next Step
-No task is in flight. Ask the user which P1 to start (see `TASKS.md`): (a) real business-asset
-`plan-only` editing, or (b) complex full WBP spec generation. Do not start invasive work unprompted.
+A **plan-only** edit preview for the real `WBP_Settings_Graphics` was produced (16 ops, read-only, asset
+untouched). Wait for the user to review it. If approved, apply on a `/Game/Generated/` COPY (delete any
+stale copy first) with `apply-and-verify` + backup; the reparent op requires first creating a compatible
+base `WBP_Agent_SettingsGraphicsBase` (parent = `/Script/AClient.RGSettingsGraphicsWidget`), else it will
+compile-fail and roll back. Do not apply to the real asset.
 
 ## What Was Just Done
-- Implemented the CanvasPanelSlot **anchor-aware geometry guard** (create + edit + IR + diff) and fixed
-  the silent margin corruption (ScrollBox_List `Offset Bottom` 60→620). Committed `c5fd197`, pushed.
-- Re-ran the Existing-WBP edit acceptance on a fresh copy of `WBP_Settings_Graphics`: guard skips the
-  bad `Size` op, `unexpected_changes=0`, source untouched. AClient updated to 0.4.6, `native_ready`.
+- Built the unified `.agent/` memory system + thin tool entries (commit `bce5735`).
+- Ran read-only `native_full` analyze + `plan-only` edit preview on `WBP_Settings_Graphics` (AClient):
+  EN super-res labels, add one of each Setting Item type, a bind_widget_event EventGraph edit, an
+  anchor-safe Offsets spacing change, and a (risk-flagged) reparent. Real asset NOT modified.
+  Reports: AClient `Saved/BPParserAgentReports/planonly_analyze` and `planonly_edit`.
+- (Earlier) CanvasPanelSlot anchor guard (`c5fd197`); AClient at 0.4.6, `native_ready`.
 
 ## Current Hypothesis
-Understand/edit/create for both regular and Widget Blueprints is feature-complete for the MVP scope.
-The tool is ready to be exercised on real business assets in read-only (`plan-only`) mode first.
+Understand/edit/create is MVP-complete. The plan is safe to apply on a copy once the compatible reparent
+base exists; the reparent is the only high-risk op (must derive from the original C++ parent).
 
 ## Evidence to Check
 - Anchor guard: `docs/issue_patterns.md` P21; `EVIDENCE.md` → "CanvasPanelSlot anchor guard".
