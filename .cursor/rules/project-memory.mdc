@@ -1,0 +1,26 @@
+---
+description: Shared local agent memory protocol (points to .agent/ and AGENTS.md)
+alwaysApply: true
+---
+
+This repository uses a **shared local agent memory system**. This rule is a thin entry adapter — it
+holds no project facts.
+
+- Canonical protocol: `AGENTS.md` (see "§0. Local Agent Memory System").
+- Canonical project memory: `.agent/`.
+
+Before non-trivial changes, read hot context first:
+
+1. `.agent/PROJECT_STATE.md`
+2. `.agent/TASKS.md`
+3. `.agent/HANDOFF.md`
+4. `.agent/CONTEXT_INDEX.md`
+
+Then read only the relevant `.agent/domains/*.md` (and deep `docs/*.md`) per `.agent/CONTEXT_INDEX.md`.
+Do not load `.agent/logs/` or `.agent/archive/` unless explicitly tracing history.
+
+Do not duplicate project state into Cursor rules. After meaningful progress, update the shared `.agent/`
+memory files as defined in `AGENTS.md` §0.
+
+Source-of-truth priority when things conflict: current code & tests → latest reproducible run →
+`.agent/PROJECT_STATE.md` → `.agent/TASKS.md` → `.agent/domains/*.md` → `.agent/logs/` → `.agent/archive/`.

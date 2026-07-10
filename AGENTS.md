@@ -3,6 +3,57 @@
 This repository contains an Unreal Engine Blueprint parser / Blueprint test generation agent.
 All coding agents working in this repository must follow these rules.
 
+`AGENTS.md` is the **canonical agent protocol**. Different tools may enter through different files
+(`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/project-memory.mdc`, …), but they are **thin adapters** that
+all point to the same shared memory. Sections §1–§16 below are the domain working rules; §0 is the
+project-memory protocol read first by every tool.
+
+## 0. Local Agent Memory System
+
+The **single source of project continuity** is the `.agent/` directory. Entry files
+(`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`/Cursor rule) never store project facts — `.agent/` does.
+(This memory is for developing *this repo*; it is separate from `Tools/BlueprintAgent`, which is what
+gets installed into target UE projects.)
+
+### Required reading order (before non-trivial work)
+1. `.agent/PROJECT_STATE.md`
+2. `.agent/TASKS.md`
+3. `.agent/HANDOFF.md`
+4. `.agent/CONTEXT_INDEX.md`
+
+Then read only the relevant `.agent/domains/*.md` (and the deep `docs/*.md` they link to), guided by
+`.agent/CONTEXT_INDEX.md`. Do **not** read `.agent/logs/` or `.agent/archive/` unless tracing history.
+
+### Source-of-truth priority (on conflict)
+1. Current code and tests
+2. Latest reproducible run results
+3. `.agent/PROJECT_STATE.md`
+4. `.agent/TASKS.md`
+5. `.agent/domains/*.md`
+6. `.agent/logs/`
+7. `.agent/archive/`
+
+If `.agent/` conflicts with code/tests/reproducible results, trust the latter and update `.agent/`.
+If entry files conflict with each other, `.agent/PROJECT_STATE.md` + `.agent/TASKS.md` are authoritative.
+
+### Update rule (after meaningful progress)
+- `.agent/PROJECT_STATE.md` — if current state changed
+- `.agent/TASKS.md` — if task status changed
+- `.agent/HANDOFF.md` — next-step guidance (overwrite, don't append)
+- `.agent/DECISIONS.md` — only if a durable technical decision was made
+- `.agent/EVIDENCE.md` — only new evidence that matters (index + summary, not pasted logs)
+- `.agent/logs/YYYY-MM-DD-session.md` — only if detailed process history is useful
+- Do **not** copy project facts into `CLAUDE.md`/`GEMINI.md`/Cursor rules — entries only point to `.agent/`.
+
+### Compression rule
+Keep hot context (`PROJECT_STATE`/`TASKS`/`HANDOFF`/`CONTEXT_INDEX`) short. Prefer stable conclusions,
+exact file paths, exact commands, reproducible results, unresolved questions, next actions, and known
+failed attempts that should not be repeated. Do not paste long logs, long source, or long reasoning into
+hot files (those go to `docs/`, `logs/`, or a project's `Saved/BPParserAgentReports/`). Record something
+only if a future agent would otherwise repeat a pitfall, misjudge state, or fail to locate code/evidence.
+
+See `.agent/README.md` for the full layer model.
+
 ## 1. Core Mission
 
 This project is not a one-off test for a single Unreal Engine project.
