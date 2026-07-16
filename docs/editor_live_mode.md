@@ -99,6 +99,45 @@ Completion marker: `<Project>/Saved/BPParserAgentRequests/outbox/<id>.done` (or 
   compile+save; emits `created_ir`).
 - The user's assets are **never** modified by analyze or status.
 
+### 8.1 Property-aware preflight (v0.4.7+)
+Before apply, edit/create can run **`FBPPreflight`** (default `execution.run_preflight=true`):
+```text
+preflight_report.json      # per-property match_kind + required/optional status
+normalized_request.json      # request after normalization hints
+capability_snapshot.json     # settable_properties / bindable_events per resolved class
+```
+- Required property miss → preflight exit **20**, apply **blocked**.
+- Optional miss (`optional_properties` or `property_semantics.<name>=optional`) → exit **10**
+  (`pass_with_warnings`); apply proceeds; op may still warn at apply time.
+- Match kinds: `exact_match`, `alias_match`, `display_name_match`, `property_absent`, `property_read_only`,
+  `property_type_mismatch`, `ambiguous_match`.
+
+### 8.2 Baseline hash / stale_plan
+- `plan-only` / `dry-run` emit `baseline_ir_hash` (SHA-1 of condensed baseline IR) in `edit_plan.json` and
+  `edit_result.json`.
+- Apply with `edit.baseline_ir_hash` (or `expected_baseline_ir_hash`): if the live asset changed since planning,
+  status **`stale_plan`**, exit **50**, no mutation.
+
+### 8.3 Request journal + idempotency
+Each request writes `request_journal.json` phases:
+`received → preflight → applying → verifying → success|failed|rolled_back`.
+Outbox idempotency: resubmitting the same `request_id` re-points to the prior manifest without re-executing.
+
+### 8.4 Expanded status values
+| status | meaning | typical exit |
+|---|---|---|
+| `success` | all ops + save ok, no warnings | 0 |
+| `success_with_warnings` | apply ok but property/optional warnings | 10 |
+| `partial` | some ops failed or save partial | 10 |
+| `failed` | preflight/compile/save blocked | 20 |
+| `stale_plan` | baseline hash mismatch | 50 |
+| `blocked_by_editor_state` | PIE/dirty/compile/saving/asset lock | 30 |
+| `pending_editor_restart` | journal incomplete after editor crash | n/a (manual) |
+
+Asset lock: concurrent edit/create on the same asset path defers (returns to inbox) instead of racing.
+
+Post-apply **`post_analyze/`** subfolder: full analyze IR of the modified asset for agent verification.
+
 ## 9. Failure & fallback
 - No editor / plugin not loaded / service stopped → the client **times out** (`-TimeoutSeconds`) and reports
   `unavailable`; stale inbox files are cleaned up.

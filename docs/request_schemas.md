@@ -226,20 +226,33 @@ Direct request payload (consumed by the plugin):
 ```json
 {
   "schema_version": "1.0", "request_id": "req_20260704_001",
-  "task_type": "status|analyze|edit|create", "mode": "editor_live",
+  "task_type": "status|analyze|edit|create|recover_scan|test_control", "mode": "editor_live",
   "asset_paths": ["/Game/UI/WBP_MainMenu"],
   "asset_path": "/Game/Blueprints/BP_X",
   "execution": {
     "read_only": true, "strict": false, "render_preview": true,
     "use_loaded_editor_state": true, "allow_dirty_assets": false,
     "allow_edit": false, "create_backup": true, "allow_destructive_edit": false,
-    "allow_create": false, "require_user_ack": false, "allow_edit_during_pie": false
+    "allow_create": false, "require_user_ack": false, "allow_edit_during_pie": false,
+    "allow_dirty_target": false, "run_preflight": true, "strict_preflight": true
   },
-  "edit":   { "...": "same shape as the edit request.operations" },
+  "edit":   { "...": "edit request.operations; optionally baseline_ir_hash + per-op optional_properties/property_semantics" },
   "create": { "...": "same shape as the create request.asset/variables/graphs" },
   "output_dir": "D:/AClient/Saved/BPParserAgentReports"
 }
 ```
+Hardening execution flags (editor_live edit/create): `run_preflight` (default true; property preflight →
+`preflight_report.json`/`normalized_request.json`/`capability_snapshot.json`), `strict_preflight` (a required
+property miss blocks apply), `allow_dirty_target` (default false; a dirty target is refused with
+`blocked_by_editor_state`). Edit-only: `edit.baseline_ir_hash` (or `expected_baseline_ir_hash`) enables the
+`stale_plan` guard; per-op `optional_properties[]` / `property_semantics{name:"optional"}` downgrade an absent
+property from a hard failure to a `property_optional_skipped` warning. Each request writes
+`request_journal.json` (received → preflight → applying → verifying → terminal) and is idempotent by
+`request_id` (a resubmitted id re-points to the prior manifest without re-executing).
+
+`recover_scan` and `test_control` are operational tasks (no asset args): `recover_scan` flags crash-orphaned
+requests `pending_editor_restart`; `test_control` is regression-only fault-injection
+(`force_pie_ms`/`force_busy_ms`, bounded + self-expiring). See `docs/agent_call_contract.md`.
 
 status output (`editor_live/<id>/manifest.json`) reports `editor_live.available/service_running/supports`
 and `current_editor_state{is_pie,is_saving,is_compiling_blueprints,dirty_assets_count}`. analyze/edit/create
@@ -257,6 +270,22 @@ real `node_class`/title/pins (`node_type="unknown"`), never dropped. Edge types:
 `exec|data|delegate|object_ref|interface_target|cast_object|latent|reroute|unknown`.
 
 ## Status values (dispatch_manifest.json / manifest.json)
-`success | partial | failed | rolled_back | exists_refused | bad_input`. An AI reads the manifest to
-decide next steps; `partial` (mode != native_full) means graph structure is incomplete — re-run
-native_full with the engine_policy flags (after user consent) for the full IR.
+`success | success_with_warnings | partial | failed | rolled_back | stale_plan |
+blocked_by_editor_state | pending_editor_restart | exists_refused | bad_input`.
+
+| status | meaning | typical exit |
+|---|---|---|
+| `success` | completed cleanly | 0 |
+| `success_with_warnings` | applied + saved, with op warnings (e.g. optional property skipped / alias) | 10 |
+| `partial` | analyze: graph incomplete (mode != native_full); edit: ops applied but on-disk save failed | 10 |
+| `failed` | error / preflight blocked a required property | 20 |
+| `rolled_back` | an op failed or compile errored → changes discarded, source unchanged | 40 |
+| `stale_plan` | `expected_baseline_ir_hash` ≠ current asset hash → refused, no mutation | 50 |
+| `blocked_by_editor_state` | editor_live: PIE / dirty target / saving / compiling / asset lock | 30 |
+| `pending_editor_restart` | in-flight request orphaned by an editor crash (flagged by `recover_scan`) | n/a |
+| `exists_refused` | create: asset exists and `overwrite_policy=fail_if_exists` | 41 |
+| `bad_input` | missing/invalid request | 30 |
+
+Read the manifest `status` string (exit code 10 is shared by `success_with_warnings` and `partial`). For
+analyze, `partial` (mode != native_full) means graph structure is incomplete — re-run native_full with the
+engine_policy flags (after user consent) for the full IR.

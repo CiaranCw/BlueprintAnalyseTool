@@ -9,7 +9,14 @@ The capability is implemented by:
 - PowerShell wrapper: `scripts/edit_blueprint.ps1`.
 - Self-test harness: `scripts/atomic_edit_selftest.ps1`.
 
-The editor must be **closed** for `apply` / `apply-and-verify` (it locks assets and clobbers saves).
+There are two ways to apply an edit:
+- **`editor_live` (hot path, editor OPEN):** submit the edit through the in-editor `BPAgentLiveService`
+  file queue — no `UnrealEditor-Cmd` cold start. This path adds production hardening (property preflight,
+  baseline-hash/`stale_plan`, request journal, idempotency, asset serialization, PIE/dirty gates,
+  post-apply analyze, expanded status model). See `docs/editor_live_mode.md` §8 and §8b below.
+- **Commandlet / `edit_blueprint.ps1` (cold path, editor CLOSED):** the editor must be **closed** for
+  `apply` / `apply-and-verify` (it locks assets and clobbers saves).
+
 Edits are **non-destructive by default**: destructive operations are refused unless
 `AllowDestructiveEdit` is set (you can still preview them with `plan-only` / `dry-run`).
 
@@ -45,11 +52,21 @@ Edits are **non-destructive by default**: destructive operations are refused unl
 
 | exit | status | meaning |
 |------|--------|---------|
-| 0  | `success`      | all ops applied; compiled; saved (apply modes) or plan produced (plan/dry) |
-| 10 | `partial`      | refused (e.g. destructive op without permission) or saved-with-warnings |
-| 20 | `failed`       | bad setup (asset/copy load failed) |
-| 30 | `bad_input`    | missing/invalid request JSON or asset path |
-| 40 | `rolled_back`  | an op failed or compile errored → **changes discarded, source unchanged** |
+| 0  | `success`               | all ops applied; compiled; saved (apply modes) or plan produced (plan/dry) |
+| 10 | `success_with_warnings` | applied + saved, but an op emitted warnings (e.g. optional property skipped) |
+| 10 | `partial`               | refused (destructive op without permission) or applied-but-save-failed |
+| 20 | `failed`                | bad setup (asset/copy load failed) / preflight blocked a required property |
+| 30 | `bad_input`             | missing/invalid request JSON or asset path |
+| 40 | `rolled_back`           | an op failed or compile errored → **changes discarded, source unchanged** |
+| 50 | `stale_plan`            | `expected_baseline_ir_hash` ≠ current asset hash → refused, **no mutation** |
+
+Exit code **10 is shared** by `success_with_warnings` and `partial`; the exit code alone cannot
+distinguish them. `edit_result.json.status` (and, on the editor_live path, `manifest.json.status`) carry
+the precise string — **read the status field, not just the exit code**. `FBPATEdit::Run` also returns the
+exact status via an out-param so the editor_live wrapper reports it faithfully. On the editor_live path a
+request blocked by editor state (PIE / dirty target / saving / compiling / asset lock) reports
+`blocked_by_editor_state` (exit 30); an in-flight request orphaned by an editor crash is later flagged
+`pending_editor_restart` by the recovery scan (see `docs/editor_live_mode.md` §8.3–8.4).
 
 ---
 
@@ -63,10 +80,32 @@ Edits are **non-destructive by default**: destructive operations are refused unl
   "mode": "apply-and-verify",
   "allow_destructive_edit": false,
   "create_backup": true,
+  "baseline_ir_hash": "<optional; from a prior plan-only>",
   "operations": [ { "op_id": "op_001", "operation": "...", "graph": "EventGraph", ... } ]
 }
 ```
 `-Mode` / `-AllowDestructiveEdit` / `-AssetPath` on the CLI override the JSON fields.
+
+### Per-op optional properties (widget property ops)
+On `set_widget_property` / `add_widget`, a property that may legitimately be absent on the resolved class
+(e.g. `ItemId` on a C++ item that omits it, or a label on a pure-`UserWidget` row) can be declared optional
+so a miss becomes a **warning** instead of a hard failure + rollback:
+```json
+{ "op_id":"a1", "operation":"add_widget", "parent":"ScrollBox_List",
+  "widget": { "name":"Row", "type":"/Game/UI/WBP_Setting_KeybindItem", "properties": { "TextName":"Rebind", "ItemId":"x" } },
+  "optional_properties": ["ItemId"],
+  "property_semantics": { "ItemId": "optional" } }
+```
+- `optional_properties: string[]` — property names that are best-effort.
+- `property_semantics: { <name>: "optional" }` — equivalent per-name form.
+- A required (non-listed) miss → op fails → rollback (`rolled_back`). An optional miss →
+  `property_optional_skipped` warning, op `success`, batch continues → overall `success_with_warnings`.
+
+### Stale-plan guard (`baseline_ir_hash`)
+`plan-only` / `dry-run` emit `baseline_ir_hash` (SHA-1 of the condensed baseline IR) in `edit_plan.json` and
+`edit_result.json`. Pass it back as `baseline_ir_hash` (or `expected_baseline_ir_hash`) on the apply request:
+if the live asset changed since planning (a human or another agent edited it), the apply is refused with
+`stale_plan` (exit 50) and **nothing is mutated** — re-plan against the current state.
 
 ### Node selectors (used by `node`, `from_node`, `to_node`)
 
@@ -235,11 +274,19 @@ viz/before.dot      viz/after.dot     viz/diff.mmd
 
 ## 7. How another agent should consume results
 
-1. Read process exit code → map to status (table in §1).
-2. Open `edit_result.json`; check `status` and `validation.compile_status`.
+1. Read `status` (not just the exit code — 10 is shared by `success_with_warnings`/`partial`). On the
+   editor_live path read `manifest.json.status`; on the commandlet path read `edit_result.json.status`.
+2. Open `edit_result.json`; check `status` and `validation.compile_status`/`save_status`.
 3. On `success`: inspect `diff_report.json` to confirm only the intended changes occurred (`unexpected_changes` must be empty).
-4. On `rolled_back`/`failed`/`partial`: read `operations[].errors` for the cause; the asset is unchanged.
-5. Ask the user to confirm visually in UE (the editor must be reopened after edits).
+4. On `success_with_warnings`: applied + saved, but read `operations[].warnings` (e.g. `property_optional_skipped`,
+   `property_alias_matched`) — decide whether the skipped/aliased fields matter, and if so re-issue with real names.
+5. On `stale_plan`: the asset changed since your plan — re-run `plan-only`, take the new `baseline_ir_hash`, retry.
+6. On `rolled_back`/`failed`/`partial`: read `operations[].errors` for the cause; the asset is unchanged
+   (`partial` = ops applied but the on-disk save failed, e.g. read-only package — the disk copy is untouched).
+7. On the editor_live path also read `manifest.editor_live` (PIE/dirty/compiling/asset-lock → `blocked_by_editor_state`)
+   and `request_journal.json` (phase trace); a crash-orphaned request is flagged `pending_editor_restart` by recovery.
+8. Ask the user to confirm visually in UE (the commandlet path requires reopening the editor after edits;
+   the editor_live path keeps the open editor in sync and writes a `post_analyze/` re-dump for verification).
 
 ---
 

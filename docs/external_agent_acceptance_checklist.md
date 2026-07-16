@@ -70,6 +70,23 @@ with `execution.read_only=false, allow_edit=true, create_backup=true`.
 - Pass: `edit_result.json` / `diff_report.json` produced; backup exists; compile+save succeeded (or clean
   `rolled_back` on failure). Asset changed **only** as planned.
 
+## 8b. Production-hardening matrix (editor_live 0.4.8)  `[ue]`
+One script runs the full 14-case matrix on `/Game/Generated/` copies (business assets untouched):
+```powershell
+.\scripts\editor_live_regression.ps1 -ProjectUProject "<...>.uproject" -HardeningVersion 0.4.7
+```
+- Artifact: `.../editor_live_regression/reg_<ts>.json` (`passed/failed/skipped` + per-case rows).
+- Pass: **14 passed / 0 failed / 0 skipped**. Covers: analyze; preflight required-block (exit 20) & optional
+  → `success_with_warnings` (exit 10); alias match; dirty policy; **PIE refuse** `blocked_by_editor_state`;
+  **compiling-wait** deferred (journal `waiting/editor_busy`) then completes; idempotent duplicate `request_id`;
+  concurrent same-asset; **stale_plan** (exit 50); failing-op **rollback** (exit 40) + journal; **save-fail**
+  (read-only package) → `partial` + `save_status=failed`; **post-analyze** diff reflects change; **editor-exit
+  recovery** via `recover_scan` → orphan flagged `pending_editor_restart`.
+- Note: cases 06 (PIE) and 07 (compiling) use the `test_control` fault-injection task (bounded, self-expiring
+  editor-state window) to exercise the real gate/retry code paths without driving a real PIE session / long
+  compile in the open editor. It is honestly labeled as injected in each manifest `note`.
+- Reference run (AClient, UE 5.4.4, plugin 0.4.8): `reg_20260716_104956.json` — 14/0/0.
+
 ## 9. Never-hang / always-manifest  `[static]`
 - Every dispatcher run writes `dispatch_manifest.json`; every editor_live run writes `manifest.json`.
 - Every editor_live wait is bounded by `-TimeoutSeconds`; explicit `editor_live` unavailable → exit 24 with
@@ -79,6 +96,8 @@ with `execution.read_only=false, allow_edit=true, create_backup=true`.
 
 ## Current repo status
 - `[static]` steps 1, 4-wiring, 9 pass here (mock live-service e2e, timeout/cleanup, auto-fallback, explicit
-  exit-24). Both PowerShell scripts pass AST parse checks.
-- `[ue]` steps require compiling `BPParserTestGen` (now including `BPAgentLiveService`) into the target
-  project and running in a real editor — **pending local UE build/validation**.
+  exit-24). All PowerShell scripts pass AST parse checks.
+- `[ue]` **validated on AClient (UE 5.4.4, plugin 0.4.8):** editor_live status/analyze/edit/create plus the
+  full §8b 14-case hardening matrix → **14 passed / 0 failed / 0 skipped**
+  (`Saved/BPParserAgentReports/editor_live_regression/reg_20260716_104956.json`). See
+  `bpparser_testgen/deliverables/reports/editor_live_production_hardening_report.md`.

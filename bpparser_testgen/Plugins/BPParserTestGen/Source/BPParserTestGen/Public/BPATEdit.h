@@ -26,12 +26,19 @@ public:
 		bool bStrict = false;
 		FString WorkOnCopy;                 // optional /Game path: duplicate source here and edit the COPY
 		FString OutputDir;                  // base output dir; a per-asset/timestamp subdir is created
+		/** When set, apply fails with stale_plan if current baseline hash differs. */
+		FString ExpectedBaselineIrHash;
+		/** Run property preflight before apply (default true for apply modes). */
+		bool bRunPreflight = true;
+		bool bStrictPreflight = true;
 	};
 
 	/** Run the full pipeline. Returns a process exit code:
 	 *  0 = success, 10 = partial, 20 = failed, 30 = bad input/precondition, 40 = rolled_back.
 	 *  Always writes artifacts (plan/result/diff/...) under OutputDir when possible. */
-	static int32 Run(const FString& AssetPath, const TSharedPtr<FJsonObject>& Request, const FOptions& Opt);
+	// OutStatus (optional) receives the precise result status string (success / success_with_warnings /
+	// partial / rolled_back / stale_plan / failed) so callers can distinguish statuses that share an exit code.
+	static int32 Run(const FString& AssetPath, const TSharedPtr<FJsonObject>& Request, const FOptions& Opt, FString* OutStatus = nullptr);
 
 	/** True if an operation name mutates existing structure (needs AllowDestructiveEdit). */
 	static bool IsDestructiveOperation(const FString& Op);

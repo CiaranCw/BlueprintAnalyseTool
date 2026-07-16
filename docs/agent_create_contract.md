@@ -14,8 +14,20 @@ new asset); never touches unrelated assets; honours `overwrite_policy`.
 # or commandlet:
 UnrealEditor-Cmd.exe "<...>.uproject" -run=BPCreate -SpecFile="<spec>.json" -OutputDir="<dir>" -unattended -nop4
 ```
-Editor must be **closed** (creation writes/saves). Exit codes: `0 success, 10 partial (compile
-warnings), 20 failed, 30 bad input, 41 exists_refused`.
+Editor must be **closed** for the commandlet path (creation writes/saves). For the **`editor_live` path**
+(editor OPEN), submit through the in-editor service (`docs/editor_live_mode.md`): it runs the same builders
+but adds a property preflight, a request journal, idempotency, and refuses during PIE
+(`blocked_by_editor_state`). Exit codes: `0 success, 10 partial|success_with_warnings (compile/preflight
+warnings), 20 failed (incl. preflight blocked a required property), 30 bad input, 41 exists_refused`.
+
+### Preflight (editor_live create; `execution.run_preflight`, default true)
+Before building, `FBPPreflight` resolves every widget/property in the spec against the resolved classes and
+writes `preflight_report.json` / `normalized_request.json` / `capability_snapshot.json`. A **required**
+property miss blocks the create (`failed`, exit 20); an **optional** miss (`optional_properties` /
+`property_semantics` on the hierarchy node) is a warning (`success_with_warnings`, exit 10). Match kinds:
+`exact_match | alias_match | display_name_match | property_absent | property_read_only |
+property_type_mismatch | ambiguous_match`. As always, **analyze first** for pure-`UserWidget` rows that
+expose no C++ property surface (see `docs/issue_patterns.md` P18).
 
 ## Spec (request.request)
 See the `create` section of `docs/request_schemas.md`. Summary:

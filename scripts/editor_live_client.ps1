@@ -157,5 +157,11 @@ if ($ok -and (-not $NoRenderPreview) -and $manifestPath -and (Test-Path $manifes
 }
 
 $status = switch ($exit) { 0 {'success'} 10 {'partial'} 40 {'rolled_back'} 41 {'exists_refused'} default { if($ok){'success'}else{'failed'} } }
+# Prefer the manifest's precise status: exit codes are coarse (10 is shared by partial AND
+# success_with_warnings; 50 is stale_plan; 30 may be blocked_by_editor_state). The service writes the
+# authoritative status string into the manifest, so surface that when available.
+if ($manifestPath -and (Test-Path $manifestPath)) {
+  try { $mfStatus = (Read-JsonUtf8 $manifestPath).status; if ($mfStatus) { $status = "$mfStatus" } } catch {}
+}
 Info "response: status=$status manifest=$manifestPath"
 Emit ([pscustomobject]@{ available=$true; status=$status; request_id=$reqId; manifest=$manifestPath; report_dir=$reportDir; outbox_marker=$marker; exit_code=$exit }) $exit

@@ -1,5 +1,6 @@
 // Copyright BlueprintAnalyseTool. All Rights Reserved.
 #include "BPATEdit.h"
+#include "BPPreflight.h"
 #include "BPParserTestGenModule.h"
 #include "BPGen.h"
 #include "BPGenIRDumper.h"
@@ -791,11 +792,39 @@ namespace
 		}
 
 		// ---- Widget Blueprint tree edits (reuse FBPWidgetGen) ----
+		// A property key is "optional" when the op lists it under optional_properties[] or
+		// property_semantics.<key>=="optional". An optional miss becomes a warning, not a hard op
+		// failure (so an agent can declare best-effort labels on pure-UserWidget rows that lack them).
+		auto IsOptionalKey = [&](const FString& Key) -> bool
+		{
+			const TArray<TSharedPtr<FJsonValue>>* OptArr = nullptr;
+			if (Op->TryGetArrayField(TEXT("optional_properties"), OptArr) && OptArr)
+			{
+				for (const TSharedPtr<FJsonValue>& V : *OptArr)
+				{
+					FString S; if (V.IsValid() && V->TryGetString(S) && S.Equals(Key, ESearchCase::IgnoreCase)) { return true; }
+				}
+			}
+			const TSharedPtr<FJsonObject>* Sem = nullptr;
+			if (Op->TryGetObjectField(TEXT("property_semantics"), Sem) && Sem && (*Sem).IsValid())
+			{
+				FString SemVal; if ((*Sem)->TryGetStringField(Key, SemVal) && SemVal.Equals(TEXT("optional"), ESearchCase::IgnoreCase)) { return true; }
+			}
+			return false;
+		};
 		auto SetPropReport = [&](UObject* Target, const FString& Key, const TSharedPtr<FJsonValue>& Val, const FString& Ctx) -> bool
 		{
 			FString Resolved; TArray<TSharedPtr<FJsonValue>> Sugg;
 			const FString E = FBPWidgetGen::SetPropertyFromJson(Target, Key, Val, Resolved, Sugg);
-			if (!E.IsEmpty()) { R.Outputs->SetStringField(TEXT("code"), TEXT("property_not_found")); R.Outputs->SetStringField(TEXT("input"), Key); R.Outputs->SetArrayField(TEXT("suggestions"), Sugg); return Fail(FString::Printf(TEXT("%s '%s': %s"), *Ctx, *Key, *E)); }
+			if (!E.IsEmpty())
+			{
+				if (IsOptionalKey(Key))
+				{
+					R.Warnings.Add(FString::Printf(TEXT("property_optional_skipped: %s '%s' absent/unsettable (%s)"), *Ctx, *Key, *E));
+					return true;   // optional miss is non-fatal: op continues, batch not rolled back
+				}
+				R.Outputs->SetStringField(TEXT("code"), TEXT("property_not_found")); R.Outputs->SetStringField(TEXT("input"), Key); R.Outputs->SetArrayField(TEXT("suggestions"), Sugg); return Fail(FString::Printf(TEXT("%s '%s': %s"), *Ctx, *Key, *E));
+			}
 			R.Outputs->SetStringField(TEXT("property"), Key);
 			R.Outputs->SetStringField(TEXT("resolved_to"), Resolved);
 			if (!Resolved.Equals(Key, ESearchCase::CaseSensitive) && !Resolved.Equals(FString(TEXT("Set")) + Key)) { R.Warnings.Add(FString::Printf(TEXT("property_alias_matched: '%s' -> '%s'"), *Key, *Resolved)); }
@@ -1021,7 +1050,7 @@ namespace
 // ============================================================================
 // Pipeline
 // ============================================================================
-int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& Request, const FOptions& Opt)
+int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& Request, const FOptions& Opt, FString* OutStatus)
 {
 	FString Log;
 	auto L = [&](const FString& M) { Log += M + TEXT("\n"); UE_LOG(LogBPParserTestGen, Display, TEXT("BPATEdit: %s"), *M); };
@@ -1057,6 +1086,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 	Result->SetStringField(TEXT("engine_version"), BPGenCompat::EngineFullVersion());
 	auto Finish = [&](const FString& Status, int32 Code) -> int32
 	{
+		if (OutStatus) { *OutStatus = Status; }
 		Result->SetStringField(TEXT("status"), Status);
 		TSharedPtr<FJsonObject> Art = MakeShared<FJsonObject>();
 		Art->SetStringField(TEXT("baseline_ir"), FPaths::Combine(OutDir, TEXT("baseline_ir.json")));
@@ -1097,7 +1127,9 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 
 	// --- Baseline IR ---
 	TSharedPtr<FJsonObject> Baseline = FBPGenIRDumper::DumpBlueprint(BP);
+	const FString BaselineHash = FBPPreflight::ComputeIrHash(Baseline);
 	WriteJson(FPaths::Combine(OutDir, TEXT("baseline_ir.json")), Baseline);
+	Result->SetStringField(TEXT("baseline_ir_hash"), BaselineHash);
 	WriteText(FPaths::Combine(VizDir, TEXT("before.dot")), IRToDot(Baseline, TEXT("before")));
 	if (Cast<UWidgetBlueprint>(BP)) { WriteText(FPaths::Combine(VizDir, TEXT("hierarchy.before.dot")), WidgetTreeToDot(Baseline, TEXT("before"))); }
 
@@ -1132,6 +1164,7 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 		if (Ops) { for (const TSharedPtr<FJsonValue>& OV : *Ops) { if (OV->AsObject().IsValid()) { AtomicOps.Add(MakeShared<FJsonValueObject>(OV->AsObject())); } } }
 		Plan->SetArrayField(TEXT("atomic_operations"), AtomicOps);
 	}
+	Plan->SetStringField(TEXT("baseline_ir_hash"), BaselineHash);
 	WriteJson(FPaths::Combine(OutDir, TEXT("edit_plan.json")), Plan);
 	Result->SetObjectField(TEXT("plan"), Plan);
 
@@ -1147,6 +1180,18 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 		Result->SetBoolField(TEXT("would_require_allow_destructive"), bAnyDestructive && !bRequestDestructive);
 		L(FString::Printf(TEXT("%s complete; no changes applied."), *Mode));
 		return Finish(TEXT("success"), 0);
+	}
+
+	// Stale plan guard: if caller supplied baseline_ir_hash from plan-only, refuse apply when asset changed.
+	if (!Opt.ExpectedBaselineIrHash.IsEmpty() && !Opt.ExpectedBaselineIrHash.Equals(BaselineHash, ESearchCase::IgnoreCase))
+	{
+		L(FString::Printf(TEXT("stale_plan: baseline_ir_hash mismatch (expected %s, current %s)"), *Opt.ExpectedBaselineIrHash, *BaselineHash));
+		TSharedPtr<FJsonObject> Diff = BuildDiff(EditedPath, Baseline, Baseline);
+		WriteJson(FPaths::Combine(OutDir, TEXT("diff_report.json")), Diff);
+		Result->SetObjectField(TEXT("diff"), Diff);
+		Result->SetStringField(TEXT("expected_baseline_ir_hash"), Opt.ExpectedBaselineIrHash);
+		Result->SetStringField(TEXT("current_baseline_ir_hash"), BaselineHash);
+		return Finish(TEXT("stale_plan"), 50);
 	}
 
 	// Precondition gate (apply modes only): refuse destructive edits unless explicitly allowed.
@@ -1270,7 +1315,19 @@ int32 FBPATEdit::Run(const FString& AssetPathIn, const TSharedPtr<FJsonObject>& 
 
 	Result->SetObjectField(TEXT("validation"), Validation);
 
+	bool bAnyOpWarn = false;
+	for (const TSharedPtr<FJsonValue>& OV : OpResults)
+	{
+		const TSharedPtr<FJsonObject> O = OV->AsObject();
+		if (!O.IsValid()) { continue; }
+		const TArray<TSharedPtr<FJsonValue>>* WArr = nullptr;
+		if (O->TryGetArrayField(TEXT("warnings"), WArr) && WArr && WArr->Num() > 0) { bAnyOpWarn = true; }
+		const TArray<TSharedPtr<FJsonValue>>* EArr = nullptr;
+		if (O->TryGetArrayField(TEXT("errors"), EArr) && EArr && EArr->Num() > 0) { bAnyOpWarn = true; }
+	}
+
 	const bool bSaveOk = (SaveStatus == TEXT("success"));
-	if (bAllOk && bSaveOk) { return Finish(TEXT("success"), 0); }
+	if (bAllOk && bSaveOk && !bAnyOpWarn) { return Finish(TEXT("success"), 0); }
+	if (bAllOk && bSaveOk && bAnyOpWarn) { return Finish(TEXT("success_with_warnings"), 10); }
 	return Finish(TEXT("partial"), 10);
 }

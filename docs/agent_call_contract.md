@@ -34,6 +34,19 @@ Exit codes: `0 success` (or partial when not `-Strict`), `10 partial (Strict)`, 
 `editor_live` reuses an already-open UE editor through the in-editor `BPAgentLiveService` (file queue); it
 never launches UnrealEditor-Cmd. Full flow, safety rules, and protocol: `docs/editor_live_mode.md`.
 
+### editor_live task surface (`task_type`)
+| task | purpose |
+|---|---|
+| `status`  | editor state + `editor_live.supports{...}` capability flags (always answers immediately) |
+| `analyze` | read-only IR of a loaded asset (this contract) |
+| `edit` / `create` | authorised mutation with preflight / stale_plan / journal (`agent_edit_contract.md` / `agent_create_contract.md`) |
+| `recover_scan` | flag in-flight requests orphaned by an editor crash (non-terminal journal + no outbox marker) as `pending_editor_restart`; also runs on service `Start()` |
+| `test_control` | **regression fault-injection only** — set a bounded, self-expiring PIE/busy window to exercise the gate/retry paths deterministically (does not start real PIE / real compile) |
+
+`status.editor_live.supports` advertises hardening capabilities:
+`preflight, stale_plan, request_journal, idempotency, asset_lock, post_analyze, recover_scan, test_control`.
+An agent should gate advanced behavior on these flags (and on `plugin_version`) rather than assuming them.
+
 `native-full` requires the read-only dumper plugin (`BPParserTestGen`) present in the target project.
 For a foreign project it is copied in (`-AllowPluginInstall`) and built (`-AllowBuild`) against the
 target's engine — an opt-in, removable step. Without those flags, `auto` falls back to python-partial/offline.

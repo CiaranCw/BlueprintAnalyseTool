@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "task_type": "create",
+  "project": {
+    "uproject": "D:/Projects/AClient/AClient.uproject",
+    "output_dir": "D:/Projects/AClient/Saved/BPParserAgentReports"
+  },
+  "execution": {
+    "mode": "editor_live",
+    "allow_create": true
+  },
+  "request": {
+    "asset": {
+      "asset_path": "/Game/Generated/WBP_Agent_SettingsGraphicsBase",
+      "blueprint_type": "Widget",
+      "parent_class": "/Script/AClient.RGSettingsGraphicsWidget",
+      "overwrite_policy": "overwrite_if_allowed"
+    },
+    "widget": {
+      "hierarchy": {
+        "root": {
+          "name": "AgentBaseRoot",
+          "type": "CanvasPanel"
+        }
+      }
+    }
+  }
+}

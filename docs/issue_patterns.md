@@ -638,3 +638,35 @@ On a miss, read `property_notes[].suggestions` and retry with a listed `name`.
 
 ### Cross-version note
 - `FAnchors.Minimum/Maximum`, `SetOffsets/SetSize/SetPosition` are stable UMG APIs across UE 5.x.
+
+## P18: Pure UserWidget setting item — property_absent vs widget child alias
+
+### Typical symptom
+- `set_widget_property` / `add_widget` with `TextName` or `ItemId` reports `property_not_found` or silently
+  alias-matches a **widget variable** (e.g. `Text_Name` UTextBlock*) on a pure Blueprint `UserWidget` subclass
+  with no C++ `UPROPERTY` surface.
+
+### Affected families
+- Setting/list row widgets authored entirely in BP (`parent_class=/Script/UMG.UserWidget`), e.g.
+  `WBP_Setting_EnumslideItem`, `WBP_Setting_VideoListItem`.
+- C++ items with intentional field omissions, e.g. `RGSettingsKeybindItemWidget` (no `ItemId`).
+
+### Root cause
+- Preflight/apply resolves names against the **generated UClass** default object, not Designer child widget
+  display strings. Pure BP widgets expose only UMG base properties unless BP variables are `UPROPERTY(EditAnywhere)`.
+- Fuzzy alias can match a widget reference field name (`Text_Name`) which is not an `FText` label setter.
+
+### Generalized fix
+- **`FBPPreflight`**: classify as `property_absent` (required fail) or `skipped_optional` when listed in
+  `optional_properties` / `property_semantics`.
+- **Agent workflow**: `analyze` → read `settable_properties` on the widget class or `capability_snapshot.json`;
+  for pure BP rows, set exposed BP variables or use a C++ base class with `TextName`/`ItemId`.
+- **Request authoring**: mark absent-by-design fields optional (Keybind `ItemId`).
+
+### Validation
+- AClient analyze 2026-07-15: EnumslideItem/VideoListItem parent=`UserWidget`; Keybind has `TextName` only.
+- After 0.4.7 rebuild: preflight on `live_apply_settings_graphics.json` a5–a7 → pass_with_warnings, not silent success.
+
+### Regression assets
+- `/Game/Generated/WBP_Agent_Live_Settings_Graphics` (copy)
+- Request: `bpparser_testgen/deliverables/requests/live_apply_settings_graphics.json`

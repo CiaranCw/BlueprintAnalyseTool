@@ -19,6 +19,31 @@ class FJsonValue;
 class FJsonObject;
 class UK2Node_ComponentBoundEvent;
 
+/** How an input property name was resolved against a target class/instance (dry-run, no write). */
+enum class EBPPropertyMatchKind : uint8
+{
+	ExactMatch,
+	AliasMatch,
+	DisplayNameMatch,
+	PropertyAbsent,
+	PropertyReadOnly,
+	PropertyTypeMismatch,
+	AmbiguousMatch
+};
+
+struct FBPPropertyMatchResult
+{
+	EBPPropertyMatchKind Kind = EBPPropertyMatchKind::PropertyAbsent;
+	FString InputName;
+	FString ResolvedName;
+	FString DeclaringClass;
+	FString TypeCategory;
+	bool bSetSupported = false;
+	TArray<TSharedPtr<FJsonValue>> Suggestions;
+	FString TypeCheckError;
+	FString MatchDetail;
+};
+
 class FBPWidgetGen
 {
 public:
@@ -54,6 +79,14 @@ public:
 	 *  candidate { name, display_name, type } objects. */
 	static FString SetPropertyFromJson(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& Value,
 		FString& OutResolvedName, TArray<TSharedPtr<FJsonValue>>& OutSuggestions);
+
+	/** Dry-run property resolution: classify match kind, check set_supported / optional type compatibility.
+	 *  Does NOT write. ValueOpt=nullptr skips type check. */
+	static FBPPropertyMatchResult ResolvePropertyMatch(UObject* Target, const FString& PropName,
+		const TSharedPtr<FJsonValue>& ValueOpt = nullptr);
+
+	/** Serialize match kind to contract string (exact_match, alias_match, …). */
+	static FString PropertyMatchKindToString(EBPPropertyMatchKind Kind);
 
 	// ---- CanvasPanelSlot anchor-aware geometry ----
 

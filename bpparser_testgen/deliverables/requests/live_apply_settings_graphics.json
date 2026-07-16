@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "task_type": "edit",
+  "project": {
+    "uproject": "D:/Projects/AClient/AClient.uproject",
+    "output_dir": "D:/Projects/AClient/Saved/BPParserAgentReports"
+  },
+  "execution": {
+    "mode": "editor_live",
+    "read_only": false,
+    "allow_edit": true,
+    "create_backup": true,
+    "allow_destructive_edit": false
+  },
+  "request": {
+    "asset_path": "/Game/Assets/Widget/Settings/WBP_Settings_Graphics",
+    "work_on_copy": "/Game/Generated/WBP_Agent_Live_Settings_Graphics",
+    "mode": "apply-and-verify",
+    "intent": "Live apply demo on copy: EN super-res labels, add each Setting Item type, EventGraph bind, anchor-safe spacing, reparent to agent base.",
+    "operations": [
+      { "op_id": "t1", "operation": "set_widget_property", "widget": "BP_Title_SuperResolution", "property": "TextName", "value": "Super Resolution" },
+      { "op_id": "t2", "operation": "set_widget_property", "widget": "BP_SuperResPercentage", "property": "TextName", "value": "Super Resolution Level" },
+      { "op_id": "t3", "operation": "set_widget_property", "widget": "BP_AntiMethod", "property": "TextName", "value": "Super Resolution Method" },
+      { "op_id": "t4", "operation": "set_widget_property", "widget": "BP_Sharpness", "property": "TextName", "value": "Sharpness" },
+
+      { "op_id": "a1", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewTitle", "type": "/Game/Assets/Widget/Settings/WBP_Setting_InlineTitleItem", "properties": { "TextName": "Agent Section" } } },
+      { "op_id": "a2", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewCheckbox", "type": "/Game/Assets/Widget/Settings/WBP_Setting_CheckboxItem", "properties": { "TextName": "Agent Toggle", "ItemId": "agent_toggle", "bDefaultChecked": true } } },
+      { "op_id": "a3", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewSlide", "type": "/Game/Assets/Widget/Settings/WBP_Setting_SlideItem", "properties": { "TextName": "Agent Slider", "ItemId": "agent_slider", "DisplayMin": 0.0, "DisplayMax": 100.0, "StepSize": 1.0 } } },
+      { "op_id": "a4", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewEnum", "type": "/Game/Assets/Widget/Settings/WBP_Setting_EnumItem", "properties": { "TextName": "Agent Enum", "ItemId": "agent_enum" } } },
+      { "op_id": "a5", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewEnumSlide", "type": "/Game/Assets/Widget/Settings/WBP_Setting_EnumslideItem", "properties": { "TextName": "Agent EnumSlide", "ItemId": "agent_enumslide" } }, "optional_properties": ["TextName", "ItemId"], "property_semantics": { "TextName": "optional", "ItemId": "optional" } },
+      { "op_id": "a6", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewKeybind", "type": "/Game/Assets/Widget/Settings/WBP_Setting_KeybindItem", "properties": { "TextName": "Agent Keybind", "ItemId": "agent_keybind" } }, "optional_properties": ["ItemId"] },
+      { "op_id": "a7", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewVideoList", "type": "/Game/Assets/Widget/Settings/WBP_Setting_VideoListItem", "properties": { "TextName": "Agent VideoList", "ItemId": "agent_videolist" } }, "optional_properties": ["TextName", "ItemId"] },
+      { "op_id": "a8", "operation": "add_widget", "parent": "ScrollBox_List", "widget": { "name": "BP_Agent_NewSpace", "type": "/Game/Assets/Widget/Settings/WBP_Setting_Space" } },
+
+      { "op_id": "g1", "operation": "bind_widget_event", "widget": "BP_Agent_NewCheckbox", "event": "OnCheckboxItemChanged",
+        "handler": { "type": "custom_event", "name": "OnAgentPreviewToggled", "body": [ { "op": "print_string", "text": "agent preview toggled" } ] } },
+
+      { "op_id": "s1", "operation": "set_slot_property", "widget": "ScrollBox_List", "property": "Offsets", "value": { "Left": 72, "Top": 175, "Right": 725.5, "Bottom": 60 } },
+      { "op_id": "s2", "operation": "set_slot_property", "widget": "BP_Agent_NewSlide", "property": "Padding", "value": { "Left": 0, "Top": 6, "Right": 0, "Bottom": 6 } },
+
+      { "op_id": "r1", "operation": "set_parent_class", "new_parent_class": "/Game/Generated/WBP_Agent_SettingsGraphicsBase.WBP_Agent_SettingsGraphicsBase_C",
+        "options": { "create_backup": true, "compile": true, "save": true, "rollback_on_failure": true } }
+    ]
+  }
+}

@@ -82,6 +82,18 @@ private:
 	int32 HandleEdit   (const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir);
 	int32 HandleCreate (const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir);
 
+	/** recover_scan: flag in-flight requests with a non-terminal journal + no outbox marker as
+	 *  pending_editor_restart (orphaned by an editor crash / forced exit). Genuine recovery, no process kill. */
+	int32 HandleRecoverScan(const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir);
+
+	/** test_control: fault-injection for regression ONLY — sets a bounded window during which the editor-state
+	 *  gate reports PIE / busy, so the PIE-refuse and compiling-wait code paths can be exercised deterministically
+	 *  without driving a real PIE session or a real long compile in the user's open editor. */
+	int32 HandleTestControl(const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir);
+
+	/** Scan the report root for orphaned in-flight requests and mark them pending_editor_restart. */
+	int32 RunRecoveryScan(const FString& ScanEditorLiveDir, TArray<FString>& OutRecovered);
+
 	// --- report writers / helpers ---
 	/** Wrap the raw dumper object into the unified IR shape (asset / blueprint / graphs) used by native_full. */
 	static TSharedPtr<FJsonObject> BuildUnifiedIR(const TSharedPtr<FJsonObject>& Raw, const FString& PackagePath, const FString& ShortName);
@@ -101,6 +113,19 @@ private:
 	void WriteAnalyzeManifestOnly(const FString& RequestId, const FString& Dir, const FString& Status, const FString& AssetType,
 		const FBPAgentEditorState& St, const TArray<FString>& Warnings, const TArray<FString>& Errors, const TArray<FString>& Manual);
 
+	/** Append a journal entry (request_journal.json) for production tracing. */
+	static void AppendJournal(const FString& ReportDir, const FString& RequestId, const FString& Phase,
+		const FString& Status, const TSharedPtr<FJsonObject>& Detail = nullptr);
+
+	/** True if outbox already has a terminal marker for this request_id (idempotency). */
+	static bool IsRequestCompleted(const FString& RequestId, FString& OutManifestPath);
+
+	/** Resolve source_state for a loaded blueprint package. */
+	static FString ResolveSourceState(UObject* Asset);
+
+	/** Post-apply analyze of the edited asset (read-only re-dump for diff verification). */
+	int32 RunPostAnalyze(const FString& RequestId, UBlueprint* BP, const FString& ReportDir, const FBPAgentEditorState& St);
+
 	/** Manifest for edit/create tasks (points at the reused engine's artifacts). */
 	void WriteEditCreateManifest(const FString& RequestId, const FString& Dir, const FString& Task, const FString& Status,
 		const FString& AssetPath, const FString& Pointer, const FBPAgentEditorState& St,
@@ -113,4 +138,11 @@ private:
 	/** Per-request retry budget while the editor is transiently busy (compiling/saving). */
 	TMap<FString, int32> BusyAttempts;
 	int32 MaxBusyAttempts = 20;             // ~ MaxBusyAttempts * PollInterval seconds before giving up
+
+	/** Asset-path lock: only one mutating request per asset at a time. */
+	TSet<FString> LockedAssetPaths;
+	FString ActiveRequestId;
+
+	/** Pending requests waiting for the same asset lock (FIFO by request id sort). */
+	TArray<FString> PendingAssetQueue;
 };

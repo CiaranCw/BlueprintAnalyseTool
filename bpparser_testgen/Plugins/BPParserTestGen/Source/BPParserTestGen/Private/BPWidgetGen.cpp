@@ -134,6 +134,8 @@ namespace
 	bool IsListableSettable(FProperty* P);
 	TSharedPtr<FJsonObject> PropTypeObj(FProperty* P);
 	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched);
+	FProperty* FindPropertyFuzzyEx(UStruct* Owner, const FString& Name, FString& OutMatched, FString& OutMatchDetail, int32& OutAmbiguousCount);
+	FString PropCategory(FProperty* P, FString& OutSubObj);
 	TArray<TSharedPtr<FJsonValue>> SuggestProps(UStruct* Owner, const FString& Name);
 }
 
@@ -264,6 +266,111 @@ FString FBPWidgetGen::SetPropertyFromJson(UObject* Target, const FString& PropNa
 	return TEXT("property_not_found");
 }
 
+FString FBPWidgetGen::PropertyMatchKindToString(EBPPropertyMatchKind Kind)
+{
+	switch (Kind)
+	{
+	case EBPPropertyMatchKind::ExactMatch:           return TEXT("exact_match");
+	case EBPPropertyMatchKind::AliasMatch:           return TEXT("alias_match");
+	case EBPPropertyMatchKind::DisplayNameMatch:     return TEXT("display_name_match");
+	case EBPPropertyMatchKind::PropertyAbsent:       return TEXT("property_absent");
+	case EBPPropertyMatchKind::PropertyReadOnly:     return TEXT("property_read_only");
+	case EBPPropertyMatchKind::PropertyTypeMismatch: return TEXT("property_type_mismatch");
+	case EBPPropertyMatchKind::AmbiguousMatch:       return TEXT("ambiguous_match");
+	default: return TEXT("property_absent");
+	}
+}
+
+FBPPropertyMatchResult FBPWidgetGen::ResolvePropertyMatch(UObject* Target, const FString& PropName, const TSharedPtr<FJsonValue>& ValueOpt)
+{
+	FBPPropertyMatchResult R;
+	R.InputName = PropName;
+	if (!Target) { R.Kind = EBPPropertyMatchKind::PropertyAbsent; return R; }
+
+	auto FillFromProp = [&](FProperty* Prop, const FString& Matched, const FString& Detail)
+	{
+		R.ResolvedName = Matched;
+		R.MatchDetail = Detail;
+		R.DeclaringClass = Prop->GetOwnerStruct() ? Prop->GetOwnerStruct()->GetPathName() : TEXT("");
+		FString Sub; R.TypeCategory = PropCategory(Prop, Sub);
+		const bool bEditConst = Prop->HasAnyPropertyFlags(CPF_EditConst);
+		const bool bTransient = Prop->HasAnyPropertyFlags(CPF_Transient);
+		const bool bDeprecated = Prop->HasAnyPropertyFlags(CPF_Deprecated);
+		const bool bReadOnly = Prop->HasAnyPropertyFlags(CPF_BlueprintReadOnly);
+		R.bSetSupported = !bEditConst && !bTransient && !bDeprecated;
+		if (!R.bSetSupported || bReadOnly)
+		{
+			R.Kind = EBPPropertyMatchKind::PropertyReadOnly;
+			return;
+		}
+		if (Detail == TEXT("exact")) { R.Kind = EBPPropertyMatchKind::ExactMatch; }
+		else if (Detail.Contains(TEXT("display"))) { R.Kind = EBPPropertyMatchKind::DisplayNameMatch; }
+		else { R.Kind = EBPPropertyMatchKind::AliasMatch; }
+		if (ValueOpt.IsValid())
+		{
+			void* Temp = FMemory::Malloc(Prop->GetSize(), Prop->GetMinAlignment());
+			Prop->InitializeValue(Temp);
+			if (!FJsonObjectConverter::JsonValueToUProperty(ValueOpt, Prop, Temp, 0, 0))
+			{
+				R.Kind = EBPPropertyMatchKind::PropertyTypeMismatch;
+				R.TypeCheckError = FString::Printf(TEXT("could not import value into '%s' (%s)"), *Matched, *Prop->GetClass()->GetName());
+			}
+			Prop->DestroyValue(Temp);
+			FMemory::Free(Temp);
+		}
+	};
+
+	FString Matched, Detail;
+	int32 Ambiguous = 0;
+	if (FProperty* Prop = FindPropertyFuzzyEx(Target->GetClass(), PropName, Matched, Detail, Ambiguous))
+	{
+		FillFromProp(Prop, Matched, Detail);
+		return R;
+	}
+	if (Ambiguous > 0)
+	{
+		R.Kind = EBPPropertyMatchKind::AmbiguousMatch;
+		R.Suggestions = SuggestProps(Target->GetClass(), PropName);
+		return R;
+	}
+
+	// Setter fallback (Position/Size etc.)
+	if (UFunction* Fn = Target->FindFunction(FName(*(FString(TEXT("Set")) + PropName))))
+	{
+		FProperty* Parm = nullptr;
+		for (TFieldIterator<FProperty> It(Fn); It && (It->PropertyFlags & CPF_Parm); ++It)
+		{
+			if (It->PropertyFlags & CPF_ReturnParm) { continue; }
+			Parm = *It; break;
+		}
+		if (Parm)
+		{
+			R.ResolvedName = FString(TEXT("Set")) + PropName;
+			R.MatchDetail = TEXT("setter");
+			R.Kind = EBPPropertyMatchKind::AliasMatch;
+			R.bSetSupported = true;
+			FString Sub; R.TypeCategory = PropCategory(Parm, Sub);
+			if (ValueOpt.IsValid())
+			{
+				void* Temp = FMemory::Malloc(Parm->GetSize(), Parm->GetMinAlignment());
+				Parm->InitializeValue(Temp);
+				if (!FJsonObjectConverter::JsonValueToUProperty(ValueOpt, Parm, Temp, 0, 0))
+				{
+					R.Kind = EBPPropertyMatchKind::PropertyTypeMismatch;
+					R.TypeCheckError = FString::Printf(TEXT("could not import value into setter Set%s"), *PropName);
+				}
+				Parm->DestroyValue(Temp);
+				FMemory::Free(Temp);
+			}
+			return R;
+		}
+	}
+
+	R.Kind = EBPPropertyMatchKind::PropertyAbsent;
+	R.Suggestions = SuggestProps(Target->GetClass(), PropName);
+	return R;
+}
+
 namespace
 {
 	// Map a delegate/function parameter FProperty to { name, type, sub_category_object? }.
@@ -338,19 +445,34 @@ namespace
 	}
 
 	// Resolve a property by fuzzy name: exact -> case-insensitive -> bool `b` prefix -> DisplayName -> normalized.
-	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched)
+	// OutMatchDetail describes which step matched (empty = exact).
+	FProperty* FindPropertyFuzzyEx(UStruct* Owner, const FString& Name, FString& OutMatched, FString& OutMatchDetail, int32& OutAmbiguousCount)
 	{
 		if (!Owner) return nullptr;
-		if (FProperty* P=FindFProperty<FProperty>(Owner, FName(*Name))) { OutMatched=P->GetName(); return P; }
+		OutAmbiguousCount = 0;
+		if (FProperty* P=FindFProperty<FProperty>(Owner, FName(*Name))) { OutMatched=P->GetName(); OutMatchDetail=TEXT("exact"); return P; }
 		const FString bName=FString(TEXT("b"))+Name;
-		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; const FString pn=P->GetName();
-			if (pn.Equals(Name,ESearchCase::IgnoreCase) || pn.Equals(bName,ESearchCase::IgnoreCase)) { OutMatched=pn; return P; } }
+		TArray<FProperty*> CaseMatches;
+		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; if(!IsListableSettable(P)) continue; const FString pn=P->GetName();
+			if (pn.Equals(Name,ESearchCase::IgnoreCase) || pn.Equals(bName,ESearchCase::IgnoreCase)) { CaseMatches.Add(P); } }
+		if (CaseMatches.Num()==1) { OutMatched=CaseMatches[0]->GetName(); OutMatchDetail=CaseMatches[0]->GetName().Equals(bName,ESearchCase::IgnoreCase)?TEXT("b_prefix"):TEXT("case_insensitive"); return CaseMatches[0]; }
+		if (CaseMatches.Num()>1) { OutAmbiguousCount=CaseMatches.Num(); return nullptr; }
 		const FString nm=NormName(Name);
-		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; const FString pn=P->GetName();
-			if (NormName(pn)==nm) { OutMatched=pn; return P; }
+		TArray<FProperty*> NormMatches;
+		for (TFieldIterator<FProperty> It(Owner); It; ++It) { FProperty* P=*It; if(!IsListableSettable(P)) continue; const FString pn=P->GetName();
+			if (NormName(pn)==nm) { NormMatches.Add(P); OutMatchDetail=TEXT("normalized_name"); continue; }
 			const FString disp=P->GetDisplayNameText().ToString();
-			if (disp.Equals(Name,ESearchCase::IgnoreCase) || NormName(disp)==nm) { OutMatched=pn; return P; } }
+			if (disp.Equals(Name,ESearchCase::IgnoreCase)) { NormMatches.Add(P); OutMatchDetail=TEXT("display_name"); continue; }
+			if (NormName(disp)==nm) { NormMatches.Add(P); OutMatchDetail=TEXT("display_name_normalized"); } }
+		if (NormMatches.Num()==1) { OutMatched=NormMatches[0]->GetName(); return NormMatches[0]; }
+		if (NormMatches.Num()>1) { OutAmbiguousCount=NormMatches.Num(); return nullptr; }
 		return nullptr;
+	}
+
+	FProperty* FindPropertyFuzzy(UStruct* Owner, const FString& Name, FString& OutMatched)
+	{
+		FString Detail; int32 Amb=0;
+		return FindPropertyFuzzyEx(Owner, Name, OutMatched, Detail, Amb);
 	}
 
 	TArray<TSharedPtr<FJsonValue>> SuggestProps(UStruct* Owner, const FString& Name)

@@ -5,6 +5,7 @@
 #include "BPGenUECompat.h"
 #include "BPATEdit.h"
 #include "BPCreate.h"
+#include "BPPreflight.h"
 
 #include "Engine/Blueprint.h"
 #include "Editor.h"
@@ -126,10 +127,20 @@ namespace
 		return S;
 	}
 
+	// ---- regression fault-injection (test_control) ----
+	// When the current time is before these deadlines, the editor-state gate reports PIE / busy. This lets
+	// the regression exercise the PIE-refuse and compiling-wait code paths deterministically WITHOUT driving
+	// a real PIE session or a real long compile in the user's open editor. Never affects production requests
+	// (deadlines are 0 unless a test_control request set them), and always self-expires.
+	double GTestForcePieUntilSeconds = 0.0;
+	double GTestForceBusyUntilSeconds = 0.0;
+	bool TestForcePieActive()  { return FPlatformTime::Seconds() < GTestForcePieUntilSeconds; }
+	bool TestForceBusyActive() { return FPlatformTime::Seconds() < GTestForceBusyUntilSeconds; }
+
 	// ---- editor state ----
 	bool IsPIENow()
 	{
-		return GEditor && (GEditor->PlayWorld != nullptr || GEditor->bIsSimulatingInEditor);
+		return (GEditor && (GEditor->PlayWorld != nullptr || GEditor->bIsSimulatingInEditor)) || TestForcePieActive();
 	}
 	bool IsSavingNow()
 	{
@@ -138,7 +149,7 @@ namespace
 	bool IsCompilingBlueprintsNow()
 	{
 		// GCompilingBlueprint is a global set during blueprint compilation (declared in KismetEditorUtilities.h).
-		return GCompilingBlueprint;
+		return GCompilingBlueprint || TestForceBusyActive();
 	}
 }
 
@@ -201,6 +212,13 @@ void FBPAgentLiveService::Start()
 	UE_LOG(LogBPParserTestGen, Display,
 		TEXT("BPAgentLiveService: STARTED. inbox=%s report=%s poll=%.1fs"),
 		*InboxDir(), *DefaultReportRootDir(), PollIntervalSeconds);
+
+	// Recovery: flag any request orphaned by a previous editor crash / forced exit (non-terminal journal
+	// with no outbox marker) as pending_editor_restart, so a caller can re-drive it deterministically.
+	{
+		TArray<FString> Recovered;
+		RunRecoveryScan(DefaultReportRootDir() / TEXT("editor_live"), Recovered);
+	}
 }
 
 void FBPAgentLiveService::Stop()
@@ -305,6 +323,18 @@ void FBPAgentLiveService::PumpOnce()
 
 	const FString TaskType = JStr(Request, TEXT("task_type")).ToLower();
 
+	// Idempotency: if this request_id already completed, re-emit outbox pointer without re-executing.
+	{
+		FString PrevManifest;
+		if (IsRequestCompleted(RequestId, PrevManifest))
+		{
+			UE_LOG(LogBPParserTestGen, Display, TEXT("BPAgentLiveService: idempotent skip %s -> %s"), *RequestId, *PrevManifest);
+			WriteOutbox(0, PrevManifest.IsEmpty() ? (DefaultReportRootDir() / TEXT("editor_live") / Sanitize(RequestId) / TEXT("manifest.json")) : PrevManifest);
+			MoveToProcessed();
+			return;
+		}
+	}
+
 	// Transient-busy handling: status reports state immediately; analyze/edit/create wait for
 	// save/compile to finish (bounded), never hanging.
 	if (TaskType != TEXT("status") && (IsSavingNow() || IsCompilingBlueprintsNow()))
@@ -313,7 +343,14 @@ void FBPAgentLiveService::PumpOnce()
 		++Att;
 		if (Att < MaxBusyAttempts)
 		{
-			// leave request in place; retry on a later tick
+			// leave request in place; retry on a later tick. Trace the wait once so callers/regression
+			// can observe that the request was deferred (not dropped) while the editor was busy.
+			if (Att == 1)
+			{
+				FString WOutBase = JStr(Request, TEXT("output_dir"));
+				if (WOutBase.IsEmpty()) { WOutBase = DefaultReportRootDir(); }
+				AppendJournal(WOutBase / TEXT("editor_live") / Sanitize(RequestId), RequestId, TEXT("waiting"), TEXT("editor_busy"));
+			}
 			return;
 		}
 		// budget exhausted -> fail with reason, do not hang forever
@@ -338,7 +375,15 @@ void FBPAgentLiveService::PumpOnce()
 	UE_LOG(LogBPParserTestGen, Display, TEXT("BPAgentLiveService: processing %s task=%s -> %s"),
 		*RequestId, *TaskType, *ReportDir);
 
+	AppendJournal(ReportDir, RequestId, TEXT("received"), TEXT("ok"));
+
 	const int32 Code = ProcessRequest(RequestId, Request);
+	if (Code == -1)
+	{
+		// deferred (asset lock / busy) — leave request in inbox for retry
+		BusyAttempts.FindOrAdd(RequestId)++;
+		return;
+	}
 	WriteOutbox(Code, ReportDir / TEXT("manifest.json"));
 	BusyAttempts.Remove(RequestId);
 	MoveToProcessed();
@@ -357,17 +402,19 @@ int32 FBPAgentLiveService::ProcessRequest(const FString& RequestId, const TShare
 	WriteUtf8NoBom(ReportDir / TEXT("logs") / TEXT("live_service_log.txt"),
 		FString::Printf(TEXT("[%s] editor_live request_id=%s task=%s\n"), *NowIso(), *RequestId, *TaskType));
 
-	if (TaskType == TEXT("status"))  { return HandleStatus (RequestId, Request, ReportDir); }
-	if (TaskType == TEXT("analyze")) { return HandleAnalyze(RequestId, Request, ReportDir); }
-	if (TaskType == TEXT("edit"))    { return HandleEdit   (RequestId, Request, ReportDir); }
-	if (TaskType == TEXT("create"))  { return HandleCreate (RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("status"))       { return HandleStatus (RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("analyze"))      { return HandleAnalyze(RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("edit"))         { return HandleEdit   (RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("create"))       { return HandleCreate (RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("recover_scan")) { return HandleRecoverScan(RequestId, Request, ReportDir); }
+	if (TaskType == TEXT("test_control")) { return HandleTestControl(RequestId, Request, ReportDir); }
 
 	// unknown task
 	TSharedPtr<FJsonObject> M = MakeShared<FJsonObject>();
 	M->SetStringField(TEXT("schema_version"), TEXT("1.0"));
 	M->SetStringField(TEXT("status"), TEXT("failed"));
 	M->SetStringField(TEXT("mode"), TEXT("editor_live"));
-	M->SetStringField(TEXT("reason"), FString::Printf(TEXT("unknown task_type '%s' (expected status|analyze|edit|create)"), *TaskType));
+	M->SetStringField(TEXT("reason"), FString::Printf(TEXT("unknown task_type '%s' (expected status|analyze|edit|create|recover_scan|test_control)"), *TaskType));
 	WriteJsonObj(ReportDir / TEXT("manifest.json"), M);
 	return 30;
 }
@@ -389,11 +436,20 @@ int32 FBPAgentLiveService::HandleStatus(const FString& RequestId, const TSharedP
 	Supports->SetBoolField(TEXT("analyze"), true);
 	Supports->SetBoolField(TEXT("edit"), true);
 	Supports->SetBoolField(TEXT("create"), true);
+	Supports->SetBoolField(TEXT("preflight"), true);
+	Supports->SetBoolField(TEXT("stale_plan"), true);
+	Supports->SetBoolField(TEXT("request_journal"), true);
+	Supports->SetBoolField(TEXT("idempotency"), true);
+	Supports->SetBoolField(TEXT("asset_lock"), true);
+	Supports->SetBoolField(TEXT("post_analyze"), true);
+	Supports->SetBoolField(TEXT("recover_scan"), true);
+	Supports->SetBoolField(TEXT("test_control"), true);
 
 	TSharedPtr<FJsonObject> Live = MakeShared<FJsonObject>();
 	Live->SetBoolField(TEXT("available"), true);
 	Live->SetStringField(TEXT("project"), FPaths::ConvertRelativePathToFull(FPaths::GetProjectFilePath()));
 	Live->SetStringField(TEXT("engine_version"), BPGenCompat::EngineFullVersion());
+	Live->SetStringField(TEXT("plugin_version"), TEXT("0.4.8"));
 	Live->SetBoolField(TEXT("plugin_loaded"), true);
 	Live->SetBoolField(TEXT("service_running"), IsRunning());
 	Live->SetStringField(TEXT("request_queue"), InboxDir());
@@ -405,6 +461,7 @@ int32 FBPAgentLiveService::HandleStatus(const FString& RequestId, const TSharedP
 	M->SetStringField(TEXT("schema_version"), TEXT("1.0"));
 	M->SetStringField(TEXT("status"), TEXT("success"));
 	M->SetStringField(TEXT("mode"), TEXT("editor_live"));
+	M->SetStringField(TEXT("plugin_version"), TEXT("0.4.8"));
 	M->SetStringField(TEXT("request_id"), RequestId);
 	M->SetStringField(TEXT("generated_at"), NowIso());
 	M->SetObjectField(TEXT("editor_live"), Live);
@@ -513,6 +570,8 @@ int32 FBPAgentLiveService::HandleEdit(const FString& RequestId, const TSharedPtr
 	const bool bAllowEdit = JBool(Exec, TEXT("allow_edit"), false);
 	const bool bAllowEditDuringPie = JBool(Exec, TEXT("allow_edit_during_pie"), false);
 	const bool bRequireUserAck = JBool(Exec, TEXT("require_user_ack"), false);
+	const bool bAllowDirtyTarget = JBool(Exec, TEXT("allow_dirty_target"), false);
+	const bool bRunPreflight = JBool(Exec, TEXT("run_preflight"), true);
 
 	// edit payload can be provided as "edit" or "request"
 	const TSharedPtr<FJsonObject>* EditP = JObj(Request, TEXT("edit"));
@@ -521,14 +580,16 @@ int32 FBPAgentLiveService::HandleEdit(const FString& RequestId, const TSharedPtr
 
 	FString AssetPath = JStr(Request, TEXT("asset_path"));
 	if (AssetPath.IsEmpty() && Edit.IsValid()) { AssetPath = JStr(Edit, TEXT("asset_path")); }
+	const FString LockPath = ToPackagePath(AssetPath);
 
 	TArray<FString> Warnings, Errors, Manual;
 	FBPAgentEditorState St; CaptureEditorState(St);
 
-	auto Refuse = [&](const FString& Reason, int32 Code) -> int32
+	auto Refuse = [&](const FString& Reason, int32 Code, const FString& StatusStr = TEXT("failed")) -> int32
 	{
 		Errors.Add(Reason);
-		WriteEditCreateManifest(RequestId, ReportDir, TEXT("edit"), TEXT("failed"), AssetPath, TEXT(""), St, Warnings, Errors, Manual);
+		AppendJournal(ReportDir, RequestId, TEXT("failed"), StatusStr);
+		WriteEditCreateManifest(RequestId, ReportDir, TEXT("edit"), StatusStr, AssetPath, TEXT(""), St, Warnings, Errors, Manual);
 		return Code;
 	};
 
@@ -542,8 +603,25 @@ int32 FBPAgentLiveService::HandleEdit(const FString& RequestId, const TSharedPtr
 	}
 	if (St.bIsPie && !bAllowEditDuringPie)
 	{
-		return Refuse(TEXT("edit refused: editor is in PIE (set execution.allow_edit_during_pie=true to override)"), 30);
+		return Refuse(TEXT("edit refused: editor is in PIE (set execution.allow_edit_during_pie=true to override)"), 30, TEXT("blocked_by_editor_state"));
 	}
+
+	// Asset lock: one mutating edit per asset path at a time.
+	if (LockedAssetPaths.Contains(LockPath))
+	{
+		// leave request in inbox — PumpOnce will retry on a later tick
+		UE_LOG(LogBPParserTestGen, Display, TEXT("BPAgentLiveService: asset locked %s; deferring %s"), *LockPath, *RequestId);
+		BusyAttempts.FindOrAdd(RequestId)++;
+		return -1; // signal defer (caller must NOT move to processed)
+	}
+	LockedAssetPaths.Add(LockPath);
+	ActiveRequestId = RequestId;
+
+	auto Unlock = [&]()
+	{
+		LockedAssetPaths.Remove(LockPath);
+		if (ActiveRequestId == RequestId) { ActiveRequestId.Reset(); }
+	};
 
 	// dirty + asset-editor-open guard (protect unsaved user work)
 	const FString Pkg = ToPackagePath(AssetPath);
@@ -553,12 +631,46 @@ int32 FBPAgentLiveService::HandleEdit(const FString& RequestId, const TSharedPtr
 	{
 		const bool bDirty = BP->GetOutermost() && BP->GetOutermost()->IsDirty();
 		const bool bOpen = IsBlueprintAssetEditorOpen(BP);
+		const FString SrcState = ResolveSourceState(BP);
+		if (bDirty && !bAllowDirtyTarget)
+		{
+			Warnings.Add(FString::Printf(TEXT("target is dirty (source_state=%s); edit refused by default"), *SrcState));
+			Unlock();
+			return Refuse(FString::Printf(TEXT("edit refused: target dirty (%s); set execution.allow_dirty_target=true to override"), *SrcState),
+				30, TEXT("blocked_by_editor_state"));
+		}
 		if (bDirty && bOpen && !bRequireUserAck)
 		{
 			Warnings.Add(TEXT("target is open in the asset editor with unsaved changes"));
-			return Refuse(TEXT("edit refused: target dirty & open in editor; set execution.require_user_ack=true to proceed"), 30);
+			Unlock();
+			return Refuse(TEXT("edit refused: target dirty & open in editor; set execution.require_user_ack=true to proceed"), 30, TEXT("blocked_by_editor_state"));
 		}
-		if (bDirty) { Warnings.Add(TEXT("target has unsaved changes; proceeding under explicit authorisation")); }
+		if (bDirty) { Warnings.Add(FString::Printf(TEXT("target dirty (%s); proceeding under allow_dirty_target"), *SrcState)); }
+	}
+
+	// Property-aware preflight (before any mutation).
+	TSharedPtr<FJsonObject> PfReport, PfNorm, PfCap;
+	int32 PfCode = 0;
+	if (bRunPreflight)
+	{
+		AppendJournal(ReportDir, RequestId, TEXT("preflight"), TEXT("running"));
+		FBPPreflight::FOptions PfOpt;
+		PfOpt.OutputDir = ReportDir;
+		PfOpt.AssetPath = AssetPath;
+		PfOpt.LoadedBP = BP;
+		PfOpt.bStrictRequired = JBool(Exec, TEXT("strict_preflight"), true);
+		PfCode = FBPPreflight::RunPreflight(TEXT("edit"), Edit, PfOpt, PfReport, PfNorm, PfCap);
+		const FString PfStatus = PfCode == 0 ? TEXT("pass") : (PfCode == 10 ? TEXT("pass_with_warnings") : TEXT("fail"));
+		AppendJournal(ReportDir, RequestId, TEXT("preflight"), PfStatus);
+		if (!FBPPreflight::IsPreflightApplyAllowed(PfCode))
+		{
+			Errors.Add(TEXT("preflight failed: required property/event checks did not pass; see preflight_report.json"));
+			Unlock();
+			WriteEditCreateManifest(RequestId, ReportDir, TEXT("edit"), TEXT("failed"), AssetPath,
+				TEXT("preflight_report.json"), St, Warnings, Errors, Manual);
+			return 20;
+		}
+		if (PfCode == 10) { Warnings.Add(TEXT("preflight pass_with_warnings: some optional properties skipped; see preflight_report.json")); }
 	}
 
 	// Reuse the atomic edit engine (Transaction / baseline / plan / rollback / compile / save / diff).
@@ -569,13 +681,50 @@ int32 FBPAgentLiveService::HandleEdit(const FString& RequestId, const TSharedPtr
 	Opt.bCreateBackup = JBool(Exec, TEXT("create_backup"), true);
 	Opt.bAllowDestructive = JBool(Exec, TEXT("allow_destructive_edit"), false) || JBool(Edit, TEXT("allow_destructive_edit"), false);
 	Opt.bStrict = JBool(Exec, TEXT("strict"), false);
+	Opt.bRunPreflight = false; // already ran above
+	Opt.ExpectedBaselineIrHash = JStr(Edit, TEXT("baseline_ir_hash"));
+	if (Opt.ExpectedBaselineIrHash.IsEmpty()) { Opt.ExpectedBaselineIrHash = JStr(Edit, TEXT("expected_baseline_ir_hash")); }
 
-	const int32 Code = FBPATEdit::Run(AssetPath, Edit, Opt);
+	AppendJournal(ReportDir, RequestId, TEXT("applying"), TEXT("running"));
+	FString EditStatus;
+	const int32 Code = FBPATEdit::Run(AssetPath, PfNorm.IsValid() ? PfNorm : Edit, Opt, &EditStatus);
 
-	const FString StatusStr = (Code == 0) ? TEXT("success") : (Code == 10 ? TEXT("partial") : (Code == 40 ? TEXT("rolled_back") : TEXT("failed")));
+	AppendJournal(ReportDir, RequestId, TEXT("verifying"), Code == 0 ? TEXT("ok") : TEXT("check"));
+	if (Code == 0 || Code == 10)
+	{
+		// Post-analyze the edited asset for agent verification.
+		if (UBlueprint* ResultBP = LoadObject<UBlueprint>(nullptr, *AssetPath))
+		{
+			if (!Opt.WorkOnCopy.IsEmpty())
+			{
+				ResultBP = LoadObject<UBlueprint>(nullptr, *Opt.WorkOnCopy);
+			}
+			if (ResultBP) { RunPostAnalyze(RequestId, ResultBP, ReportDir, St); }
+		}
+	}
+
+	// Prefer the precise status reported by the edit engine (distinguishes success_with_warnings vs partial,
+	// which share exit code 10). Fall back to code-based mapping if the engine did not report one.
+	FString StatusStr = EditStatus;
+	if (StatusStr.IsEmpty())
+	{
+		if (Code == 0) { StatusStr = TEXT("success"); }
+		else if (Code == 10) { StatusStr = TEXT("partial"); }
+		else if (Code == 40) { StatusStr = TEXT("rolled_back"); }
+		else if (Code == 50) { StatusStr = TEXT("stale_plan"); }
+		else { StatusStr = TEXT("failed"); }
+	}
+	// A clean apply where preflight raised optional-property warnings is success_with_warnings, not plain success.
+	if (Code == 0 && PfCode == 10 && StatusStr == TEXT("success")) { StatusStr = TEXT("success_with_warnings"); }
+
+	AppendJournal(ReportDir, RequestId,
+		Code == 40 ? TEXT("rolled_back") : (Code == 0 || Code == 10 ? TEXT("success") : TEXT("failed")),
+		StatusStr);
+
 	WriteEditCreateManifest(RequestId, ReportDir, TEXT("edit"), StatusStr, AssetPath,
 		TEXT("See BPATEdit artifacts (edit_plan/edit_result/diff_report) under this directory."),
 		St, Warnings, Errors, Manual);
+	Unlock();
 	return Code;
 }
 
@@ -598,16 +747,34 @@ int32 FBPAgentLiveService::HandleCreate(const FString& RequestId, const TSharedP
 	FString AssetPath;
 	if (Spec.IsValid()) { if (const TSharedPtr<FJsonObject>* A = JObj(Spec, TEXT("asset"))) { AssetPath = JStr(*A, TEXT("asset_path")); } }
 
-	auto Refuse = [&](const FString& Reason, int32 Code) -> int32
+	auto Refuse = [&](const FString& Reason, int32 Code, const FString& Status = TEXT("failed")) -> int32
 	{
 		Errors.Add(Reason);
-		WriteEditCreateManifest(RequestId, ReportDir, TEXT("create"), TEXT("failed"), AssetPath, TEXT(""), St, Warnings, Errors, Manual);
+		WriteEditCreateManifest(RequestId, ReportDir, TEXT("create"), Status, AssetPath, TEXT(""), St, Warnings, Errors, Manual);
 		return Code;
 	};
 
 	if (!bAllowCreate)            { return Refuse(TEXT("create refused: requires execution.allow_create=true"), 30); }
 	if (!Spec.IsValid())          { return Refuse(TEXT("create refused: missing create spec"), 30); }
-	if (St.bIsPie)                { return Refuse(TEXT("create refused: editor is in PIE"), 30); }
+	if (St.bIsPie)                { return Refuse(TEXT("create refused: editor is in PIE"), 30, TEXT("blocked_by_editor_state")); }
+
+	AppendJournal(ReportDir, RequestId, TEXT("preflight"), TEXT("running"));
+	{
+		FBPPreflight::FOptions PfOpt;
+		PfOpt.OutputDir = ReportDir;
+		PfOpt.AssetPath = AssetPath;
+		PfOpt.bStrictRequired = JBool(Exec, TEXT("strict_preflight"), true);
+		TSharedPtr<FJsonObject> PfReport, PfNorm, PfCap;
+		const int32 PfCode = FBPPreflight::RunPreflight(TEXT("create"), Spec, PfOpt, PfReport, PfNorm, PfCap);
+		AppendJournal(ReportDir, RequestId, TEXT("preflight"), PfCode == 0 ? TEXT("pass") : (PfCode == 10 ? TEXT("pass_with_warnings") : TEXT("fail")));
+		if (!FBPPreflight::IsPreflightApplyAllowed(PfCode))
+		{
+			Errors.Add(TEXT("create preflight failed; see preflight_report.json"));
+			WriteEditCreateManifest(RequestId, ReportDir, TEXT("create"), TEXT("failed"), AssetPath, TEXT("preflight_report.json"), St, Warnings, Errors, Manual);
+			return 20;
+		}
+		if (PfCode == 10) { Warnings.Add(TEXT("create preflight pass_with_warnings")); }
+	}
 
 	// FBPCreate reads a SpecFile whose top-level has a "request" key.
 	TSharedPtr<FJsonObject> Wrapper = MakeShared<FJsonObject>();
@@ -778,6 +945,16 @@ TSharedPtr<FJsonObject> FBPAgentLiveService::BuildUnifiedIR(const TSharedPtr<FJs
 	Ir->SetObjectField(TEXT("blueprint"), Bp);
 
 	CopyArrayOrEmpty(Raw, Ir, TEXT("graphs"));
+	if (Raw.IsValid())
+	{
+		const TSharedPtr<FJsonObject>* WT = nullptr;
+		if (Raw->TryGetObjectField(TEXT("widget_tree"), WT) && WT && WT->IsValid())
+		{
+			Ir->SetObjectField(TEXT("widget_tree"), *WT);
+		}
+		const TArray<TSharedPtr<FJsonValue>>* WEB = nullptr;
+		if (Raw->TryGetArrayField(TEXT("widget_event_bindings"), WEB)) { Ir->SetArrayField(TEXT("widget_event_bindings"), *WEB); }
+	}
 
 	TSharedPtr<FJsonObject> Analysis = MakeShared<FJsonObject>();
 	Analysis->SetArrayField(TEXT("manual_check_required"), TArray<TSharedPtr<FJsonValue>>());
@@ -1005,6 +1182,185 @@ void FBPAgentLiveService::WriteAnalyzeManifestOnly(const FString& RequestId, con
 	}
 	M->SetObjectField(TEXT("editor_live"), MakeEditorLiveBlock(RequestId, TEXT("unknown"), St));
 	WriteJsonObj(Dir / TEXT("manifest.json"), M);
+}
+
+// ============================================================================
+// recover_scan + test_control (production recovery + regression fault-injection)
+// ============================================================================
+int32 FBPAgentLiveService::RunRecoveryScan(const FString& ScanEditorLiveDir, TArray<FString>& OutRecovered)
+{
+	OutRecovered.Reset();
+	if (ScanEditorLiveDir.IsEmpty() || !FPaths::DirectoryExists(ScanEditorLiveDir)) { return 0; }
+
+	auto IsTerminalPhase = [](const FString& P)
+	{
+		return P == TEXT("success") || P == TEXT("failed") || P == TEXT("rolled_back")
+			|| P == TEXT("stale_plan") || P == TEXT("blocked_by_editor_state") || P == TEXT("pending_editor_restart");
+	};
+
+	TArray<FString> Dirs;
+	IFileManager::Get().FindFiles(Dirs, *(ScanEditorLiveDir / TEXT("*")), /*Files*/ false, /*Directories*/ true);
+	for (const FString& DirId : Dirs)
+	{
+		if (DirId == TEXT(".") || DirId == TEXT("..")) { continue; }
+		if (DirId == ActiveRequestId) { continue; }          // never flag the in-flight scan request itself
+		const FString FullDir = ScanEditorLiveDir / DirId;
+		const FString JournalPath = FullDir / TEXT("request_journal.json");
+		if (!FPaths::FileExists(JournalPath)) { continue; }
+
+		FString Text;
+		if (!FFileHelper::LoadFileToString(Text, *JournalPath)) { continue; }
+		TSharedPtr<FJsonObject> Root;
+		const TSharedRef<TJsonReader<>> R = TJsonReaderFactory<>::Create(Text);
+		if (!FJsonSerializer::Deserialize(R, Root) || !Root.IsValid()) { continue; }
+		const TArray<TSharedPtr<FJsonValue>>* Entries = nullptr;
+		if (!Root->TryGetArrayField(TEXT("entries"), Entries) || !Entries || Entries->Num() == 0) { continue; }
+		const TSharedPtr<FJsonObject> Last = (*Entries)[Entries->Num() - 1]->AsObject();
+		const FString LastPhase = Last.IsValid() ? JStr(Last, TEXT("phase")) : FString();
+		if (IsTerminalPhase(LastPhase)) { continue; }
+
+		// A completed request always has a terminal outbox marker; its absence + a non-terminal journal
+		// means the editor exited mid-flight (crash / forced quit) and the request was orphaned.
+		if (FPaths::FileExists(OutboxDir() / (DirId + TEXT(".done"))) ||
+			FPaths::FileExists(OutboxDir() / (DirId + TEXT(".failed"))))
+		{
+			continue;
+		}
+
+		AppendJournal(FullDir, DirId, TEXT("pending_editor_restart"), TEXT("recovered_by_scan"));
+		OutRecovered.Add(DirId);
+	}
+	if (OutRecovered.Num() > 0)
+	{
+		UE_LOG(LogBPParserTestGen, Warning, TEXT("BPAgentLiveService: recovery scan flagged %d orphaned request(s) as pending_editor_restart under %s"),
+			OutRecovered.Num(), *ScanEditorLiveDir);
+	}
+	return OutRecovered.Num();
+}
+
+int32 FBPAgentLiveService::HandleRecoverScan(const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir)
+{
+	IFileManager::Get().MakeDirectory(*ReportDir, true);
+	FString OutBase = JStr(Request, TEXT("output_dir"));
+	if (OutBase.IsEmpty()) { OutBase = DefaultReportRootDir(); }
+	const FString ScanDir = OutBase / TEXT("editor_live");
+
+	ActiveRequestId = RequestId;   // ensure the scan skips its own dir
+	TArray<FString> Recovered;
+	RunRecoveryScan(ScanDir, Recovered);
+	ActiveRequestId.Reset();
+
+	TSharedPtr<FJsonObject> M = MakeShared<FJsonObject>();
+	M->SetStringField(TEXT("schema_version"), TEXT("1.0"));
+	M->SetStringField(TEXT("status"), TEXT("success"));
+	M->SetStringField(TEXT("mode"), TEXT("editor_live"));
+	M->SetStringField(TEXT("task_type"), TEXT("recover_scan"));
+	M->SetStringField(TEXT("scan_dir"), ScanDir);
+	M->SetNumberField(TEXT("recovered_count"), Recovered.Num());
+	{
+		TArray<TSharedPtr<FJsonValue>> Arr;
+		for (const FString& S : Recovered) { Arr.Add(MakeShared<FJsonValueString>(S)); }
+		M->SetArrayField(TEXT("recovered"), Arr);
+	}
+	M->SetStringField(TEXT("generated_at"), NowIso());
+	WriteJsonObj(ReportDir / TEXT("manifest.json"), M);
+	return 0;
+}
+
+int32 FBPAgentLiveService::HandleTestControl(const FString& RequestId, const TSharedPtr<FJsonObject>& Request, const FString& ReportDir)
+{
+	IFileManager::Get().MakeDirectory(*ReportDir, true);
+	const double Now = FPlatformTime::Seconds();
+	double PieMs = 0.0, BusyMs = 0.0;
+	// A present field sets the window (>0) or clears it (<=0). Absent fields leave the current window as-is.
+	if (Request->HasTypedField<EJson::Number>(TEXT("force_pie_ms")))
+	{
+		Request->TryGetNumberField(TEXT("force_pie_ms"), PieMs);
+		GTestForcePieUntilSeconds = (PieMs > 0.0) ? (Now + PieMs / 1000.0) : 0.0;
+	}
+	if (Request->HasTypedField<EJson::Number>(TEXT("force_busy_ms")))
+	{
+		Request->TryGetNumberField(TEXT("force_busy_ms"), BusyMs);
+		GTestForceBusyUntilSeconds = (BusyMs > 0.0) ? (Now + BusyMs / 1000.0) : 0.0;
+	}
+
+	TSharedPtr<FJsonObject> M = MakeShared<FJsonObject>();
+	M->SetStringField(TEXT("schema_version"), TEXT("1.0"));
+	M->SetStringField(TEXT("status"), TEXT("success"));
+	M->SetStringField(TEXT("mode"), TEXT("editor_live"));
+	M->SetStringField(TEXT("task_type"), TEXT("test_control"));
+	M->SetNumberField(TEXT("force_pie_ms"), PieMs);
+	M->SetNumberField(TEXT("force_busy_ms"), BusyMs);
+	M->SetStringField(TEXT("note"), TEXT("regression fault-injection: self-expiring editor-state override (no real PIE/compile)"));
+	M->SetStringField(TEXT("generated_at"), NowIso());
+	WriteJsonObj(ReportDir / TEXT("manifest.json"), M);
+	return 0;
+}
+
+void FBPAgentLiveService::AppendJournal(const FString& ReportDir, const FString& RequestId, const FString& Phase,
+	const FString& Status, const TSharedPtr<FJsonObject>& Detail)
+{
+	if (ReportDir.IsEmpty()) { return; }
+	IFileManager::Get().MakeDirectory(*ReportDir, true);
+	const FString Path = ReportDir / TEXT("request_journal.json");
+	TArray<TSharedPtr<FJsonValue>> Entries;
+	if (FString Existing; FFileHelper::LoadFileToString(Existing, *Path))
+	{
+		TSharedPtr<FJsonObject> Root;
+		const TSharedRef<TJsonReader<>> R = TJsonReaderFactory<>::Create(Existing);
+		if (FJsonSerializer::Deserialize(R, Root) && Root.IsValid())
+		{
+			const TArray<TSharedPtr<FJsonValue>>* A = nullptr;
+			if (Root->TryGetArrayField(TEXT("entries"), A)) { Entries = *A; }
+		}
+	}
+	TSharedPtr<FJsonObject> E = MakeShared<FJsonObject>();
+	E->SetStringField(TEXT("timestamp"), NowIso());
+	E->SetStringField(TEXT("request_id"), RequestId);
+	E->SetStringField(TEXT("phase"), Phase);
+	E->SetStringField(TEXT("status"), Status);
+	if (Detail.IsValid()) { E->SetObjectField(TEXT("detail"), Detail); }
+	Entries.Add(MakeShared<FJsonValueObject>(E));
+	TSharedPtr<FJsonObject> Root = MakeShared<FJsonObject>();
+	Root->SetStringField(TEXT("schema_version"), TEXT("1.0"));
+	Root->SetArrayField(TEXT("entries"), Entries);
+	WriteJsonObj(Path, Root);
+}
+
+bool FBPAgentLiveService::IsRequestCompleted(const FString& RequestId, FString& OutManifestPath)
+{
+	OutManifestPath.Reset();
+	const FString Done = OutboxDir() / (RequestId + TEXT(".done"));
+	if (!FPaths::FileExists(Done)) { return false; }
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *Done)) { return true; }
+	TSharedPtr<FJsonObject> M;
+	const TSharedRef<TJsonReader<>> R = TJsonReaderFactory<>::Create(Text);
+	if (FJsonSerializer::Deserialize(R, M) && M.IsValid())
+	{
+		M->TryGetStringField(TEXT("manifest"), OutManifestPath);
+	}
+	return true;
+}
+
+FString FBPAgentLiveService::ResolveSourceState(UObject* Asset)
+{
+	if (!Asset) { return TEXT("unknown"); }
+	const bool bDirty = Asset->GetOutermost() && Asset->GetOutermost()->IsDirty();
+	return bDirty ? TEXT("loaded_dirty_memory") : TEXT("loaded_clean_memory");
+}
+
+int32 FBPAgentLiveService::RunPostAnalyze(const FString& RequestId, UBlueprint* BP, const FString& ReportDir, const FBPAgentEditorState& St)
+{
+	if (!BP) { return 20; }
+	const FString SubDir = ReportDir / TEXT("post_analyze");
+	const FString Pkg = BP->GetOutermost()->GetName();
+	const FString Short = BP->GetName();
+	const FString SourceState = ResolveSourceState(BP);
+	TSharedPtr<FJsonObject> Raw = FBPGenIRDumper::DumpBlueprint(BP);
+	TSharedPtr<FJsonObject> Unified = BuildUnifiedIR(Raw, Pkg, Short);
+	TArray<FString> W, E, M;
+	return WriteAnalyzeReport(RequestId, SubDir, Unified, Pkg, Short, SourceState, St, W, E, M);
 }
 
 void FBPAgentLiveService::WriteEditCreateManifest(const FString& RequestId, const FString& Dir, const FString& Task, const FString& Status,
